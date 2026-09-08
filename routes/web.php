@@ -125,6 +125,7 @@ Route::middleware('auth')->group(function () {
         // Royalties
         Route::get('/royalties', [AdminController::class, 'royalties'])->name('royalties');
         Route::post('/royalties', [AdminController::class, 'storeRoyalty'])->name('royalties.store');
+        Route::post('/royalties/bulk-manual', [AdminController::class, 'storeBulkRoyalty'])->name('royalties.bulk-manual');
         Route::post('/royalties/import', [AdminController::class, 'importRoyalties'])->name('royalties.import');
         Route::get('/royalties/import/template', [AdminController::class, 'royaltyImportTemplate'])->name('royalties.import-template');
         Route::get('/royalties/{royalty}/edit', [AdminController::class, 'editRoyalty'])->name('royalties.edit');

@@ -16,6 +16,7 @@ use App\Models\Withdrawal;
 use App\Services\RoyaltyCsvImportService;
 use App\Services\RoyaltyService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -192,6 +193,48 @@ class AdminController extends Controller
         $royaltyService->create($validated);
 
         return redirect()->route('admin.royalties')->with('success', 'Royalty entry added successfully.');
+    }
+
+    public function storeBulkRoyalty(Request $request, RoyaltyService $royaltyService)
+    {
+        $validated = $request->validate([
+            'artist_id' => 'required|exists:artists,id',
+            'royalty_type' => 'required|in:'.implode(',', array_keys(Royalty::TYPES)),
+            'month' => 'required|integer|min:1|max:12',
+            'year' => 'required|integer|min:2020|max:'.(date('Y') + 1),
+            'currency' => 'required|string|size:3',
+            'notes' => 'nullable|string|max:1000',
+            'stores' => 'required|array',
+            'stores.*.store_id' => 'required|distinct|exists:music_stores,id',
+            'stores.*.amount' => 'nullable|numeric|min:0',
+            'stores.*.streams' => 'nullable|integer|min:0',
+        ]);
+
+        $rows = collect($validated['stores'])->filter(
+            fn ($row) => array_key_exists('amount', $row) && $row['amount'] !== null && $row['amount'] !== ''
+        );
+        if ($rows->isEmpty()) {
+            return back()->withInput()->withErrors(['stores' => 'Enter an amount for at least one store.']);
+        }
+
+        DB::transaction(function () use ($rows, $validated, $royaltyService) {
+            foreach ($rows as $row) {
+                $royaltyService->create([
+                    'artist_id' => $validated['artist_id'],
+                    'store_id' => $row['store_id'],
+                    'royalty_type' => $validated['royalty_type'],
+                    'month' => $validated['month'],
+                    'year' => $validated['year'],
+                    'amount' => $row['amount'],
+                    'currency' => strtoupper($validated['currency']),
+                    'streams' => $row['streams'] ?? 0,
+                    'notes' => $validated['notes'] ?? 'Bulk manual entry',
+                    'entered_by' => auth()->id(),
+                ]);
+            }
+        });
+
+        return redirect()->route('admin.royalties')->with('success', $rows->count().' store royalty entries added successfully.');
     }
 
     public function importRoyalties(Request $request, RoyaltyCsvImportService $importer)

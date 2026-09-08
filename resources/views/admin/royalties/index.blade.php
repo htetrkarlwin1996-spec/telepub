@@ -33,6 +33,66 @@
                 <div class="px-6 pb-5 text-xs font-bold text-black/60">Supports this report format: month, music_store, isrc, units and net_revenue_EUR. Maximum 50,000 rows / 20 MB.</div>
             </div>
 
+            <details class="bg-white border-2 border-black shadow-[4px_4px_0_#000] mb-6" open>
+                <summary class="p-5 cursor-pointer font-extrabold text-lg border-b-2 border-black bg-blue-100">Bulk Manual Royalty by Store</summary>
+                <form method="POST" action="{{ route('admin.royalties.bulk-manual') }}" class="p-6">
+                    @csrf
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                        <div>
+                            <x-input-label for="bulk_artist_id" value="Artist" />
+                            <select id="bulk_artist_id" name="artist_id" required class="block mt-1 w-full border-2 border-black px-3 py-2.5 font-bold rounded-none">
+                                <option value="">Select Artist</option>
+                                @foreach($artists as $artist)<option value="{{ $artist->id }}" @selected(old('artist_id') == $artist->id)>{{ $artist->artist_name }}</option>@endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <x-input-label for="bulk_royalty_type" value="Income Type" />
+                            <select id="bulk_royalty_type" name="royalty_type" class="block mt-1 w-full border-2 border-black px-3 py-2.5 font-bold rounded-none">
+                                @foreach(\App\Models\Royalty::TYPES as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <x-input-label for="bulk_month" value="Month" />
+                            <select id="bulk_month" name="month" class="block mt-1 w-full border-2 border-black px-3 py-2.5 font-bold rounded-none">
+                                @for($month = 1; $month <= 12; $month++)<option value="{{ $month }}" @selected($month == date('n'))>{{ date('F', mktime(0, 0, 0, $month, 1)) }}</option>@endfor
+                            </select>
+                        </div>
+                        <div>
+                            <x-input-label for="bulk_year" value="Year" />
+                            <input id="bulk_year" name="year" type="number" value="{{ date('Y') }}" min="2020" max="{{ date('Y') + 1 }}" required class="block mt-1 w-full border-2 border-black px-3 py-2.5 font-bold">
+                        </div>
+                        <div>
+                            <x-input-label for="bulk_currency" value="Currency" />
+                            <select id="bulk_currency" name="currency" class="block mt-1 w-full border-2 border-black px-3 py-2.5 font-bold rounded-none">
+                                @foreach(['USD', 'EUR', 'GBP', 'JPY'] as $currency)<option value="{{ $currency }}">{{ $currency }}</option>@endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto border-2 border-black">
+                        <table class="w-full min-w-[650px] text-sm">
+                            <thead class="bg-gray-100 border-b-2 border-black"><tr><th class="text-left p-3 uppercase">Store</th><th class="text-left p-3 uppercase">Amount</th><th class="text-left p-3 uppercase">Streams</th></tr></thead>
+                            <tbody class="divide-y divide-black/20">
+                                @foreach($stores as $index => $store)
+                                    <tr>
+                                        <td class="p-3 font-extrabold"><span class="inline-flex items-center gap-2"><x-store-logo :store="$store" size="5" />{{ $store->name }}</span></td>
+                                        <td class="p-3">
+                                            <input type="hidden" name="stores[{{ $index }}][store_id]" value="{{ $store->id }}">
+                                            <input type="number" step="0.0000000001" min="0" name="stores[{{ $index }}][amount]" placeholder="Leave empty to skip" class="w-full border-2 border-black px-3 py-2 font-bold">
+                                        </td>
+                                        <td class="p-3"><input type="number" min="0" name="stores[{{ $index }}][streams]" placeholder="0" class="w-full border-2 border-black px-3 py-2 font-bold"></td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-4 flex flex-col md:flex-row gap-4 items-end">
+                        <div class="flex-1 w-full"><x-input-label for="bulk_notes" value="Notes" /><input id="bulk_notes" name="notes" type="text" class="block mt-1 w-full border-2 border-black px-3 py-2.5" placeholder="Optional"></div>
+                        <button class="px-6 py-3 bg-brand-500 border-2 border-black font-extrabold uppercase shadow-[3px_3px_0_#000]">Add Store Royalties</button>
+                    </div>
+                </form>
+            </details>
+
             <!-- Add Royalty Form -->
             <div class="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mb-6">
                 <div class="p-5 border-b-2 border-black">

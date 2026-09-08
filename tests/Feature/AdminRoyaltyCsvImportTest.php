@@ -16,6 +16,30 @@ class AdminRoyaltyCsvImportTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_admin_can_add_multiple_store_royalties_manually_at_once(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $artistUser = User::factory()->create(['role' => 'artist']);
+        $artist = Artist::create(['user_id' => $artistUser->id, 'artist_name' => 'Bulk Artist', 'revenue_share_percentage' => 70]);
+        $stores = MusicStore::take(3)->get();
+
+        $this->actingAs($admin)->post(route('admin.royalties.bulk-manual'), [
+            'artist_id' => $artist->id,
+            'royalty_type' => 'royalties',
+            'month' => 4,
+            'year' => 2026,
+            'currency' => 'USD',
+            'stores' => [
+                ['store_id' => $stores[0]->id, 'amount' => '10.25', 'streams' => 100],
+                ['store_id' => $stores[1]->id, 'amount' => '20.75', 'streams' => 200],
+                ['store_id' => $stores[2]->id, 'amount' => '', 'streams' => ''],
+            ],
+        ])->assertRedirect(route('admin.royalties'))->assertSessionHas('success');
+
+        $this->assertDatabaseCount('royalties', 2);
+        $this->assertEqualsWithDelta(21.7, (float) $artist->fresh()->available_balance, 0.0000001);
+    }
+
     public function test_royalty_page_renders_with_new_and_unknown_store_logos(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
