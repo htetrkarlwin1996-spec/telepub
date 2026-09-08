@@ -40,6 +40,33 @@ class AdminRoyaltyCsvImportTest extends TestCase
         $this->assertEqualsWithDelta(21.7, (float) $artist->fresh()->available_balance, 0.0000001);
     }
 
+    public function test_database_store_logos_are_visible_to_admin_and_artist(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $artistUser = User::factory()->create(['role' => 'artist']);
+        $artist = Artist::create(['user_id' => $artistUser->id, 'artist_name' => 'Logo Artist']);
+        $store = MusicStore::create([
+            'name' => 'Logo Store',
+            'slug' => 'logo-store',
+            'logo' => 'https://example.com/store-logo.png',
+        ]);
+        Royalty::create([
+            'artist_id' => $artist->id,
+            'store_id' => $store->id,
+            'royalty_type' => 'royalties',
+            'month' => 4,
+            'year' => 2026,
+            'amount' => 1,
+            'currency' => 'USD',
+            'entered_by' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)->get(route('admin.royalties'))
+            ->assertOk()->assertSee('https://example.com/store-logo.png');
+        $this->actingAs($artistUser)->get(route('artist.royalties'))
+            ->assertOk()->assertSee('https://example.com/store-logo.png');
+    }
+
     public function test_royalty_page_renders_with_new_and_unknown_store_logos(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);

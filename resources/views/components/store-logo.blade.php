@@ -33,8 +33,13 @@
         'roblox' => '<svg viewBox="0 0 24 24" fill="#F5A623"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm-2.5 6h5l2.5 12h-5L9.5 6z"/></svg>',
     ];
 
+    // These are separate royalty channels but use the YouTube brand mark.
+    $logos['youtube-audio-content-id'] = $logos['youtube-music'];
+    $logos['youtube-art-tracks'] = $logos['youtube-music'];
+
     $logo = $logos[$slug] ?? '';
-    $bg = $logo !== '' ? 'bg-white' : 'bg-gray-100';
+    $logoUrl = $store?->logo;
+    $bg = ($logo !== '' || $logoUrl) ? 'bg-white' : 'bg-gray-100';
 
     // Tailwind JIT needs literal class names — use a mapping instead of dynamic w-{{ $size }}
     $sizeClass = match ((int) $size) {
@@ -51,6 +56,8 @@
 <div class="{{ $sizeClass }} {{ $bg }} rounded-lg flex items-center justify-center p-1 shadow-sm">
     @if($logo)
         {!! $logo !!}
+    @elseif($logoUrl)
+        <img src="{{ $logoUrl }}" alt="{{ $store->name }}" class="w-full h-full object-contain" loading="lazy">
     @else
         <span class="text-xs font-bold text-gray-500">{{ $store ? substr($store->name, 0, 2) : 'NA' }}</span>
     @endif
