@@ -34,7 +34,13 @@
                                 <td class="py-3 px-2 text-center font-bold text-black">{{ $artist->songs_count }}</td>
                                 <td class="py-3 px-2 text-right font-black text-black">${{ number_format($artist->getArtistShareAttribute((float) ($artist->royalties_sum_amount ?? 0)), 2) }}</td>
                                 <td class="py-3 px-2 text-right">
-                                    <a href="{{ route('admin.artists.edit', $artist) }}" class="font-extrabold text-black underline decoration-brand-500 decoration-2 underline-offset-2 hover:decoration-black text-xs">Edit</a>
+                                    <div class="inline-flex items-center justify-end gap-2">
+                                        <form method="POST" action="{{ route('admin.artists.impersonate', $artist) }}">
+                                            @csrf
+                                            <button type="submit" class="px-3 py-1.5 bg-brand-500 border-2 border-black font-extrabold text-[10px] uppercase shadow-[2px_2px_0_#000]">Login As User</button>
+                                        </form>
+                                        <a href="{{ route('admin.artists.edit', $artist) }}" class="font-extrabold text-black underline decoration-brand-500 decoration-2 underline-offset-2 hover:decoration-black text-xs">Edit</a>
+                                    </div>
                                 </td>
                             </tr>
                             @empty

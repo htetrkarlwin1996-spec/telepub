@@ -13,6 +13,7 @@ use App\Http\Controllers\RoyaltyController;
 use App\Http\Controllers\WithdrawalController;
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\AdminMaintenanceController;
+use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\AdminBulkReleaseController;
 use Illuminate\Support\Facades\Route;
 
@@ -101,6 +102,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/artist/analytics', [AnalyticsController::class, 'index'])->name('artist.analytics');
     });
 
+    Route::post('/impersonation/stop', [ImpersonationController::class, 'stop'])->name('impersonation.stop');
+
     // ===== ADMIN ROUTES =====
     Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
         // Dashboard
@@ -114,6 +117,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/artists', [AdminController::class, 'storeArtist'])->name('artists.store');
         Route::get('/artists/{artist}/edit', [AdminController::class, 'editArtist'])->name('artists.edit');
         Route::put('/artists/{artist}', [AdminController::class, 'updateArtist'])->name('artists.update');
+        Route::post('/artists/{artist}/impersonate', [ImpersonationController::class, 'start'])->name('artists.impersonate');
 
         // Music Stores
         Route::get('/stores', [AdminController::class, 'stores'])->name('stores');
