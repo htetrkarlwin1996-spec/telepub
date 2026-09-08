@@ -203,14 +203,22 @@ class AdminController extends Controller
         $validated['royalty_type'] = $validated['royalty_type'] ?? 'royalties';
 
         try {
-            $count = $importer->import($request->file('csv_file'), $validated, $request->user());
+            $result = $importer->import($request->file('csv_file'), $validated, $request->user());
         } catch (\Throwable $exception) {
             report($exception);
 
             return back()->withInput()->withErrors(['csv_file' => $exception->getMessage()]);
         }
 
-        return redirect()->route('admin.royalties')->with('success', "{$count} royalty rows imported successfully.");
+        $redirect = redirect()->route('admin.royalties')
+            ->with('success', "{$result['imported']} royalty rows imported successfully.");
+
+        if ($result['skipped'] > 0) {
+            $message = "{$result['skipped']} rows were skipped. ".implode(' ', $result['skip_messages']);
+            $redirect->with('warning', $message);
+        }
+
+        return $redirect;
     }
 
     public function royaltyImportTemplate()

@@ -14,7 +14,7 @@ class RoyaltyCsvImportService
 {
     public function __construct(private RoyaltyService $royaltyService) {}
 
-    public function import(UploadedFile $file, array $defaults, User $admin): int
+    public function import(UploadedFile $file, array $defaults, User $admin): array
     {
         $hash = hash_file('sha256', $file->getRealPath());
         if (RoyaltyImport::where('file_hash', $hash)->exists()) {
@@ -99,15 +99,16 @@ class RoyaltyCsvImportService
                 $count++;
             }
 
-            if ($errors) {
-                throw new RuntimeException(implode(' ', array_slice($errors, 0, 10)).(count($errors) > 10 ? ' More rows also failed.' : ''));
-            }
             if ($count === 0) {
-                throw new RuntimeException('The CSV contains no importable rows.');
+                throw new RuntimeException('No rows could be imported. '.implode(' ', array_slice($errors, 0, 10)));
             }
             $import->update(['row_count' => $count]);
 
-            return $count;
+            return [
+                'imported' => $count,
+                'skipped' => count($errors),
+                'skip_messages' => array_slice($errors, 0, 10),
+            ];
         });
     }
 

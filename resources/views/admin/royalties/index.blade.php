@@ -5,6 +5,7 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto">
             @if(session('success')) <div class="bg-emerald-400 border-2 border-black text-black font-bold px-4 py-3 mb-6">{{ session('success') }}</div> @endif
+            @if(session('warning')) <div class="bg-amber-200 border-2 border-black text-black font-bold px-4 py-3 mb-6">{{ session('warning') }}</div> @endif
             @if($errors->any())
                 <div class="bg-red-100 border-2 border-black text-black font-bold px-4 py-3 mb-6">
                     <ul class="list-disc ml-5">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
