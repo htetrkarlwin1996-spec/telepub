@@ -2,49 +2,62 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Analytics;
+use App\Models\MusicStore;
 use App\Models\Royalty;
 use Illuminate\Http\Request;
 
 class AnalyticsController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $artist = auth()->user()->artist;
+        $filters = $request->validate([
+            'store_id' => ['nullable', 'integer', 'exists:music_stores,id'],
+            'year' => ['nullable', 'integer', 'min:2020', 'max:'.(date('Y') + 1)],
+            'month' => ['nullable', 'integer', 'min:1', 'max:12'],
+        ]);
 
-        // Monthly streams and revenue
-        $monthlyData = Analytics::where('artist_id', $artist->id)
-            ->selectRaw('month, year, SUM(streams) as total_streams, SUM(downloads) as total_downloads, SUM(revenue) as total_revenue')
+        $baseQuery = Royalty::where('artist_id', $artist->id)
+            ->when($filters['store_id'] ?? null, fn ($query, $id) => $query->where('store_id', $id))
+            ->when($filters['year'] ?? null, fn ($query, $year) => $query->where('year', $year))
+            ->when($filters['month'] ?? null, fn ($query, $month) => $query->where('month', $month));
+
+        $monthlyData = (clone $baseQuery)
+            ->selectRaw('month, year, SUM(streams) as total_streams, SUM(amount) as total_revenue')
             ->groupBy('year', 'month')
-            ->orderBy('year', 'desc')
-            ->orderBy('month', 'desc')
-            ->take(12)
-            ->get();
+            ->orderByDesc('year')
+            ->orderByDesc('month')
+            ->get()
+            ->each(fn ($row) => $row->total_revenue = $artist->getArtistShareAttribute((float) $row->total_revenue));
 
-        // Store breakdown
-        $storeData = Analytics::where('artist_id', $artist->id)
-            ->selectRaw('store_id, SUM(streams) as total_streams, SUM(revenue) as total_revenue')
+        $storeData = (clone $baseQuery)
+            ->selectRaw('store_id, SUM(streams) as total_streams, SUM(amount) as total_revenue')
             ->with('store')
             ->groupBy('store_id')
-            ->get();
+            ->orderByDesc('total_revenue')
+            ->get()
+            ->each(fn ($row) => $row->total_revenue = $artist->getArtistShareAttribute((float) $row->total_revenue));
 
-        // Song performance
-        $songPerformance = Analytics::where('artist_id', $artist->id)
-            ->selectRaw('song_id, SUM(streams) as total_streams, SUM(revenue) as total_revenue')
+        $songPerformance = (clone $baseQuery)
+            ->whereNotNull('song_id')
+            ->selectRaw('song_id, SUM(streams) as total_streams, SUM(amount) as total_revenue')
             ->with('song')
             ->groupBy('song_id')
-            ->orderBy('total_streams', 'desc')
+            ->orderByDesc('total_streams')
             ->take(10)
-            ->get();
+            ->get()
+            ->each(fn ($row) => $row->total_revenue = $artist->getArtistShareAttribute((float) $row->total_revenue));
 
-        // Totals
-        $totalStreams = Analytics::where('artist_id', $artist->id)->sum('streams');
-        $totalRevenue = Analytics::where('artist_id', $artist->id)->sum('revenue');
-        $totalDownloads = Analytics::where('artist_id', $artist->id)->sum('downloads');
+        $totalStreams = (int) (clone $baseQuery)->sum('streams');
+        $totalRevenue = $artist->getArtistShareAttribute((float) (clone $baseQuery)->sum('amount'));
+        $totalEntries = (int) (clone $baseQuery)->count();
+        $stores = MusicStore::whereHas('royalties', fn ($query) => $query->where('artist_id', $artist->id))
+            ->orderBy('name')->get();
+        $years = Royalty::where('artist_id', $artist->id)->distinct()->orderByDesc('year')->pluck('year');
 
         return view('artist.analytics.index', compact(
-            'monthlyData', 'storeData', 'songPerformance',
-            'totalStreams', 'totalRevenue', 'totalDownloads'
+            'monthlyData', 'storeData', 'songPerformance', 'totalStreams',
+            'totalRevenue', 'totalEntries', 'stores', 'years', 'filters'
         ));
     }
 }

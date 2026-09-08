@@ -24,6 +24,7 @@ class RoyaltyController extends Controller
             ->with('store', 'album', 'song')
             ->orderBy('year', 'desc')
             ->orderBy('month', 'desc')
+            ->orderBy('id', 'desc')
             ->paginate($request->get('per_page', 20));
 
         $items = collect($royalties->items())->map(function (Royalty $royalty) use ($artist) {

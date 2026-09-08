@@ -164,13 +164,30 @@ class AdminController extends Controller
     }
 
     // ===== ROYALTY MANAGEMENT =====
-    public function royalties()
+    public function royalties(Request $request)
     {
-        $royalties = Royalty::with(['artist', 'store', 'song', 'album.collaboratingArtists'])->latest()->paginate(20);
-        $stores = MusicStore::all();
-        $artists = Artist::all();
+        $filters = $request->validate([
+            'artist_id' => ['nullable', 'integer', 'exists:artists,id'],
+            'store_id' => ['nullable', 'integer', 'exists:music_stores,id'],
+            'year' => ['nullable', 'integer', 'min:2020', 'max:'.(date('Y') + 1)],
+            'month' => ['nullable', 'integer', 'min:1', 'max:12'],
+        ]);
 
-        return view('admin.royalties.index', compact('royalties', 'stores', 'artists'));
+        $royalties = Royalty::with(['artist', 'store', 'song', 'album.collaboratingArtists'])
+            ->when($filters['artist_id'] ?? null, fn ($query, $id) => $query->where('artist_id', $id))
+            ->when($filters['store_id'] ?? null, fn ($query, $id) => $query->where('store_id', $id))
+            ->when($filters['year'] ?? null, fn ($query, $year) => $query->where('year', $year))
+            ->when($filters['month'] ?? null, fn ($query, $month) => $query->where('month', $month))
+            ->orderByDesc('year')
+            ->orderByDesc('month')
+            ->orderByDesc('id')
+            ->paginate(20)
+            ->withQueryString();
+        $stores = MusicStore::orderBy('name')->get();
+        $artists = Artist::orderBy('artist_name')->get();
+        $years = Royalty::distinct()->orderByDesc('year')->pluck('year');
+
+        return view('admin.royalties.index', compact('royalties', 'stores', 'artists', 'years', 'filters'));
     }
 
     public function storeRoyalty(Request $request, RoyaltyService $royaltyService)
@@ -736,20 +753,58 @@ class AdminController extends Controller
     }
 
     // ===== ANALYTICS =====
-    public function analytics()
+    public function analytics(Request $request)
     {
-        $monthlyStats = Analytics::selectRaw('month, year, SUM(streams) as total_streams, SUM(downloads) as total_downloads, SUM(revenue) as total_revenue')
+        $filters = $request->validate([
+            'artist_id' => ['nullable', 'integer', 'exists:artists,id'],
+            'store_id' => ['nullable', 'integer', 'exists:music_stores,id'],
+            'year' => ['nullable', 'integer', 'min:2020', 'max:'.(date('Y') + 1)],
+            'month' => ['nullable', 'integer', 'min:1', 'max:12'],
+        ]);
+
+        $baseQuery = Royalty::query()
+            ->when($filters['artist_id'] ?? null, fn ($query, $id) => $query->where('artist_id', $id))
+            ->when($filters['store_id'] ?? null, fn ($query, $id) => $query->where('store_id', $id))
+            ->when($filters['year'] ?? null, fn ($query, $year) => $query->where('year', $year))
+            ->when($filters['month'] ?? null, fn ($query, $month) => $query->where('month', $month));
+
+        $monthlyStats = (clone $baseQuery)
+            ->selectRaw('month, year, SUM(streams) as total_streams, SUM(amount) as total_revenue')
             ->groupBy('year', 'month')
-            ->orderBy('year', 'desc')
-            ->orderBy('month', 'desc')
-            ->take(12)
+            ->orderByDesc('year')
+            ->orderByDesc('month')
             ->get();
 
-        $storeAnalytics = Analytics::selectRaw('store_id, SUM(streams) as total_streams, SUM(revenue) as total_revenue')
+        $storeAnalytics = (clone $baseQuery)
+            ->selectRaw('store_id, SUM(streams) as total_streams, SUM(amount) as total_revenue, COUNT(*) as entries_count')
             ->with('store')
             ->groupBy('store_id')
+            ->orderByDesc('total_revenue')
             ->get();
 
-        return view('admin.analytics.index', compact('monthlyStats', 'storeAnalytics'));
+        $periodRows = (clone $baseQuery)
+            ->selectRaw('artist_id, store_id, month, year, SUM(streams) as total_streams, SUM(amount) as total_revenue, COUNT(*) as entries_count')
+            ->with(['artist', 'store'])
+            ->groupBy('artist_id', 'store_id', 'year', 'month')
+            ->orderByDesc('year')
+            ->orderByDesc('month')
+            ->orderBy('artist_id')
+            ->orderBy('store_id')
+            ->paginate(30)
+            ->withQueryString();
+
+        $totals = [
+            'revenue' => (float) (clone $baseQuery)->sum('amount'),
+            'streams' => (int) (clone $baseQuery)->sum('streams'),
+            'entries' => (int) (clone $baseQuery)->count(),
+        ];
+        $artists = Artist::orderBy('artist_name')->get();
+        $stores = MusicStore::orderBy('name')->get();
+        $years = Royalty::distinct()->orderByDesc('year')->pluck('year');
+
+        return view('admin.analytics.index', compact(
+            'monthlyStats', 'storeAnalytics', 'periodRows', 'totals',
+            'artists', 'stores', 'years', 'filters'
+        ));
     }
 }

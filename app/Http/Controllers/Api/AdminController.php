@@ -183,6 +183,7 @@ class AdminController extends Controller
         $royalties = Royalty::with('artist', 'store', 'album', 'song')
             ->orderBy('year', 'desc')
             ->orderBy('month', 'desc')
+            ->orderBy('id', 'desc')
             ->paginate(request('per_page', 20));
 
         return response()->json([

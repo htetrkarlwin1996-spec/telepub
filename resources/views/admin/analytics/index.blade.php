@@ -1,63 +1,51 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-extrabold text-2xl text-black leading-tight tracking-tight">{{ __('Platform Analytics') }}</h2>
-    </x-slot>
-    <div class="py-6">
-        <div class="max-w-7xl mx-auto">
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Monthly Stats -->
-                <div class="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] lg:col-span-2">
-                    <div class="p-5 border-b-2 border-black">
-                        <h3 class="text-lg font-extrabold text-black tracking-tight">Monthly Platform Stats (Last 12 Months)</h3>
-                    </div>
-                    <div class="p-6">
-                        <table class="w-full text-sm">
-                            <thead>
-                                <tr class="border-b-2 border-black">
-                                    <th class="text-left py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Period</th>
-                                    <th class="text-right py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Total Streams</th>
-                                    <th class="text-right py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Total Downloads</th>
-                                    <th class="text-right py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Total Revenue</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($monthlyStats as $stat)
-                                <tr class="border-b border-black/10 hover:bg-brand-500/10 transition-colors">
-                                    <td class="py-3 px-2 font-bold text-black">{{ date('F', mktime(0,0,0,$stat->month,1)) }} {{ $stat->year }}</td>
-                                    <td class="py-3 px-2 text-right font-bold text-black/70">{{ number_format($stat->total_streams) }}</td>
-                                    <td class="py-3 px-2 text-right font-bold text-black/70">{{ number_format($stat->total_downloads) }}</td>
-                                    <td class="py-3 px-2 text-right font-black text-black">${{ number_format($stat->total_revenue, 2) }}</td>
-                                </tr>
-                                @empty
-                                <tr><td colspan="4" class="py-8 text-center font-bold text-black/40">No analytics data yet.</td></tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
+    <x-slot name="header"><h2 class="font-extrabold text-2xl text-black tracking-tight">Royalty Analytics</h2></x-slot>
+    <div class="py-6 px-4 sm:px-6">
+        <div class="max-w-7xl mx-auto space-y-6">
+            <form method="GET" action="{{ route('admin.analytics') }}" class="bg-white border-2 border-black shadow-[4px_4px_0_#000] p-5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
+                    <div><x-input-label for="artist_id" value="Artist" /><select id="artist_id" name="artist_id" class="mt-1 w-full border-2 border-black font-bold"><option value="">All Artists</option>@foreach($artists as $artist)<option value="{{ $artist->id }}" @selected(($filters['artist_id'] ?? '') == $artist->id)>{{ $artist->artist_name }}</option>@endforeach</select></div>
+                    <div><x-input-label for="store_id" value="Store" /><select id="store_id" name="store_id" class="mt-1 w-full border-2 border-black font-bold"><option value="">All Stores</option>@foreach($stores as $store)<option value="{{ $store->id }}" @selected(($filters['store_id'] ?? '') == $store->id)>{{ $store->name }}</option>@endforeach</select></div>
+                    <div><x-input-label for="month" value="Month" /><select id="month" name="month" class="mt-1 w-full border-2 border-black font-bold"><option value="">All Months</option>@for($month=1;$month<=12;$month++)<option value="{{ $month }}" @selected(($filters['month'] ?? '') == $month)>{{ date('F', mktime(0,0,0,$month,1)) }}</option>@endfor</select></div>
+                    <div><x-input-label for="year" value="Year" /><select id="year" name="year" class="mt-1 w-full border-2 border-black font-bold"><option value="">All Years</option>@foreach($years as $year)<option value="{{ $year }}" @selected(($filters['year'] ?? '') == $year)>{{ $year }}</option>@endforeach</select></div>
+                    <button class="px-4 py-2.5 bg-brand-500 border-2 border-black font-extrabold uppercase shadow-[3px_3px_0_#000]">Apply</button>
+                    <a href="{{ route('admin.analytics') }}" class="px-4 py-2.5 bg-white border-2 border-black text-center font-extrabold uppercase">Clear</a>
                 </div>
+            </form>
 
-                <!-- Store Breakdown -->
-                <div class="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                    <div class="p-5 border-b-2 border-black">
-                        <h3 class="text-lg font-extrabold text-black tracking-tight">Revenue by Store</h3>
-                    </div>
-                    <div class="p-6">
-                        @forelse($storeAnalytics as $sa)
-                        <div class="flex items-center justify-between py-3 border-b border-black/10 last:border-0 hover:bg-brand-500/10 px-2 -mx-2 transition-colors">
-                            <div class="flex items-center gap-2">
-                                <x-store-logo :store="$sa->store" size="6" />
-                                <div class="font-bold text-black">{{ $sa->store->name ?? 'N/A' }}</div>
-                            </div>
-                            <div class="text-right">
-                                <div class="font-black text-black">${{ number_format($sa->total_revenue, 2) }}</div>
-                                <div class="text-xs font-bold text-black/50">{{ number_format($sa->total_streams) }} streams</div>
-                            </div>
-                        </div>
-                        @empty
-                        <p class="font-bold text-black/40 text-center py-4">No data.</p>
-                        @endforelse
-                    </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div class="bg-brand-500 border-2 border-black shadow-[4px_4px_0_#000] p-5"><div class="text-xs font-extrabold uppercase text-black/60">Gross Revenue</div><div class="text-3xl font-black">${{ number_format($totals['revenue'], 2) }}</div></div>
+                <div class="bg-white border-2 border-black shadow-[4px_4px_0_#000] p-5"><div class="text-xs font-extrabold uppercase text-black/60">Streams</div><div class="text-3xl font-black">{{ number_format($totals['streams']) }}</div></div>
+                <div class="bg-white border-2 border-black shadow-[4px_4px_0_#000] p-5"><div class="text-xs font-extrabold uppercase text-black/60">Royalty Entries</div><div class="text-3xl font-black">{{ number_format($totals['entries']) }}</div></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white border-2 border-black shadow-[4px_4px_0_#000]">
+                    <div class="p-5 border-b-2 border-black"><h3 class="font-extrabold text-lg">Monthly Performance</h3></div>
+                    <div class="p-5 overflow-x-auto"><table class="w-full text-sm"><thead><tr class="border-b-2 border-black"><th class="text-left py-3">Period</th><th class="text-right">Streams</th><th class="text-right">Revenue</th></tr></thead><tbody>
+                    @forelse($monthlyStats as $stat)<tr class="border-b border-black/10"><td class="py-3 font-bold">{{ date('F', mktime(0,0,0,$stat->month,1)) }} {{ $stat->year }}</td><td class="text-right font-bold">{{ number_format($stat->total_streams) }}</td><td class="text-right font-black">${{ number_format($stat->total_revenue,2) }}</td></tr>@empty<tr><td colspan="3" class="py-8 text-center font-bold text-black/40">No royalty data.</td></tr>@endforelse
+                    </tbody></table></div>
                 </div>
+                <div class="bg-white border-2 border-black shadow-[4px_4px_0_#000]">
+                    <div class="p-5 border-b-2 border-black"><h3 class="font-extrabold text-lg">Revenue by Store</h3></div>
+                    <div class="p-5">@forelse($storeAnalytics as $row)<div class="flex items-center justify-between py-3 border-b border-black/10"><span class="flex items-center gap-2 font-bold"><x-store-logo :store="$row->store" size="6" />{{ $row->store->name ?? 'N/A' }}</span><span class="text-right"><strong class="block">${{ number_format($row->total_revenue,2) }}</strong><small class="font-bold text-black/50">{{ number_format($row->total_streams) }} streams · {{ $row->entries_count }} entries</small></span></div>@empty<p class="py-8 text-center font-bold text-black/40">No royalty data.</p>@endforelse</div>
+                </div>
+            </div>
+
+            <div class="bg-white border-2 border-black shadow-[4px_4px_0_#000]">
+                <div class="p-5 border-b-2 border-black"><h3 class="font-extrabold text-lg">Monthly Store Details</h3><p class="text-sm font-bold text-black/50">Open a period to view and edit its individual royalty entries.</p></div>
+                <div class="p-5 overflow-x-auto"><table class="w-full min-w-[760px] text-sm"><thead><tr class="border-b-2 border-black"><th class="text-left py-3">Period</th><th class="text-left">Artist</th><th class="text-left">Store</th><th class="text-right">Entries</th><th class="text-right">Streams</th><th class="text-right">Revenue</th><th class="text-right">Action</th></tr></thead><tbody>
+                @forelse($periodRows as $row)<tr class="border-b border-black/10"><td class="py-3 font-bold">{{ date('F', mktime(0,0,0,$row->month,1)) }} {{ $row->year }}</td><td class="font-bold">{{ $row->artist->artist_name ?? 'N/A' }}</td><td><span class="inline-flex items-center gap-2 font-bold"><x-store-logo :store="$row->store" size="5" />{{ $row->store->name ?? 'N/A' }}</span></td><td class="text-right">{{ $row->entries_count }}</td><td class="text-right">{{ number_format($row->total_streams) }}</td><td class="text-right font-black">${{ number_format($row->total_revenue,2) }}</td><td class="text-right"><a class="font-extrabold underline decoration-brand-500 decoration-2" href="{{ route('admin.royalties', ['artist_id'=>$row->artist_id,'store_id'=>$row->store_id,'month'=>$row->month,'year'=>$row->year]) }}">View / Edit</a></td></tr>@empty<tr><td colspan="7" class="py-8 text-center font-bold text-black/40">No royalty data.</td></tr>@endforelse
+                </tbody></table><div class="mt-4">{{ $periodRows->links() }}</div></div>
+            </div>
+
+            <div class="bg-white border-2 border-black shadow-[4px_4px_0_#000]">
+                <div class="p-5 border-b-2 border-black"><h3 class="font-extrabold text-lg">Monthly Store Details</h3><p class="text-sm font-bold text-black/50 mt-1">Open a group to review and edit its individual royalty entries.</p></div>
+                <div class="p-5 overflow-x-auto"><table class="w-full min-w-[850px] text-sm"><thead><tr class="border-b-2 border-black"><th class="text-left py-3">Period</th><th class="text-left">Artist</th><th class="text-left">Store</th><th class="text-right">Streams</th><th class="text-right">Revenue</th><th class="text-right">Entries</th><th class="text-right">Action</th></tr></thead><tbody>
+                @forelse($periodRows as $row)
+                    <tr class="border-b border-black/10 hover:bg-brand-500/10"><td class="py-3 font-bold">{{ date('F', mktime(0,0,0,$row->month,1)) }} {{ $row->year }}</td><td class="font-bold">{{ $row->artist->artist_name ?? 'N/A' }}</td><td><span class="inline-flex items-center gap-2 font-bold"><x-store-logo :store="$row->store" size="5" />{{ $row->store->name ?? 'N/A' }}</span></td><td class="text-right font-bold">{{ number_format($row->total_streams) }}</td><td class="text-right font-black">${{ number_format($row->total_revenue,2) }}</td><td class="text-right font-bold">{{ $row->entries_count }}</td><td class="text-right"><a class="font-extrabold underline decoration-brand-500 decoration-2" href="{{ route('admin.royalties', ['artist_id'=>$row->artist_id, 'store_id'=>$row->store_id, 'year'=>$row->year, 'month'=>$row->month]) }}">View / Edit Entries</a></td></tr>
+                @empty<tr><td colspan="7" class="py-8 text-center font-bold text-black/40">No royalty data.</td></tr>@endforelse
+                </tbody></table><div class="mt-4">{{ $periodRows->links() }}</div></div>
             </div>
         </div>
     </div>

@@ -182,6 +182,16 @@
 
             <!-- Royalty List -->
             <div class="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                <form method="GET" action="{{ route('admin.royalties') }}" class="p-5 border-b-2 border-black bg-gray-50">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
+                        <div><x-input-label for="filter_artist" value="Artist" /><select id="filter_artist" name="artist_id" class="mt-1 w-full border-2 border-black font-bold"><option value="">All Artists</option>@foreach($artists as $artist)<option value="{{ $artist->id }}" @selected(($filters['artist_id'] ?? '') == $artist->id)>{{ $artist->artist_name }}</option>@endforeach</select></div>
+                        <div><x-input-label for="filter_store" value="Store" /><select id="filter_store" name="store_id" class="mt-1 w-full border-2 border-black font-bold"><option value="">All Stores</option>@foreach($stores as $store)<option value="{{ $store->id }}" @selected(($filters['store_id'] ?? '') == $store->id)>{{ $store->name }}</option>@endforeach</select></div>
+                        <div><x-input-label for="filter_month" value="Month" /><select id="filter_month" name="month" class="mt-1 w-full border-2 border-black font-bold"><option value="">All Months</option>@for($month=1;$month<=12;$month++)<option value="{{ $month }}" @selected(($filters['month'] ?? '') == $month)>{{ date('F', mktime(0,0,0,$month,1)) }}</option>@endfor</select></div>
+                        <div><x-input-label for="filter_year" value="Year" /><select id="filter_year" name="year" class="mt-1 w-full border-2 border-black font-bold"><option value="">All Years</option>@foreach($years as $year)<option value="{{ $year }}" @selected(($filters['year'] ?? '') == $year)>{{ $year }}</option>@endforeach</select></div>
+                        <button class="px-4 py-2.5 bg-brand-500 border-2 border-black font-extrabold uppercase shadow-[3px_3px_0_#000]">Filter</button>
+                        <a href="{{ route('admin.royalties') }}" class="px-4 py-2.5 bg-white border-2 border-black text-center font-extrabold uppercase">Clear</a>
+                    </div>
+                </form>
                 <div class="p-5 border-b-2 border-black">
                     <h3 class="text-lg font-extrabold text-black tracking-tight">Royalty History</h3>
                 </div>
@@ -222,7 +232,7 @@
                                     </div>
                                 </td>
                                 <td class="py-3 px-2 font-bold text-black/70">{{ $royalty->royalty_type_label }}</td>
-                                <td class="py-3 px-2 font-bold text-black/60">{{ $royalty->month }}/{{ $royalty->year }}</td>
+                                <td class="py-3 px-2 font-bold text-black/60">{{ date('F', mktime(0,0,0,$royalty->month,1)) }} {{ $royalty->year }}</td>
                                 <td class="py-3 px-2 text-right font-black text-black">{{ $royalty->currency }} {{ number_format($royalty->amount, 6) }}</td>
                                 <td class="py-3 px-2 text-right font-black text-emerald-600">{{ $royalty->currency }} {{ number_format($artistShare, 6) }}</td>
                                 <td class="py-3 px-2 text-center font-bold text-black/60">{{ $teleMusicPct }}%<br><span class="text-xs text-black/40">{{ $royalty->currency }} {{ number_format($teleMusicFee, 6) }}</span></td>

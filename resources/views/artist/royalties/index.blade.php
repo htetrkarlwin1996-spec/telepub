@@ -7,6 +7,16 @@
             @php
                 $artist = auth()->user()->artist;
             @endphp
+            <form method="GET" action="{{ route('artist.royalties') }}" class="bg-white border-2 border-black shadow-[4px_4px_0_#000] p-5 mb-8">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+                    <div><x-input-label for="filter_store" value="Store" /><select id="filter_store" name="store_id" class="mt-1 w-full border-2 border-black font-bold"><option value="">All Stores</option>@foreach($stores as $store)<option value="{{ $store->id }}" @selected(($filters['store_id'] ?? '') == $store->id)>{{ $store->name }}</option>@endforeach</select></div>
+                    <div><x-input-label for="filter_month" value="Month" /><select id="filter_month" name="month" class="mt-1 w-full border-2 border-black font-bold"><option value="">All Months</option>@for($month=1;$month<=12;$month++)<option value="{{ $month }}" @selected(($filters['month'] ?? '') == $month)>{{ date('F', mktime(0,0,0,$month,1)) }}</option>@endfor</select></div>
+                    <div><x-input-label for="filter_year" value="Year" /><select id="filter_year" name="year" class="mt-1 w-full border-2 border-black font-bold"><option value="">All Years</option>@foreach($years as $year)<option value="{{ $year }}" @selected(($filters['year'] ?? '') == $year)>{{ $year }}</option>@endforeach</select></div>
+                    <button class="px-4 py-2.5 bg-brand-500 border-2 border-black font-extrabold uppercase shadow-[3px_3px_0_#000]">View Period</button>
+                    <a href="{{ route('artist.royalties') }}" class="px-4 py-2.5 bg-white border-2 border-black text-center font-extrabold uppercase">All Time</a>
+                </div>
+            </form>
+
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
                 @foreach(\App\Models\Royalty::TYPES as $type => $label)
                 <div class="bg-white border-2 border-black p-4 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
@@ -102,7 +112,7 @@
                                     </div>
                                 </td>
                                 <td class="py-3 px-2 font-bold text-black/70">{{ $royalty->royalty_type_label }}</td>
-                                <td class="py-3 px-2 font-semibold text-black/70">{{ $royalty->month }}/{{ $royalty->year }}</td>
+                                <td class="py-3 px-2 font-semibold text-black/70">{{ date('F', mktime(0,0,0,$royalty->month,1)) }} {{ $royalty->year }}</td>
                                 <td class="py-3 px-2 text-right font-black text-emerald-600">+${{ number_format($itemArtistShare, 2) }}</td>
                                 <td class="py-3 px-2 text-right font-bold text-black/70">{{ $royalty->streams ? number_format($royalty->streams) : '-' }}</td>
                                 <td class="py-3 px-2 text-xs font-semibold text-black/50">{{ $royalty->notes ?? '-' }}</td>
