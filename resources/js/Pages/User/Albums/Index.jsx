@@ -124,6 +124,12 @@ export default function Index({ albums = [] }) {
                                         </div>
                                     )}
 
+                                    {album.music_stores?.length > 0 && (
+                                        <p className="mt-4 text-xs text-sky-300">
+                                            {album.music_stores.length} music stores selected
+                                        </p>
+                                    )}
+
                                     <Link
                                         href={route('user.albums.show', album.id)}
                                         className="mt-5 inline-flex items-center justify-center gap-2 rounded-2xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-400"

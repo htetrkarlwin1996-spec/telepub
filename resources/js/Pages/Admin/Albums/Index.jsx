@@ -17,6 +17,11 @@ const registrationTypes = [
     { value: 'album_over_12', label: 'Album - over 12 songs', fee: 100000 },
 ];
 
+const musicStores = [
+    'Spotify', 'Apple Music', 'YouTube Music', 'Amazon Music', 'Deezer',
+    'TIDAL', 'TikTok', 'Facebook & Instagram', 'SoundCloud', 'Pandora',
+];
+
 function formatMoney(amount) {
     return new Intl.NumberFormat('en-US').format(Number(amount || 0));
 }
@@ -51,6 +56,7 @@ export default function Index({ albums, users = [], status }) {
         registration_fee: 5000,
         registered_date: '',
         admin_note: '',
+        music_stores: [],
     });
 
     const openCreate = () => {
@@ -64,6 +70,7 @@ export default function Index({ albums, users = [], status }) {
             registration_fee: 5000,
             registered_date: '',
             admin_note: '',
+            music_stores: [],
         });
 
         setOpen(true);
@@ -89,6 +96,12 @@ export default function Index({ albums, users = [], status }) {
                 setOpen(false);
             },
         });
+    };
+
+    const toggleMusicStore = (store) => {
+        setData('music_stores', data.music_stores.includes(store)
+            ? data.music_stores.filter((item) => item !== store)
+            : [...data.music_stores, store]);
     };
 
     return (
@@ -396,6 +409,33 @@ export default function Index({ albums, users = [], status }) {
                                         {errors.admin_note}
                                     </p>
                                 )}
+                            </div>
+
+                            <div>
+                                <div className="mb-3 flex items-center justify-between gap-3">
+                                    <label className="block text-sm text-slate-300">Music Stores</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setData('music_stores', data.music_stores.length === musicStores.length ? [] : [...musicStores])}
+                                        className="text-xs font-semibold text-red-300 hover:text-red-200"
+                                    >
+                                        {data.music_stores.length === musicStores.length ? 'Clear all' : 'Select all'}
+                                    </button>
+                                </div>
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                    {musicStores.map((store) => (
+                                        <label key={store} className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-slate-300 hover:bg-white/5">
+                                            <input
+                                                type="checkbox"
+                                                checked={data.music_stores.includes(store)}
+                                                onChange={() => toggleMusicStore(store)}
+                                                className="rounded border-white/20 bg-black/30 text-red-500 focus:ring-red-500"
+                                            />
+                                            {store}
+                                        </label>
+                                    ))}
+                                </div>
+                                {errors.music_stores && <p className="mt-2 text-sm text-red-400">{errors.music_stores}</p>}
                             </div>
 
                             <button

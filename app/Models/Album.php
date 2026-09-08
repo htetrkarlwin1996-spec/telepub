@@ -16,11 +16,13 @@ class Album extends Model
         'registration_fee',
         'registered_date',
         'admin_note',
+        'music_stores',
     ];
 
     protected $casts = [
         'registered_date' => 'date',
         'registration_fee' => 'decimal:2',
+        'music_stores' => 'array',
     ];
 
     public function user()

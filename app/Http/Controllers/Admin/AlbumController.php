@@ -31,6 +31,7 @@ class AlbumController extends Controller
                     'registration_fee' => number_format((float) $album->registration_fee, 2),
                     'raw_registration_fee' => (float) $album->registration_fee,
                     'registered_date' => optional($album->registered_date)->format('Y-m-d'),
+                    'music_stores' => $album->music_stores ?? [],
                     'songs_count' => $album->songs_count,
                     'user' => [
                         'id' => $album->user->id,
@@ -60,6 +61,8 @@ class AlbumController extends Controller
             'registration_fee' => ['required', 'numeric', 'min:0'],
             'registered_date' => ['nullable', 'date'],
             'admin_note' => ['nullable', 'string', 'max:1000'],
+            'music_stores' => ['nullable', 'array'],
+            'music_stores.*' => ['string', 'max:100'],
         ]);
 
         Album::create([
@@ -70,6 +73,7 @@ class AlbumController extends Controller
             'registration_fee' => $validated['registration_fee'],
             'registered_date' => $validated['registered_date'] ?? null,
             'admin_note' => $validated['admin_note'] ?? null,
+            'music_stores' => array_values(array_unique($validated['music_stores'] ?? [])),
             'status' => 'pending',
         ]);
 
@@ -94,6 +98,7 @@ class AlbumController extends Controller
 
                 'registered_date' => optional($album->registered_date)->format('Y-m-d'),
                 'admin_note' => $album->admin_note,
+                'music_stores' => $album->music_stores ?? [],
 
                 'user' => [
                     'id' => $album->user->id,
@@ -124,6 +129,8 @@ class AlbumController extends Controller
             'registered_date' => ['nullable', 'date'],
             'status' => ['required', 'in:pending,approved,completed,delivery'],
             'admin_note' => ['nullable', 'string', 'max:1000'],
+            'music_stores' => ['nullable', 'array'],
+            'music_stores.*' => ['string', 'max:100'],
         ]);
 
         $album->update($validated);

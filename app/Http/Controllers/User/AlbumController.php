@@ -27,6 +27,7 @@ class AlbumController extends Controller
                     'songs_count' => $album->songs_count,
                     'registered_date' => optional($album->registered_date)->format('Y-m-d'),
                     'admin_note' => $album->admin_note,
+                    'music_stores' => $album->music_stores ?? [],
                     'created_at' => optional($album->created_at)->format('Y-m-d'),
                 ];
             });
@@ -53,6 +54,7 @@ class AlbumController extends Controller
                 'status' => $album->status,
                 'registered_date' => optional($album->registered_date)->format('Y-m-d'),
                 'admin_note' => $album->admin_note,
+                'music_stores' => $album->music_stores ?? [],
                 'created_at' => optional($album->created_at)->format('Y-m-d'),
                 'songs' => $canViewSongs
                     ? $album->songs->map(function ($song) use ($album) {

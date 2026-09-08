@@ -188,6 +188,32 @@ export default function Show({ album }) {
             </div>
 
             <div className="mt-6 rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-xl">
+                <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-400/10">
+                        <PaperAirplaneIcon className="h-5 w-5 text-sky-300" />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-bold text-white">Music Stores</h3>
+                        <p className="text-sm text-slate-400">Stores selected for this release.</p>
+                    </div>
+                </div>
+
+                {album.music_stores?.length > 0 ? (
+                    <div className="mt-5 flex flex-wrap gap-2">
+                        {album.music_stores.map((store) => (
+                            <span key={store} className="rounded-full border border-sky-400/20 bg-sky-400/10 px-4 py-2 text-sm font-semibold text-sky-200">
+                                {store}
+                            </span>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="mt-5 rounded-2xl border border-dashed border-white/10 p-5 text-sm text-slate-500">
+                        Music stores have not been selected yet.
+                    </p>
+                )}
+            </div>
+
+            <div className="mt-6 rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-xl">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h3 className="text-lg font-bold text-white">

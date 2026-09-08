@@ -27,6 +27,11 @@ const registrationTypes = [
     { value: 'album_over_12', label: 'Album - over 12 songs', fee: 100000 },
 ];
 
+const musicStores = [
+    'Spotify', 'Apple Music', 'YouTube Music', 'Amazon Music', 'Deezer',
+    'TIDAL', 'TikTok', 'Facebook & Instagram', 'SoundCloud', 'Pandora',
+];
+
 function formatMoney(amount) {
     return new Intl.NumberFormat('en-US').format(Number(amount || 0));
 }
@@ -88,6 +93,7 @@ export default function Show({ album, status }) {
         registered_date: album.registered_date || '',
         status: album.status || 'pending',
         admin_note: album.admin_note || '',
+        music_stores: album.music_stores || [],
     });
 
     const songForm = useForm({
@@ -114,6 +120,12 @@ export default function Show({ album, status }) {
         albumForm.patch(route('admin.albums.update', album.id), {
             preserveScroll: true,
         });
+    };
+
+    const toggleMusicStore = (store) => {
+        albumForm.setData('music_stores', albumForm.data.music_stores.includes(store)
+            ? albumForm.data.music_stores.filter((item) => item !== store)
+            : [...albumForm.data.music_stores, store]);
     };
 
     const openAddSong = () => {
@@ -343,6 +355,31 @@ export default function Show({ album, status }) {
                                     onChange={(e) => albumForm.setData('admin_note', e.target.value)}
                                     className="block w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-red-500 focus:ring-red-500"
                                 />
+                            </Field>
+
+                            <Field label="Music Stores" error={albumForm.errors.music_stores}>
+                                <div className="mb-3 flex justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={() => albumForm.setData('music_stores', albumForm.data.music_stores.length === musicStores.length ? [] : [...musicStores])}
+                                        className="text-xs font-semibold text-red-300 hover:text-red-200"
+                                    >
+                                        {albumForm.data.music_stores.length === musicStores.length ? 'Clear all' : 'Select all'}
+                                    </button>
+                                </div>
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                    {musicStores.map((store) => (
+                                        <label key={store} className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-slate-300 hover:bg-white/5">
+                                            <input
+                                                type="checkbox"
+                                                checked={albumForm.data.music_stores.includes(store)}
+                                                onChange={() => toggleMusicStore(store)}
+                                                className="rounded border-white/20 bg-black/30 text-red-500 focus:ring-red-500"
+                                            />
+                                            {store}
+                                        </label>
+                                    ))}
+                                </div>
                             </Field>
 
                             <button
