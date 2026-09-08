@@ -6,10 +6,15 @@
                     <h1 class="text-3xl font-black text-black uppercase">Releases</h1>
                     <p class="text-sm font-bold text-black/60 mt-1">Manage all artist releases</p>
                 </div>
+                <div class="flex flex-wrap gap-3">
+                <a href="{{ route('admin.releases.bulk-create') }}" class="inline-flex items-center gap-2 px-5 py-3 bg-black text-white border-2 border-black font-extrabold text-sm uppercase shadow-[4px_4px_0px_0px_#FFE500] hover:translate-x-[2px] hover:translate-y-[2px] transition-all">
+                    Bulk Create from Spotify
+                </a>
                 <a href="{{ route('admin.releases.create-step1') }}" class="inline-flex items-center gap-2 px-5 py-3 bg-brand-500 border-2 border-black font-extrabold text-sm uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
                     Create Release
                 </a>
+                </div>
             </div>
 
             @if(session('success'))

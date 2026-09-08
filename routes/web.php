@@ -13,6 +13,7 @@ use App\Http\Controllers\RoyaltyController;
 use App\Http\Controllers\WithdrawalController;
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\AdminMaintenanceController;
+use App\Http\Controllers\AdminBulkReleaseController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -144,6 +145,9 @@ Route::middleware('auth')->group(function () {
 
         // ===== ADMIN RELEASES (Catalog management) =====
         Route::get('/releases', [AdminController::class, 'releases'])->name('releases');
+        Route::get('/releases/bulk-create', [AdminBulkReleaseController::class, 'create'])->name('releases.bulk-create');
+        Route::post('/releases/bulk-fetch', [AdminBulkReleaseController::class, 'fetch'])->name('releases.bulk-fetch');
+        Route::post('/releases/bulk-store', [AdminBulkReleaseController::class, 'store'])->name('releases.bulk-store');
         Route::get('/releases/{album}', [AdminController::class, 'showRelease'])->name('releases.show');
         Route::post('/releases/{album}/approve', [AdminController::class, 'approveRelease'])->name('releases.approve');
         Route::post('/releases/{album}/reject', [AdminController::class, 'rejectRelease'])->name('releases.reject');

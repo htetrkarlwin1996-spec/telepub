@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'spotify23' => [
+        'key' => env('RAPIDAPI_SPOTIFY23_KEY'),
+        'host' => env('RAPIDAPI_SPOTIFY23_HOST', 'spotify23.p.rapidapi.com'),
+        'base_url' => env('RAPIDAPI_SPOTIFY23_BASE_URL', 'https://spotify23.p.rapidapi.com'),
+    ],
+
 ];
