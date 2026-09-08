@@ -56,7 +56,7 @@
                             <x-input-label for="streams" value="Streams" />
                             <x-text-input id="streams" class="block mt-1 w-full" type="number" name="streams" value="{{ $royalty->streams }}" />
                         </div>
-                        <input type="hidden" name="currency" value="{{ $royalty->currency }}">
+                        <input type="hidden" name="currency" value="USD">
                         <div class="md:col-span-2">
                             <x-input-label for="notes" value="Notes" />
                             <x-text-input id="notes" class="block mt-1 w-full" type="text" name="notes" value="{{ $royalty->notes }}" />

@@ -52,4 +52,9 @@ class Royalty extends Model
     {
         return $this->belongsTo(User::class, 'entered_by');
     }
+    public function setCurrencyAttribute(mixed $value): void
+    {
+        $this->attributes['currency'] = 'USD';
+    }
+
 }

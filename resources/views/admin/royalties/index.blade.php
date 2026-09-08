@@ -17,7 +17,7 @@
                 <div class="p-5 border-b-2 border-black flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h3 class="text-lg font-extrabold text-black tracking-tight">Import Royalties from CSV</h3>
-                        <p class="text-sm font-bold text-black/60 mt-1">Select a report CSV. Date, store, currency, streams, song, album and artist are detected automatically.</p>
+                        <p class="text-sm font-bold text-black/60 mt-1">Select a report CSV. Date, store, streams, song, album and artist are detected automatically. All amounts are stored in USD.</p>
                     </div>
                     <a href="{{ route('admin.royalties.import-template') }}" class="px-4 py-2 bg-white border-2 border-black font-extrabold text-xs uppercase shadow-[3px_3px_0_#000]">Download CSV Template</a>
                 </div>
@@ -30,7 +30,7 @@
                     <input type="hidden" name="royalty_type" value="royalties">
                     <button class="px-5 py-3 bg-brand-500 border-2 border-black font-extrabold text-sm uppercase shadow-[3px_3px_0_#000]">Import CSV</button>
                 </form>
-                <div class="px-6 pb-5 text-xs font-bold text-black/60">Supports this report format: month, music_store, isrc, units and net_revenue_EUR. Maximum 50,000 rows / 20 MB.</div>
+                <div class="px-6 pb-5 text-xs font-bold text-black/60">Supports month, music_store, isrc, units and net revenue columns. All imported amounts are stored in USD. Maximum 50,000 rows / 20 MB.</div>
             </div>
 
             <details class="bg-white border-2 border-black shadow-[4px_4px_0_#000] mb-6" open>
@@ -64,7 +64,7 @@
                         <div>
                             <x-input-label for="bulk_currency" value="Currency" />
                             <select id="bulk_currency" name="currency" class="block mt-1 w-full border-2 border-black px-3 py-2.5 font-bold rounded-none">
-                                @foreach(['USD', 'EUR', 'GBP', 'JPY'] as $currency)<option value="{{ $currency }}">{{ $currency }}</option>@endforeach
+                                @foreach(['USD'] as $currency)<option value="{{ $currency }}">{{ $currency }}</option>@endforeach
                             </select>
                         </div>
                     </div>
@@ -160,9 +160,6 @@
                             <x-input-label for="currency" value="Currency" />
                             <select id="currency" name="currency" class="block mt-1 w-full border-2 border-black px-3 py-2.5 text-sm font-semibold text-black focus:border-brand-500 focus:ring-0 focus:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all rounded-none" required>
                                 <option value="USD">USD</option>
-                                <option value="EUR">EUR</option>
-                                <option value="GBP">GBP</option>
-                                <option value="JPY">JPY</option>
                             </select>
                         </div>
                         <div>
@@ -233,9 +230,9 @@
                                 </td>
                                 <td class="py-3 px-2 font-bold text-black/70">{{ $royalty->royalty_type_label }}</td>
                                 <td class="py-3 px-2 font-bold text-black/60">{{ date('F', mktime(0,0,0,$royalty->month,1)) }} {{ $royalty->year }}</td>
-                                <td class="py-3 px-2 text-right font-black text-black">{{ $royalty->currency }} {{ number_format($royalty->amount, 6) }}</td>
-                                <td class="py-3 px-2 text-right font-black text-emerald-600">{{ $royalty->currency }} {{ number_format($artistShare, 6) }}</td>
-                                <td class="py-3 px-2 text-center font-bold text-black/60">{{ $teleMusicPct }}%<br><span class="text-xs text-black/40">{{ $royalty->currency }} {{ number_format($teleMusicFee, 6) }}</span></td>
+                                <td class="py-3 px-2 text-right font-black text-black">USD {{ number_format($royalty->amount, 6) }}</td>
+                                <td class="py-3 px-2 text-right font-black text-emerald-600">USD {{ number_format($artistShare, 6) }}</td>
+                                <td class="py-3 px-2 text-center font-bold text-black/60">{{ $teleMusicPct }}%<br><span class="text-xs text-black/40">USD {{ number_format($teleMusicFee, 6) }}</span></td>
                                 <td class="py-3 px-2 text-center font-bold text-black/60">{{ number_format($royalty->streams) ?? '-' }}</td>
                                 <td class="py-3 px-2 text-right">
                                     <a href="{{ route('admin.royalties.edit', $royalty) }}" class="font-extrabold text-black underline decoration-brand-500 decoration-2 underline-offset-2 hover:decoration-black text-xs">Edit</a>

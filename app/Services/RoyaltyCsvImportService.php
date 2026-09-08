@@ -90,7 +90,6 @@ class RoyaltyCsvImportService
                     continue;
                 }
 
-                $currency = $this->currency($row, $amountColumn, $defaults);
                 $inserts[] = [
                     'artist_id' => $song->artist_id,
                     'song_id' => $song->id,
@@ -100,7 +99,7 @@ class RoyaltyCsvImportService
                     'month' => $month,
                     'year' => $year,
                     'amount' => $amount,
-                    'currency' => $currency,
+                    'currency' => 'USD',
                     'streams' => max(0, (int) ($streams ?? 0)),
                     'notes' => $this->value($row, ['notes', 'description']) ?: 'CSV import: '.$file->getClientOriginalName(),
                     'entered_by' => $admin->id,
@@ -193,16 +192,6 @@ class RoyaltyCsvImportService
             (int) ($period ?: ($defaults['month'] ?? 0)),
             (int) ($this->value($row, ['year', 'reportyear', 'salesyear']) ?: ($defaults['year'] ?? 0)),
         ];
-    }
-
-    private function currency(array $row, string $amountColumn, array $defaults): string
-    {
-        $currency = $this->value($row, ['currency', 'currencycode']);
-        if (! $currency && preg_match('/(usd|eur|gbp|jpy)$/', $amountColumn, $match)) {
-            $currency = $match[1];
-        }
-
-        return strtoupper($currency ?: ($defaults['currency'] ?? 'USD'));
     }
 
     private function findStore(string $value, $storesByName, $storesBySlug): ?MusicStore

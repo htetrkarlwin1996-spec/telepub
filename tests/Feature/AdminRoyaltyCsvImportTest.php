@@ -28,7 +28,7 @@ class AdminRoyaltyCsvImportTest extends TestCase
             'royalty_type' => 'royalties',
             'month' => 4,
             'year' => 2026,
-            'currency' => 'USD',
+            'currency' => 'EUR',
             'stores' => [
                 ['store_id' => $stores[0]->id, 'amount' => '10.25', 'streams' => 100],
                 ['store_id' => $stores[1]->id, 'amount' => '20.75', 'streams' => 200],
@@ -37,6 +37,7 @@ class AdminRoyaltyCsvImportTest extends TestCase
         ])->assertRedirect(route('admin.royalties'))->assertSessionHas('success');
 
         $this->assertDatabaseCount('royalties', 2);
+        $this->assertSame(['USD'], Royalty::distinct()->pluck('currency')->all());
         $this->assertEqualsWithDelta(21.7, (float) $artist->fresh()->available_balance, 0.0000001);
     }
 
@@ -100,7 +101,7 @@ class AdminRoyaltyCsvImportTest extends TestCase
         $this->assertDatabaseHas('royalties', [
             'artist_id' => $artist->id, 'song_id' => $song->id, 'album_id' => $album->id,
             'store_id' => $store->id, 'month' => 4, 'year' => 2026,
-            'currency' => 'EUR', 'streams' => 500,
+            'currency' => 'USD', 'streams' => 500,
         ]);
         $this->assertEqualsWithDelta(0.0199783136, (float) $song->royalties()->first()->amount, 0.0000000001);
         $this->assertEqualsWithDelta(0.0069848195, (float) $artist->fresh()->available_balance, 0.0000000001);

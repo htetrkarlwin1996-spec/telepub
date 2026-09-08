@@ -29,4 +29,9 @@ class Withdrawal extends Model
     {
         return $this->belongsTo(User::class, 'processed_by');
     }
+    public function setCurrencyAttribute(mixed $value): void
+    {
+        $this->attributes['currency'] = 'USD';
+    }
+
 }

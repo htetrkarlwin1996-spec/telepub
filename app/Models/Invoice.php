@@ -30,4 +30,9 @@ class Invoice extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+    public function setCurrencyAttribute(mixed $value): void
+    {
+        $this->attributes['currency'] = 'USD';
+    }
+
 }
