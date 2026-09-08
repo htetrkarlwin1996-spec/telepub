@@ -3,7 +3,7 @@
         <h2 class="font-extrabold text-2xl text-black leading-tight tracking-tight">{{ __('Royalty Management') }}</h2>
     </x-slot>
     <div class="py-6">
-        <div class="max-w-7xl mx-auto">
+        <div class="max-w-7xl mx-auto" x-data="{ bulkOpen: {{ old('entry_mode') === 'bulk' ? 'true' : 'false' }}, manualOpen: {{ old('entry_mode') === 'manual' ? 'true' : 'false' }} }">
             @if(session('success')) <div class="bg-emerald-400 border-2 border-black text-black font-bold px-4 py-3 mb-6">{{ session('success') }}</div> @endif
             @if(session('warning')) <div class="bg-amber-200 border-2 border-black text-black font-bold px-4 py-3 mb-6">{{ session('warning') }}</div> @endif
             @if(session('info')) <div class="bg-blue-100 border-2 border-black text-black font-bold px-4 py-3 mb-6">{{ session('info') }}</div> @endif
@@ -33,10 +33,20 @@
                 <div class="px-6 pb-5 text-xs font-bold text-black/60">Supports month, music_store, isrc, units and net revenue columns. All imported amounts are stored in USD. Maximum 50,000 rows / 20 MB.</div>
             </div>
 
-            <details class="bg-white border-2 border-black shadow-[4px_4px_0_#000] mb-6" open>
-                <summary class="p-5 cursor-pointer font-extrabold text-lg border-b-2 border-black bg-blue-100">Bulk Manual Royalty by Store</summary>
-                <form method="POST" action="{{ route('admin.royalties.bulk-manual') }}" class="p-6">
+            <style>[x-cloak]{display:none!important}</style>
+            <div class="flex flex-wrap gap-3 mb-6">
+                <button type="button" @click="bulkOpen = true" class="px-5 py-3 bg-brand-500 border-2 border-black font-extrabold uppercase shadow-[4px_4px_0_#000]">Bulk Entry</button>
+                <button type="button" @click="manualOpen = true" class="px-5 py-3 bg-white border-2 border-black font-extrabold uppercase shadow-[4px_4px_0_#000]">Manual Entry</button>
+            </div>
+
+            <div x-cloak x-show="bulkOpen" @keydown.escape.window="bulkOpen = false" class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
+                <div class="fixed inset-0 bg-black/60" @click="bulkOpen = false"></div>
+                <div class="relative min-h-screen flex items-start justify-center p-4 sm:p-8">
+                    <div class="relative w-full max-w-6xl bg-white border-4 border-black shadow-[8px_8px_0_#f5df00]" @click.stop>
+                        <div class="sticky top-0 z-10 p-5 border-b-2 border-black bg-blue-100 flex items-center justify-between"><div><h3 class="font-extrabold text-xl">Bulk Entry by Store</h3><p class="text-sm font-bold text-black/50">Enter multiple store amounts for one artist and period.</p></div><button type="button" @click="bulkOpen = false" class="w-10 h-10 border-2 border-black bg-white font-black text-xl">×</button></div>
+                        <div class="max-h-[78vh] overflow-y-auto"><form method="POST" action="{{ route('admin.royalties.bulk-manual') }}" class="p-6">
                     @csrf
+                    <input type="hidden" name="entry_mode" value="bulk">
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
                         <div>
                             <x-input-label for="bulk_artist_id" value="Artist" />
@@ -90,18 +100,19 @@
                         <div class="flex-1 w-full"><x-input-label for="bulk_notes" value="Notes" /><input id="bulk_notes" name="notes" type="text" class="block mt-1 w-full border-2 border-black px-3 py-2.5" placeholder="Optional"></div>
                         <button class="px-6 py-3 bg-brand-500 border-2 border-black font-extrabold uppercase shadow-[3px_3px_0_#000]">Add Store Royalties</button>
                     </div>
-                </form>
-            </details>
-
-            <!-- Add Royalty Form -->
-            <div class="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mb-6">
-                <div class="p-5 border-b-2 border-black">
-                    <h3 class="text-lg font-extrabold text-black tracking-tight">Add Manual Royalty Entry</h3>
-                    <p class="text-sm font-bold text-black/50 mt-1">Enter royalty amounts per store per month for artists</p>
+                </form></div>
+                    </div>
                 </div>
-                <div class="p-6">
-                    <form method="POST" action="{{ route('admin.royalties.store') }}" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            </div>
+
+            <div x-cloak x-show="manualOpen" @keydown.escape.window="manualOpen = false" class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
+                <div class="fixed inset-0 bg-black/60" @click="manualOpen = false"></div>
+                <div class="relative min-h-screen flex items-start justify-center p-4 sm:p-8">
+                    <div class="relative w-full max-w-4xl bg-white border-4 border-black shadow-[8px_8px_0_#f5df00]" @click.stop>
+                        <div class="p-5 border-b-2 border-black bg-brand-500 flex items-center justify-between"><div><h3 class="font-extrabold text-xl">Manual Entry</h3><p class="text-sm font-bold text-black/60">Add one royalty record.</p></div><button type="button" @click="manualOpen = false" class="w-10 h-10 border-2 border-black bg-white font-black text-xl">×</button></div>
+                        <div class="p-6"><form method="POST" action="{{ route('admin.royalties.store') }}" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         @csrf
+                        <input type="hidden" name="entry_mode" value="manual">
                         <div>
                             <x-input-label for="artist_id" value="Artist" />
                             <select id="artist_id" name="artist_id" class="block mt-1 w-full border-2 border-black px-3 py-2.5 text-sm font-semibold text-black focus:border-brand-500 focus:ring-0 focus:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all rounded-none" required>
@@ -173,7 +184,8 @@
                         <div class="md:col-span-3 lg:col-span-4 flex justify-end">
                             <x-primary-button class="bg-brand-500">{{ __('Add Royalty Entry') }}</x-primary-button>
                         </div>
-                    </form>
+                    </form></div>
+                    </div>
                 </div>
             </div>
 
