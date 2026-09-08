@@ -23,7 +23,7 @@ class DashboardController extends Controller
         $artist = $user->artist;
 
         if (!$artist) {
-            return view('artist.setup');
+            return redirect()->route('artist.setup');
         }
 
         $albums = Album::where('artist_id', $artist->id)->withCount('songs')->latest()->take(5)->get();

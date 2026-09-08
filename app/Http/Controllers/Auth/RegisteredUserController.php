@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Otp;
 use App\Models\User;
 use App\Notifications\SendOtp;
-use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -36,7 +35,6 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        event(new Registered($user));
         Auth::login($user);
 
         // Generate OTP for email verification
