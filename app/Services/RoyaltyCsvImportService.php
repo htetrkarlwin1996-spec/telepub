@@ -12,8 +12,6 @@ use RuntimeException;
 
 class RoyaltyCsvImportService
 {
-    public function __construct(private RoyaltyService $royaltyService) {}
-
     public function import(UploadedFile $file, array $defaults, User $admin): array
     {
         $hash = hash_file('sha256', $file->getRealPath());
@@ -30,7 +28,7 @@ class RoyaltyCsvImportService
             throw new RuntimeException('CSV must contain ISRC and Amount (or Net Revenue) columns.');
         }
 
-        $songs = Song::with('album')->whereNotNull('isrc_code')->get()
+        $songs = Song::with(['album', 'artist'])->whereNotNull('isrc_code')->get()
             ->keyBy(fn (Song $song) => $this->normalizeIsrc($song->isrc_code));
         $stores = MusicStore::all();
         $storesById = $stores->keyBy('id');
@@ -47,6 +45,9 @@ class RoyaltyCsvImportService
             $count = 0;
             $alreadyImported = 0;
             $errors = [];
+            $inserts = [];
+            $artistShares = [];
+            $now = now();
 
             foreach ($rows as $index => $values) {
                 $line = $index + 2;
@@ -89,7 +90,8 @@ class RoyaltyCsvImportService
                     continue;
                 }
 
-                $this->royaltyService->create([
+                $currency = $this->currency($row, $amountColumn, $defaults);
+                $inserts[] = [
                     'artist_id' => $song->artist_id,
                     'song_id' => $song->id,
                     'album_id' => $song->album_id,
@@ -98,18 +100,32 @@ class RoyaltyCsvImportService
                     'month' => $month,
                     'year' => $year,
                     'amount' => $amount,
-                    'currency' => $this->currency($row, $amountColumn, $defaults),
+                    'currency' => $currency,
                     'streams' => max(0, (int) ($streams ?? 0)),
                     'notes' => $this->value($row, ['notes', 'description']) ?: 'CSV import: '.$file->getClientOriginalName(),
                     'entered_by' => $admin->id,
                     'royalty_import_id' => $import->id,
                     'import_row' => $line,
-                ]);
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+                $artistShares[$song->artist_id] = ($artistShares[$song->artist_id] ?? 0)
+                    + $song->artist->getArtistShareAttribute($amount);
                 $count++;
             }
 
             if ($count === 0 && $alreadyImported === 0) {
                 throw new RuntimeException('No rows could be imported. '.implode(' ', array_slice($errors, 0, 10)));
+            }
+            foreach (array_chunk($inserts, 1000) as $chunk) {
+                DB::table('royalties')->insert($chunk);
+            }
+            foreach ($artistShares as $artistId => $share) {
+                DB::table('artists')->where('id', $artistId)->update([
+                    'total_earnings' => DB::raw('total_earnings + '.(float) $share),
+                    'available_balance' => DB::raw('available_balance + '.(float) $share),
+                    'updated_at' => $now,
+                ]);
             }
             $import->update(['row_count' => $import->royalties()->count()]);
 
