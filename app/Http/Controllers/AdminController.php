@@ -198,12 +198,9 @@ class AdminController extends Controller
     {
         $validated = $request->validate([
             'csv_file' => 'required|file|mimes:csv,txt|max:20480',
-            'store_id' => 'required|exists:music_stores,id',
-            'royalty_type' => 'required|in:'.implode(',', array_keys(Royalty::TYPES)),
-            'month' => 'required|integer|min:1|max:12',
-            'year' => 'required|integer|min:2020|max:'.(date('Y') + 1),
-            'currency' => 'required|string|size:3',
+            'royalty_type' => 'nullable|in:'.implode(',', array_keys(Royalty::TYPES)),
         ]);
+        $validated['royalty_type'] = $validated['royalty_type'] ?? 'royalties';
 
         try {
             $count = $importer->import($request->file('csv_file'), $validated, $request->user());

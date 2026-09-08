@@ -23,7 +23,11 @@ class RoyaltyCsvImportService
 
         [$headers, $rows] = $this->read($file);
         $isrcColumn = $this->column($headers, ['isrc', 'isrccode', 'trackisrc']);
-        $amountColumn = $this->column($headers, ['amount', 'revenue', 'netrevenue', 'netamount', 'royalty', 'royalties', 'payable']);
+        $amountColumn = $this->column($headers, [
+            'netrevenueeur', 'netrevenueusd', 'netrevenuegbp', 'netrevenue',
+            'nettotalclientcurrency', 'nettotal', 'amount', 'revenue', 'netamount',
+            'royalty', 'royalties', 'payable',
+        ]);
         if ($isrcColumn === null || $amountColumn === null) {
             throw new RuntimeException('CSV must contain ISRC and Amount (or Net Revenue) columns.');
         }
@@ -57,10 +61,10 @@ class RoyaltyCsvImportService
                     continue;
                 }
 
-                $storeValue = $this->value($row, ['store', 'platform', 'service', 'retailer', 'dsp']);
+                $storeValue = $this->value($row, ['musicstore', 'store', 'channel', 'platform', 'service', 'retailer', 'dsp']);
                 $store = $storeValue
-                    ? ($storesByName->get($this->normalize($storeValue)) ?? $storesBySlug->get($this->normalize($storeValue)))
-                    : $storesById->get((int) $defaults['store_id']);
+                    ? $this->findStore($storeValue, $storesByName, $storesBySlug)
+                    : $storesById->get((int) ($defaults['store_id'] ?? 0));
                 if (! $store) {
                     $errors[] = "Row {$line}: music store '{$storeValue}' was not found.";
 
@@ -68,8 +72,7 @@ class RoyaltyCsvImportService
                 }
 
                 $amount = $this->decimal($row[$amountColumn] ?? '');
-                $month = (int) ($this->value($row, ['month', 'reportmonth', 'salesmonth']) ?: $defaults['month']);
-                $year = (int) ($this->value($row, ['year', 'reportyear', 'salesyear']) ?: $defaults['year']);
+                [$month, $year] = $this->period($row, $defaults);
                 $streams = $this->decimal($this->value($row, ['streams', 'streamcount', 'quantity', 'units']) ?: '0');
                 if ($amount === null || $amount < 0 || $month < 1 || $month > 12 || $year < 2020) {
                     $errors[] = "Row {$line}: invalid amount, month, or year.";
@@ -86,7 +89,7 @@ class RoyaltyCsvImportService
                     'month' => $month,
                     'year' => $year,
                     'amount' => $amount,
-                    'currency' => strtoupper($this->value($row, ['currency', 'currencycode']) ?: $defaults['currency']),
+                    'currency' => $this->currency($row, $amountColumn, $defaults),
                     'streams' => max(0, (int) ($streams ?? 0)),
                     'notes' => $this->value($row, ['notes', 'description']) ?: 'CSV import: '.$file->getClientOriginalName(),
                     'entered_by' => $admin->id,
@@ -150,6 +153,47 @@ class RoyaltyCsvImportService
         $column = $this->column(array_keys($row), $aliases);
 
         return $column === null ? null : trim((string) ($row[$column] ?? ''));
+    }
+
+    private function period(array $row, array $defaults): array
+    {
+        $period = $this->value($row, ['month', 'period', 'reportmonth', 'salesmonth', 'startdate']);
+        if ($period && preg_match('/^(\d{4})[-\/]([01]?\d)/', $period, $match)) {
+            return [(int) $match[2], (int) $match[1]];
+        }
+
+        return [
+            (int) ($period ?: ($defaults['month'] ?? 0)),
+            (int) ($this->value($row, ['year', 'reportyear', 'salesyear']) ?: ($defaults['year'] ?? 0)),
+        ];
+    }
+
+    private function currency(array $row, string $amountColumn, array $defaults): string
+    {
+        $currency = $this->value($row, ['currency', 'currencycode']);
+        if (! $currency && preg_match('/(usd|eur|gbp|jpy)$/', $amountColumn, $match)) {
+            $currency = $match[1];
+        }
+
+        return strtoupper($currency ?: ($defaults['currency'] ?? 'USD'));
+    }
+
+    private function findStore(string $value, $storesByName, $storesBySlug): ?MusicStore
+    {
+        $name = $this->normalize($value);
+        $aliases = [
+            'meta' => 'instagramfacebookmeta',
+            'facebook' => 'instagramfacebookmeta',
+            'instagram' => 'instagramfacebookmeta',
+            'tiktok' => 'tiktok',
+            'tencent' => 'tencent',
+            'youtubearttracks' => 'youtubemusic',
+            'youtubeaudiocontentid' => 'youtubemusic',
+            'youtubecontentid' => 'youtubemusic',
+        ];
+        $name = $aliases[$name] ?? $name;
+
+        return $storesByName->get($name) ?? $storesBySlug->get($name);
     }
 
     private function normalize(string $value): string

@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class Artist extends Model
 {
@@ -84,7 +84,7 @@ class Artist extends Model
      */
     public function getArtistShareAttribute($totalAmount)
     {
-        return round($totalAmount * ($this->revenue_share_percentage / 100), 2);
+        return round($totalAmount * ($this->revenue_share_percentage / 100), 10);
     }
 
     /**
@@ -93,7 +93,8 @@ class Artist extends Model
     public function getTeleMusicFeeAttribute($totalAmount)
     {
         $teleMusicPercentage = 100 - $this->revenue_share_percentage;
-        return round($totalAmount * ($teleMusicPercentage / 100), 2);
+
+        return round($totalAmount * ($teleMusicPercentage / 100), 10);
     }
 
     /**
