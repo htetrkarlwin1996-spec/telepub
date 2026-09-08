@@ -35,7 +35,17 @@ class SpotifyMetadataService
             throw new RuntimeException("Spotify album {$id} was not found.");
         }
 
-        $tracks = data_get($album, 'tracks.items') ?? data_get($album, 'tracks') ?? data_get($album, 'trackList') ?? [];
+        $tracks = data_get($album, 'tracks.items')
+            ?? data_get($album, 'tracks')
+            ?? data_get($album, 'trackList')
+            ?? data_get($payload, 'data.tracks.items')
+            ?? data_get($payload, 'data.tracks')
+            ?? data_get($payload, 'data.trackList.items')
+            ?? data_get($payload, 'data.trackList')
+            ?? data_get($payload, 'tracks.items')
+            ?? data_get($payload, 'tracks')
+            ?? data_get($payload, 'trackList')
+            ?? [];
         if (! is_array($tracks) || count($tracks) === 0) {
             throw new RuntimeException("Spotify album {$id} has no tracks.");
         }

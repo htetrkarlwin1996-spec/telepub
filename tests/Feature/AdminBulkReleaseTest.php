@@ -16,13 +16,15 @@ class AdminBulkReleaseTest extends TestCase
     public function test_admin_can_fetch_spotify_album_metadata(): void
     {
         config(['services.spotify_scraper.key' => 'test-key']);
-        Http::fake(['*' => Http::response(['data' => ['album' => [
-            'id' => 'abc123def456',
-            'name' => 'Fetched Album',
-            'album_type' => 'album',
-            'release_date' => '2026-08',
-            'artists' => [['name' => 'Singer']],
-            'images' => [],
+        Http::fake(['*' => Http::response(['data' => [
+            'album' => [
+                'id' => 'abc123def456',
+                'name' => 'Fetched Album',
+                'album_type' => 'album',
+                'release_date' => '2026-08',
+                'artists' => [['name' => 'Singer']],
+                'images' => [],
+            ],
             'tracks' => [[
                 'id' => 'track1',
                 'name' => 'First Song',
@@ -31,7 +33,7 @@ class AdminBulkReleaseTest extends TestCase
                 'explicit' => false,
                 'artists' => [['name' => 'Singer']],
             ]],
-        ]]])]);
+        ]])]);
 
         $admin = User::factory()->create(['role' => 'admin']);
         $this->actingAs($admin)->post(route('admin.releases.bulk-fetch'), [
