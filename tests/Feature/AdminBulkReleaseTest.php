@@ -6,6 +6,7 @@ use App\Models\Artist;
 use App\Models\MusicStore;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -16,29 +17,36 @@ class AdminBulkReleaseTest extends TestCase
     public function test_admin_can_fetch_spotify_album_metadata(): void
     {
         config(['services.spotify_scraper.key' => 'test-key']);
-        Http::fake(['*' => Http::response(['data' => [
-            'album' => [
+        Http::fake(function (Request $request) {
+            if (str_contains($request->url(), '/v1/album/tracks')) {
+                return Http::response(['tracks' => [[
+                    'id' => 'track1',
+                    'name' => 'First Song',
+                    'trackNumber' => 1,
+                    'durationMs' => 185000,
+                    'explicit' => false,
+                    'artists' => [['name' => 'Singer']],
+                ]]]);
+            }
+
+            return Http::response([
+                'status' => true,
+                'type' => 'album',
                 'id' => 'abc123def456',
                 'name' => 'Fetched Album',
-                'album_type' => 'album',
-                'release_date' => '2026-08',
+                'date' => '2026-08-01T00:00:00Z',
                 'artists' => [['name' => 'Singer']],
-                'images' => [],
-            ],
-            'tracks' => [[
-                'id' => 'track1',
-                'name' => 'First Song',
-                'track_number' => 1,
-                'duration_ms' => 185000,
-                'explicit' => false,
-                'artists' => [['name' => 'Singer']],
-            ]],
-        ]])]);
+                'cover' => [['url' => 'https://example.com/cover.jpg', 'width' => 640]],
+                'trackCount' => 1,
+            ]);
+        });
 
         $admin = User::factory()->create(['role' => 'admin']);
         $this->actingAs($admin)->post(route('admin.releases.bulk-fetch'), [
             'spotify_references' => 'https://open.spotify.com/album/abc123def456',
         ])->assertOk()->assertSee('Fetched Album')->assertSee('First Song')->assertSee('2026-08-01');
+
+        Http::assertSentCount(2);
     }
 
     public function test_admin_bulk_creation_needs_no_audio_and_creates_live_distributions(): void

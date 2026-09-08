@@ -4,7 +4,7 @@
             <div class="mb-8">
                 <a href="{{ route('admin.releases') }}" class="text-sm font-extrabold uppercase hover:underline">← Releases</a>
                 <h1 class="text-3xl font-black uppercase mt-3">Bulk Create from Spotify</h1>
-                <p class="mt-2 font-bold text-black/60">Paste up to 20 Spotify album or single URLs. Metadata comes from Spotify through RapidAPI.</p>
+                <p class="mt-2 font-bold text-black/60">Enter up to 20 Spotify Album IDs. Fetch metadata, select the TeleMusic artist, fill ISRCs, and create.</p>
             </div>
 
             @if($errors->any())
@@ -17,8 +17,8 @@
 
             <form method="POST" action="{{ route('admin.releases.bulk-fetch') }}" class="bg-white border-2 border-black p-6 shadow-[5px_5px_0_#000]">
                 @csrf
-                <label for="spotify_references" class="block font-black uppercase mb-2">Spotify Album / Single URLs or IDs</label>
-                <textarea id="spotify_references" name="spotify_references" rows="6" required placeholder="One URL per line&#10;https://open.spotify.com/album/..." class="w-full border-2 border-black font-bold focus:ring-brand-500">{{ old('spotify_references', $spotifyReferences) }}</textarea>
+                <label for="spotify_references" class="block font-black uppercase mb-2">Spotify Album IDs</label>
+                <textarea id="spotify_references" name="spotify_references" rows="6" required placeholder="One Album ID per line&#10;0X2AuiV3z9dTcFUVc2i0PT" class="w-full border-2 border-black font-mono font-bold focus:ring-brand-500">{{ old('spotify_references', $spotifyReferences) }}</textarea>
                 <button class="mt-4 px-6 py-3 bg-brand-500 border-2 border-black font-black uppercase shadow-[4px_4px_0_#000] hover:translate-x-0.5 hover:translate-y-0.5">Fetch Metadata</button>
             </form>
 

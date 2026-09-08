@@ -47,6 +47,9 @@ class SpotifyMetadataService
             ?? data_get($payload, 'trackList')
             ?? [];
         if (! is_array($tracks) || count($tracks) === 0) {
+            $tracks = $this->fetchAlbumTracks($id);
+        }
+        if (! is_array($tracks) || count($tracks) === 0) {
             throw new RuntimeException("Spotify album {$id} has no tracks.");
         }
 
@@ -55,7 +58,7 @@ class SpotifyMetadataService
             $artists = [data_get($album, 'artist.name')];
         }
         $copyrights = collect($album['copyrights'] ?? [])->pluck('text')->filter()->implode(' / ');
-        $images = collect($album['images'] ?? data_get($album, 'cover.images', []))->sortByDesc('width');
+        $images = collect($album['images'] ?? $album['cover'] ?? data_get($album, 'cover.images', []))->sortByDesc('width');
 
         return [
             'spotify_id' => $id,
@@ -63,7 +66,7 @@ class SpotifyMetadataService
             'title' => (string) ($album['name'] ?? $album['title'] ?? 'Untitled'),
             'artist_names' => $artists,
             'release_type' => $this->releaseType((string) ($album['album_type'] ?? $album['type'] ?? ''), count($tracks)),
-            'release_date' => $this->date((string) ($album['release_date'] ?? $album['releaseDate'] ?? data_get($album, 'date.isoString', ''))),
+            'release_date' => $this->date((string) ($album['release_date'] ?? $album['releaseDate'] ?? (is_string($album['date'] ?? null) ? $album['date'] : data_get($album, 'date.isoString', '')))),
             'cover_url' => (string) (data_get($images->first(), 'url') ?? data_get($album, 'cover.url') ?? data_get($album, 'coverArt.sources.0.url') ?? ''),
             'label' => (string) ($album['label'] ?? ''),
             'upc_code' => (string) data_get($album, 'external_ids.upc', ''),
@@ -103,6 +106,28 @@ class SpotifyMetadataService
         }
     }
 
+    private function fetchAlbumTracks(string $id): array
+    {
+        $response = Http::acceptJson()->timeout(30)->withHeaders([
+            'X-RapidAPI-Key' => config('services.spotify_scraper.key'),
+            'X-RapidAPI-Host' => config('services.spotify_scraper.host'),
+        ])->get(rtrim(config('services.spotify_scraper.base_url'), '/').'/v1/album/tracks', ['albumId' => $id]);
+
+        if ($response->failed()) {
+            throw new RuntimeException("Spotify track-list request failed for {$id} (HTTP {$response->status()}).");
+        }
+
+        $payload = $response->json();
+
+        return data_get($payload, 'data.tracks.items')
+            ?? data_get($payload, 'data.tracks')
+            ?? data_get($payload, 'data.items')
+            ?? data_get($payload, 'tracks.items')
+            ?? data_get($payload, 'tracks')
+            ?? data_get($payload, 'items')
+            ?? (array_is_list($payload ?? []) ? $payload : []);
+    }
+
     private function albumId(string $reference): string
     {
         $reference = trim($reference);
@@ -117,6 +142,9 @@ class SpotifyMetadataService
 
     private function date(string $date): ?string
     {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}/', $date, $match)) {
+            return $match[0];
+        }
         if (preg_match('/^\d{4}$/', $date)) {
             return $date.'-01-01';
         }
@@ -137,11 +165,6 @@ class SpotifyMetadataService
     private function trackDuration(array $track): string
     {
         $milliseconds = (int) ($track['duration_ms'] ?? $track['durationMs'] ?? data_get($track, 'duration.totalMilliseconds', 0));
-        if ($milliseconds > 0) {
-            return $this->duration($milliseconds);
-        }
-
-        $milliseconds = (int) data_get($track, 'duration.totalMilliseconds', 0);
         if ($milliseconds > 0) {
             return $this->duration($milliseconds);
         }
