@@ -43,7 +43,7 @@ class RoyaltyCsvImportService
                 'file_hash' => $hash,
                 'entered_by' => $admin->id,
             ]);
-            $importedRows = $import->royalties()->whereNotNull('import_row')->pluck('import_row')->flip();
+            $importedRows = $import->royalties()->whereNotNull('import_row')->get()->keyBy('import_row');
             $count = 0;
             $alreadyImported = 0;
             $errors = [];
@@ -51,11 +51,6 @@ class RoyaltyCsvImportService
             foreach ($rows as $index => $values) {
                 $line = $index + 2;
                 if (count(array_filter($values, fn ($value) => trim((string) $value) !== '')) === 0) {
-                    continue;
-                }
-                if ($importedRows->has($line)) {
-                    $alreadyImported++;
-
                     continue;
                 }
                 $row = array_combine($headers, array_pad(array_slice($values, 0, count($headers)), count($headers), ''));
@@ -72,6 +67,15 @@ class RoyaltyCsvImportService
                     : $storesById->get((int) ($defaults['store_id'] ?? 0));
                 if (! $store) {
                     $errors[] = "Row {$line}: music store '{$storeValue}' was not found.";
+
+                    continue;
+                }
+
+                if ($existingRoyalty = $importedRows->get($line)) {
+                    if ((int) $existingRoyalty->store_id !== (int) $store->id) {
+                        $existingRoyalty->update(['store_id' => $store->id]);
+                    }
+                    $alreadyImported++;
 
                     continue;
                 }
@@ -196,9 +200,9 @@ class RoyaltyCsvImportService
             'instagram' => 'instagramfacebookmeta',
             'tiktok' => 'tiktok',
             'tencent' => 'tencent',
-            'youtubearttracks' => 'youtubemusic',
-            'youtubeaudiocontentid' => 'youtubemusic',
-            'youtubecontentid' => 'youtubemusic',
+            'youtubearttracks' => 'youtubearttracks',
+            'youtubeaudiocontentid' => 'youtubeaudiocontentid',
+            'youtubecontentid' => 'youtubeaudiocontentid',
         ];
         $name = $aliases[$name] ?? $name;
 

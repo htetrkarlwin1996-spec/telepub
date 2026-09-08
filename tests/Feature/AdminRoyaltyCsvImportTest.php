@@ -79,6 +79,22 @@ class AdminRoyaltyCsvImportTest extends TestCase
         ])->assertSessionHas('success');
 
         $this->assertDatabaseCount('royalties', count($channels));
-        $this->assertSame(7, Royalty::distinct('store_id')->count('store_id'));
+        $this->assertSame(8, Royalty::distinct('store_id')->count('store_id'));
+
+        $youtubeMusic = MusicStore::where('slug', 'youtube-music')->firstOrFail();
+        Royalty::whereIn('import_row', [8, 9])->update(['store_id' => $youtubeMusic->id]);
+
+        $this->actingAs($admin)->post(route('admin.royalties.import'), [
+            'csv_file' => UploadedFile::fake()->createWithContent('apr-2026.csv', $csv),
+        ])->assertSessionHas('info');
+
+        $this->assertDatabaseHas('royalties', [
+            'import_row' => 8,
+            'store_id' => MusicStore::where('slug', 'youtube-art-tracks')->value('id'),
+        ]);
+        $this->assertDatabaseHas('royalties', [
+            'import_row' => 9,
+            'store_id' => MusicStore::where('slug', 'youtube-audio-content-id')->value('id'),
+        ]);
     }
 }
