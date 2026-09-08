@@ -2,20 +2,22 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
-use App\Models\Artist;
 use App\Models\Album;
-use App\Models\Song;
-use App\Models\MusicStore;
-use App\Models\Distribution;
-use App\Models\Royalty;
-use App\Models\Payout;
-use App\Models\Invoice;
-use App\Models\Withdrawal;
 use App\Models\Analytics;
+use App\Models\Artist;
+use App\Models\Distribution;
+use App\Models\Invoice;
+use App\Models\MusicStore;
+use App\Models\Payout;
+use App\Models\Royalty;
+use App\Models\Song;
+use App\Models\User;
+use App\Models\Withdrawal;
+use App\Services\RoyaltyCsvImportService;
+use App\Services\RoyaltyService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use App\Services\RoyaltyService;
+use Illuminate\Support\Str;
 
 class AdminController extends Controller
 {
@@ -47,6 +49,7 @@ class AdminController extends Controller
     public function artists()
     {
         $artists = Artist::with('user', 'albums', 'songs')->latest()->paginate(20);
+
         return view('admin.artists.index', compact('artists'));
     }
 
@@ -116,6 +119,7 @@ class AdminController extends Controller
     public function stores()
     {
         $stores = MusicStore::withCount('distributions')->get();
+
         return view('admin.stores.index', compact('stores'));
     }
 
@@ -147,7 +151,7 @@ class AdminController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'slug' => 'required|string|max:255|unique:music_stores,slug,' . $store->id,
+            'slug' => 'required|string|max:255|unique:music_stores,slug,'.$store->id,
             'description' => 'nullable|string',
             'url' => 'nullable|url',
             'is_active' => 'boolean',
@@ -164,6 +168,7 @@ class AdminController extends Controller
         $royalties = Royalty::with(['artist', 'store', 'song', 'album.collaboratingArtists'])->latest()->paginate(20);
         $stores = MusicStore::all();
         $artists = Artist::all();
+
         return view('admin.royalties.index', compact('royalties', 'stores', 'artists'));
     }
 
@@ -172,7 +177,7 @@ class AdminController extends Controller
         $validated = $request->validate([
             'artist_id' => 'required|exists:artists,id',
             'store_id' => 'required|exists:music_stores,id',
-            'royalty_type' => 'required|in:' . implode(',', array_keys(Royalty::TYPES)),
+            'royalty_type' => 'required|in:'.implode(',', array_keys(Royalty::TYPES)),
             'song_id' => 'nullable|exists:songs,id',
             'month' => 'required|integer|min:1|max:12',
             'year' => 'required|integer|min:2020',
@@ -189,10 +194,43 @@ class AdminController extends Controller
         return redirect()->route('admin.royalties')->with('success', 'Royalty entry added successfully.');
     }
 
+    public function importRoyalties(Request $request, RoyaltyCsvImportService $importer)
+    {
+        $validated = $request->validate([
+            'csv_file' => 'required|file|mimes:csv,txt|max:20480',
+            'store_id' => 'required|exists:music_stores,id',
+            'royalty_type' => 'required|in:'.implode(',', array_keys(Royalty::TYPES)),
+            'month' => 'required|integer|min:1|max:12',
+            'year' => 'required|integer|min:2020|max:'.(date('Y') + 1),
+            'currency' => 'required|string|size:3',
+        ]);
+
+        try {
+            $count = $importer->import($request->file('csv_file'), $validated, $request->user());
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return back()->withInput()->withErrors(['csv_file' => $exception->getMessage()]);
+        }
+
+        return redirect()->route('admin.royalties')->with('success', "{$count} royalty rows imported successfully.");
+    }
+
+    public function royaltyImportTemplate()
+    {
+        $csv = "ISRC,Amount,Streams,Store,Month,Year,Currency,Notes\nUSRC17607839,12.50,15000,Spotify,".date('n').','.date('Y').",USD,Monthly report\n";
+
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="royalty-import-template.csv"',
+        ]);
+    }
+
     public function editRoyalty(Royalty $royalty)
     {
         $stores = MusicStore::all();
         $artists = Artist::all();
+
         return view('admin.royalties.edit', compact('royalty', 'stores', 'artists'));
     }
 
@@ -201,7 +239,7 @@ class AdminController extends Controller
         $validated = $request->validate([
             'artist_id' => 'required|exists:artists,id',
             'store_id' => 'required|exists:music_stores,id',
-            'royalty_type' => 'required|in:' . implode(',', array_keys(Royalty::TYPES)),
+            'royalty_type' => 'required|in:'.implode(',', array_keys(Royalty::TYPES)),
             'song_id' => 'nullable|exists:songs,id',
             'month' => 'required|integer|min:1|max:12',
             'year' => 'required|integer|min:2020',
@@ -220,12 +258,14 @@ class AdminController extends Controller
     public function payouts()
     {
         $payouts = Payout::with('artist')->latest()->paginate(20);
+
         return view('admin.payouts.index', compact('payouts'));
     }
 
     public function createPayout()
     {
         $artists = Artist::all();
+
         return view('admin.payouts.create', compact('artists'));
     }
 
@@ -242,7 +282,7 @@ class AdminController extends Controller
         ]);
 
         $validated['total'] = $validated['amount'] - $validated['fee'];
-        $validated['invoice_number'] = 'INV-' . strtoupper(uniqid());
+        $validated['invoice_number'] = 'INV-'.strtoupper(uniqid());
         $validated['processed_by'] = auth()->id();
         $validated['status'] = 'paid';
         $validated['paid_at'] = now();
@@ -261,6 +301,7 @@ class AdminController extends Controller
     {
         $invoices = Invoice::with('artist')->latest()->paginate(20);
         $artists = Artist::all();
+
         return view('admin.invoices.index', compact('invoices', 'artists'));
     }
 
@@ -277,7 +318,7 @@ class AdminController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        $validated['invoice_number'] = 'INV-' . date('Ymd') . '-' . strtoupper(uniqid());
+        $validated['invoice_number'] = 'INV-'.date('Ymd').'-'.strtoupper(uniqid());
         $validated['created_by'] = auth()->id();
         $validated['status'] = 'sent';
 
@@ -290,6 +331,7 @@ class AdminController extends Controller
     public function withdrawals()
     {
         $withdrawals = Withdrawal::with('artist', 'processedBy')->latest()->paginate(20);
+
         return view('admin.withdrawals.index', compact('withdrawals'));
     }
 
@@ -316,7 +358,7 @@ class AdminController extends Controller
         // Create payout record
         Payout::create([
             'artist_id' => $withdrawal->artist_id,
-            'invoice_number' => 'PAY-' . strtoupper(uniqid()),
+            'invoice_number' => 'PAY-'.strtoupper(uniqid()),
             'amount' => $withdrawal->amount,
             'fee' => $withdrawal->fee,
             'total' => $withdrawal->total,
@@ -350,6 +392,7 @@ class AdminController extends Controller
     public function albums()
     {
         $albums = Album::with('artist')->withCount('songs')->latest()->paginate(20);
+
         return view('admin.albums.index', compact('albums'));
     }
 
@@ -357,6 +400,7 @@ class AdminController extends Controller
     {
         $artists = Artist::with('user')->orderBy('artist_name')->get();
         $genres = CatalogController::genres();
+
         return view('admin.albums.create', compact('artists', 'genres'));
     }
 
@@ -375,7 +419,7 @@ class AdminController extends Controller
             'status' => 'sometimes|in:draft,submitted,approved,rejected',
         ]);
 
-        $validated['slug'] = \Illuminate\Support\Str::slug($validated['title']) . '-' . uniqid();
+        $validated['slug'] = Str::slug($validated['title']).'-'.uniqid();
         $validated['status'] = $validated['status'] ?? 'draft';
 
         Album::create($validated);
@@ -387,6 +431,7 @@ class AdminController extends Controller
     {
         $artists = Artist::with('user')->orderBy('artist_name')->get();
         $genres = CatalogController::genres();
+
         return view('admin.albums.edit', compact('album', 'artists', 'genres'));
     }
 
@@ -415,7 +460,7 @@ class AdminController extends Controller
         // Delete associated distributions, royalties, analytics, songs
         $album->distributions()->delete();
         $album->royalties()->delete();
-        \App\Models\Analytics::where('album_id', $album->id)->delete();
+        Analytics::where('album_id', $album->id)->delete();
         $album->songs()->delete();
         $album->delete();
 
@@ -425,12 +470,14 @@ class AdminController extends Controller
     public function songs()
     {
         $songs = Song::with('artist', 'album')->latest()->paginate(20);
+
         return view('admin.songs.index', compact('songs'));
     }
 
     public function createSong()
     {
         $albums = Album::with('artist')->orderBy('title')->get();
+
         return view('admin.songs.create', compact('albums'));
     }
 
@@ -469,6 +516,7 @@ class AdminController extends Controller
     public function editSong(Song $song)
     {
         $albums = Album::with('artist')->orderBy('title')->get();
+
         return view('admin.songs.edit', compact('song', 'albums'));
     }
 
@@ -514,6 +562,7 @@ class AdminController extends Controller
         $distributions = Distribution::with('song', 'store', 'artist')->latest()->paginate(20);
         $stores = MusicStore::all();
         $songs = Song::with('artist')->where('status', 'approved')->get();
+
         return view('admin.distributions.index', compact('distributions', 'stores', 'songs'));
     }
 
@@ -545,6 +594,7 @@ class AdminController extends Controller
             ->whereIn('status', ['submitted', 'approved', 'rejected'])
             ->latest()
             ->paginate(20);
+
         return view('admin.releases.index', compact('releases'));
     }
 
@@ -552,6 +602,7 @@ class AdminController extends Controller
     {
         $album->load('artist.user', 'songs', 'distributions.store', 'collaboratingArtists');
         $stores = MusicStore::where('is_active', true)->get();
+
         return view('admin.releases.show', compact('album', 'stores'));
     }
 
@@ -571,7 +622,7 @@ class AdminController extends Controller
 
         // Update ISRC codes for songs
         foreach ($validated['songs'] as $songId => $data) {
-            if (!empty($data['isrc_code'])) {
+            if (! empty($data['isrc_code'])) {
                 Song::where('id', $songId)->update([
                     'isrc_code' => $data['isrc_code'],
                     'request_new_isrc' => false,
@@ -620,7 +671,7 @@ class AdminController extends Controller
         ]);
 
         foreach ($validated['songs'] as $songId => $data) {
-            if (!empty($data['isrc_code'])) {
+            if (! empty($data['isrc_code'])) {
                 Song::where('id', $songId)->update([
                     'isrc_code' => $data['isrc_code'],
                     'request_new_isrc' => false,

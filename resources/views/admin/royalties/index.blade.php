@@ -5,6 +5,52 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto">
             @if(session('success')) <div class="bg-emerald-400 border-2 border-black text-black font-bold px-4 py-3 mb-6">{{ session('success') }}</div> @endif
+            @if($errors->any())
+                <div class="bg-red-100 border-2 border-black text-black font-bold px-4 py-3 mb-6">
+                    <ul class="list-disc ml-5">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+                </div>
+            @endif
+
+            <div class="bg-yellow-100 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mb-6">
+                <div class="p-5 border-b-2 border-black flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h3 class="text-lg font-extrabold text-black tracking-tight">Import Royalties from CSV</h3>
+                        <p class="text-sm font-bold text-black/60 mt-1">ISRC and Amount are required. Songs, albums and artists are matched automatically by ISRC.</p>
+                    </div>
+                    <a href="{{ route('admin.royalties.import-template') }}" class="px-4 py-2 bg-white border-2 border-black font-extrabold text-xs uppercase shadow-[3px_3px_0_#000]">Download CSV Template</a>
+                </div>
+                <form method="POST" action="{{ route('admin.royalties.import') }}" enctype="multipart/form-data" class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
+                    @csrf
+                    <div class="lg:col-span-2">
+                        <x-input-label for="csv_file" value="CSV File" />
+                        <input id="csv_file" name="csv_file" type="file" accept=".csv,.txt,text/csv" required class="block mt-1 w-full bg-white border-2 border-black p-2 font-bold text-sm">
+                    </div>
+                    <div>
+                        <x-input-label for="import_store_id" value="Default Store" />
+                        <select id="import_store_id" name="store_id" required class="block mt-1 w-full border-2 border-black px-3 py-2.5 text-sm font-semibold rounded-none">
+                            @foreach($stores as $store)<option value="{{ $store->id }}">{{ $store->name }}</option>@endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <x-input-label for="import_month" value="Default Period" />
+                        <div class="flex mt-1">
+                            <select id="import_month" name="month" class="w-1/2 border-2 border-r-0 border-black text-sm font-bold">
+                                @for($m=1;$m<=12;$m++)<option value="{{ $m }}" @selected($m == date('n'))>{{ $m }}</option>@endfor
+                            </select>
+                            <input name="year" type="number" value="{{ date('Y') }}" min="2020" max="{{ date('Y') + 1 }}" class="w-1/2 border-2 border-black text-sm font-bold">
+                        </div>
+                    </div>
+                    <div>
+                        <x-input-label for="import_royalty_type" value="Income Type" />
+                        <select id="import_royalty_type" name="royalty_type" class="block mt-1 w-full border-2 border-black px-3 py-2.5 text-sm font-semibold rounded-none">
+                            @foreach(\App\Models\Royalty::TYPES as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach
+                        </select>
+                        <input type="hidden" name="currency" value="USD">
+                    </div>
+                    <button class="px-5 py-3 bg-brand-500 border-2 border-black font-extrabold text-sm uppercase shadow-[3px_3px_0_#000]">Import CSV</button>
+                </form>
+                <div class="px-6 pb-5 text-xs font-bold text-black/60">Optional CSV columns: Streams, Store, Month, Year, Currency, Notes. Row values override the defaults selected above. Maximum 50,000 rows / 20 MB.</div>
+            </div>
 
             <!-- Add Royalty Form -->
             <div class="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mb-6">

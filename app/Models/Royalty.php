@@ -18,7 +18,7 @@ class Royalty extends Model
 
     protected $fillable = [
         'artist_id', 'song_id', 'album_id', 'store_id', 'royalty_type', 'month', 'year',
-        'amount', 'currency', 'exchange_rate', 'streams', 'notes', 'entered_by',
+        'amount', 'currency', 'exchange_rate', 'streams', 'notes', 'entered_by', 'royalty_import_id', 'import_row',
     ];
 
     protected $appends = ['royalty_type_label'];
