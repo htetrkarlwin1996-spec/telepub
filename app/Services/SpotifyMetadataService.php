@@ -11,8 +11,8 @@ class SpotifyMetadataService
 {
     public function fetchMany(array $references): array
     {
-        if (! config('services.spotify23.key')) {
-            throw new RuntimeException('RapidAPI key is not configured. Add RAPIDAPI_SPOTIFY23_KEY to .env.');
+        if (! config('services.spotify_scraper.key')) {
+            throw new RuntimeException('RapidAPI key is not configured. Add RAPIDAPI_SPOTIFY_SCRAPER_KEY to .env.');
         }
 
         return array_map(fn ($reference) => $this->fetchAlbum($this->albumId($reference)), $references);
@@ -21,47 +21,55 @@ class SpotifyMetadataService
     public function fetchAlbum(string $id): array
     {
         $response = Http::acceptJson()->timeout(30)->withHeaders([
-            'X-RapidAPI-Key' => config('services.spotify23.key'),
-            'X-RapidAPI-Host' => config('services.spotify23.host'),
-        ])->get(rtrim(config('services.spotify23.base_url'), '/').'/albums/', ['ids' => $id]);
+            'X-RapidAPI-Key' => config('services.spotify_scraper.key'),
+            'X-RapidAPI-Host' => config('services.spotify_scraper.host'),
+        ])->get(rtrim(config('services.spotify_scraper.base_url'), '/').'/v1/album/metadata', ['albumId' => $id]);
 
         if ($response->failed()) {
             throw new RuntimeException("Spotify metadata request failed for {$id} (HTTP {$response->status()}).");
         }
 
-        $album = $response->json('albums.0') ?? $response->json('data.albums.0');
+        $payload = $response->json();
+        $album = data_get($payload, 'data.album') ?? data_get($payload, 'album') ?? data_get($payload, 'data') ?? $payload;
         if (! is_array($album)) {
             throw new RuntimeException("Spotify album {$id} was not found.");
         }
 
-        $tracks = data_get($album, 'tracks.items', []);
+        $tracks = data_get($album, 'tracks.items') ?? data_get($album, 'tracks') ?? data_get($album, 'trackList') ?? [];
         if (! is_array($tracks) || count($tracks) === 0) {
             throw new RuntimeException("Spotify album {$id} has no tracks.");
         }
 
-        $artists = collect($album['artists'] ?? [])->pluck('name')->filter()->values()->all();
+        $artists = $this->artistNames($album['artists'] ?? data_get($album, 'artist.items', []));
+        if (empty($artists) && data_get($album, 'artist.name')) {
+            $artists = [data_get($album, 'artist.name')];
+        }
         $copyrights = collect($album['copyrights'] ?? [])->pluck('text')->filter()->implode(' / ');
-        $images = collect($album['images'] ?? [])->sortByDesc('width');
+        $images = collect($album['images'] ?? data_get($album, 'cover.images', []))->sortByDesc('width');
 
         return [
             'spotify_id' => $id,
-            'spotify_url' => data_get($album, 'external_urls.spotify', "https://open.spotify.com/album/{$id}"),
-            'title' => (string) ($album['name'] ?? 'Untitled'),
+            'spotify_url' => data_get($album, 'external_urls.spotify', data_get($album, 'shareUrl', "https://open.spotify.com/album/{$id}")),
+            'title' => (string) ($album['name'] ?? $album['title'] ?? 'Untitled'),
             'artist_names' => $artists,
-            'release_type' => $this->releaseType((string) ($album['album_type'] ?? ''), count($tracks)),
-            'release_date' => $this->date((string) ($album['release_date'] ?? '')),
-            'cover_url' => (string) data_get($images->first(), 'url', ''),
+            'release_type' => $this->releaseType((string) ($album['album_type'] ?? $album['type'] ?? ''), count($tracks)),
+            'release_date' => $this->date((string) ($album['release_date'] ?? $album['releaseDate'] ?? data_get($album, 'date.isoString', ''))),
+            'cover_url' => (string) (data_get($images->first(), 'url') ?? data_get($album, 'cover.url') ?? data_get($album, 'coverArt.sources.0.url') ?? ''),
             'label' => (string) ($album['label'] ?? ''),
             'upc_code' => (string) data_get($album, 'external_ids.upc', ''),
             'copyright' => $copyrights,
-            'tracks' => collect($tracks)->values()->map(fn ($track, $index) => [
-                'spotify_id' => (string) ($track['id'] ?? ''),
-                'title' => (string) ($track['name'] ?? 'Untitled Track'),
-                'track_number' => (int) ($track['track_number'] ?? $index + 1),
-                'duration' => $this->duration((int) ($track['duration_ms'] ?? 0)),
-                'explicit' => (bool) ($track['explicit'] ?? false),
-                'artist_names' => collect($track['artists'] ?? [])->pluck('name')->filter()->values()->all(),
-            ])->all(),
+            'tracks' => collect($tracks)->values()->map(function ($item, $index) {
+                $track = data_get($item, 'track') ?? $item;
+
+                return [
+                    'spotify_id' => (string) ($track['id'] ?? $track['uid'] ?? ''),
+                    'title' => (string) ($track['name'] ?? $track['title'] ?? 'Untitled Track'),
+                    'track_number' => (int) ($track['track_number'] ?? $track['trackNumber'] ?? $index + 1),
+                    'duration' => $this->trackDuration($track),
+                    'explicit' => (bool) ($track['explicit'] ?? (data_get($track, 'contentRating.label') === 'EXPLICIT')),
+                    'artist_names' => $this->artistNames($track['artists'] ?? data_get($track, 'artists.items', [])),
+                ];
+            })->all(),
         ];
     }
 
@@ -114,6 +122,28 @@ class SpotifyMetadataService
         $seconds = intdiv(max(0, $milliseconds), 1000);
 
         return sprintf('%d:%02d', intdiv($seconds, 60), $seconds % 60);
+    }
+
+    private function trackDuration(array $track): string
+    {
+        $milliseconds = (int) ($track['duration_ms'] ?? $track['durationMs'] ?? data_get($track, 'duration.totalMilliseconds', 0));
+        if ($milliseconds > 0) {
+            return $this->duration($milliseconds);
+        }
+
+        $milliseconds = (int) data_get($track, 'duration.totalMilliseconds', 0);
+        if ($milliseconds > 0) {
+            return $this->duration($milliseconds);
+        }
+
+        return (string) ($track['duration'] ?? '');
+    }
+
+    private function artistNames(mixed $artists): array
+    {
+        return collect(is_array($artists) ? $artists : [])
+            ->map(fn ($artist) => is_string($artist) ? $artist : ($artist['name'] ?? data_get($artist, 'profile.name')))
+            ->filter()->values()->all();
     }
 
     private function releaseType(string $type, int $trackCount): string

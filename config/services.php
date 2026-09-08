@@ -35,10 +35,10 @@ return [
         ],
     ],
 
-    'spotify23' => [
-        'key' => env('RAPIDAPI_SPOTIFY23_KEY'),
-        'host' => env('RAPIDAPI_SPOTIFY23_HOST', 'spotify23.p.rapidapi.com'),
-        'base_url' => env('RAPIDAPI_SPOTIFY23_BASE_URL', 'https://spotify23.p.rapidapi.com'),
+    'spotify_scraper' => [
+        'key' => env('RAPIDAPI_SPOTIFY_SCRAPER_KEY'),
+        'host' => env('RAPIDAPI_SPOTIFY_SCRAPER_HOST', 'spotify-scraper.p.rapidapi.com'),
+        'base_url' => env('RAPIDAPI_SPOTIFY_SCRAPER_BASE_URL', 'https://spotify-scraper.p.rapidapi.com'),
     ],
 
 ];
