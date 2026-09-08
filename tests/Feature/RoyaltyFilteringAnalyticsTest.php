@@ -48,7 +48,8 @@ class RoyaltyFilteringAnalyticsTest extends TestCase
             ->assertOk()
             ->assertSee('December 2025')
             ->assertSee('View / Edit Entries')
-            ->assertViewHas('periodRows', fn ($rows) => $rows->pluck('store_id')->all() === [$oldStore->id]);
+            ->assertViewHas('periodRows', fn ($rows) => $rows->pluck('store_id')->all() === [$oldStore->id])
+            ->assertViewHas('artistMonthlyRows', fn ($rows) => (float) $rows->first()->artist_earnings === 70.0);
 
         $this->actingAs($artistUser)->get('/artist/royalties?year=2025&month=12')
             ->assertOk()

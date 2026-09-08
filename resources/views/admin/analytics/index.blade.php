@@ -19,6 +19,15 @@
                 <div class="bg-white border-2 border-black shadow-[4px_4px_0_#000] p-5"><div class="text-xs font-extrabold uppercase text-black/60">Royalty Entries</div><div class="text-3xl font-black">{{ number_format($totals['entries']) }}</div></div>
             </div>
 
+            <div class="bg-white border-2 border-black shadow-[4px_4px_0_#000]">
+                <div class="p-5 border-b-2 border-black"><h3 class="font-extrabold text-lg">Monthly Artist Earnings</h3><p class="text3 text-sm font-bold text-black/50 mt-1">See exactly how much each artist earned in each month.</p></div>
+                <div class="p-5 overflow-x-auto"><table class="w-full min-w-[850px] text-sm"><thead><tr class="border-b-2 border-black"><th class="text-left py-3">Period</th><th class="text-left">Artist</th><th class="text-right">Streams</th><th class="text-right">Gross Revenue</th><th class="text-right">Artist Earnings</th><th class="text-right">TeleMusic Fee</th><th class="text-right">Entries</th><th class="text-right">Actions</th></tr></thead><tbody>
+                @forelse($artistMonthlyRows as $row)
+                    <tr class="border-b border-black/10 hover:bg-brand-500/10"><td class="py-3 font-bold">{{ date('F', mktime(0,0,0,$row->month,1)) }} {{ $row->year }}</td><td class="font-extrabold">{{ $row->artist->artist_name ?? 'N/A' }}</td><td class="text-right font-bold">{{ number_format($row->total_streams) }}</td><td class="text-right font-bold">${{ number_format($row->gross_revenue,2) }}</td><td class="text-right font-black text-emerald-700">${{ number_format($row->artist_earnings,2) }}</td><td class="text-right font-bold text-black/60">${{ number_format($row->telemusic_fee,2) }}</td><td class="text-right font-bold">{{ $row->entries_count }}</td><td class="text-right"><a href="{{ route('admin.royalties', ['artist_id'=>$row->artist_id, 'year'=>$row->year, 'month'=>$row->month]) }}" class="font-extrabold underline decoration-brand-500 decoration-2">View / Edit Entries</a></td></tr>
+                @empty<tr><td colspan="8" class="py-8 text-center font-bold text-black/40">No artist royalty data.</td></tr>@endforelse
+                </tbody></table><div class="mt-4">{{ $artistMonthlyRows->links() }}</div></div>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-white border-2 border-black shadow-[4px_4px_0_#000]">
                     <div class="p-5 border-b-2 border-black"><h3 class="font-extrabold text-lg">Monthly Performance</h3></div>

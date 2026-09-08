@@ -775,6 +775,22 @@ class AdminController extends Controller
             ->orderByDesc('month')
             ->get();
 
+        $artistMonthlyRows = (clone $baseQuery)
+            ->selectRaw('artist_id, month, year, SUM(streams) as total_streams, SUM(amount) as gross_revenue, COUNT(*) as entries_count')
+            ->with('artist')
+            ->groupBy('artist_id', 'year', 'month')
+            ->orderByDesc('year')
+            ->orderByDesc('month')
+            ->orderBy('artist_id')
+            ->paginate(30, ['*'], 'artist_page')
+            ->withQueryString();
+        $artistMonthlyRows->getCollection()->each(function ($row) {
+            $row->artist_earnings = $row->artist
+                ? $row->artist->getArtistShareAttribute((float) $row->gross_revenue)
+                : (float) $row->gross_revenue;
+            $row->telemusic_fee = (float) $row->gross_revenue - $row->artist_earnings;
+        });
+
         $storeAnalytics = (clone $baseQuery)
             ->selectRaw('store_id, SUM(streams) as total_streams, SUM(amount) as total_revenue, COUNT(*) as entries_count')
             ->with('store')
@@ -790,7 +806,7 @@ class AdminController extends Controller
             ->orderByDesc('month')
             ->orderBy('artist_id')
             ->orderBy('store_id')
-            ->paginate(30)
+            ->paginate(30, ['*'], 'store_page')
             ->withQueryString();
 
         $totals = [
@@ -803,7 +819,7 @@ class AdminController extends Controller
         $years = Royalty::distinct()->orderByDesc('year')->pluck('year');
 
         return view('admin.analytics.index', compact(
-            'monthlyStats', 'storeAnalytics', 'periodRows', 'totals',
+            'monthlyStats', 'artistMonthlyRows', 'storeAnalytics', 'periodRows', 'totals',
             'artists', 'stores', 'years', 'filters'
         ));
     }
