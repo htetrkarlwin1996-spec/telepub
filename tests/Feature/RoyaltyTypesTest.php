@@ -41,6 +41,12 @@ class RoyaltyTypesTest extends TestCase
 
         $this->assertSame(280.0, (float) $artist->fresh()->available_balance);
 
+        $artist->update(['total_earnings' => 1]);
+        $this->actingAs($admin)->get('/admin/artists')
+            ->assertOk()
+            ->assertSee('$280.00')
+            ->assertDontSee('$1.00');
+
         Sanctum::actingAs($artistUser);
         $this->getJson('/api/artist/royalties/summary')
             ->assertOk()

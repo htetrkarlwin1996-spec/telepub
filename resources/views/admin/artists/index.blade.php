@@ -32,7 +32,7 @@
                                 <td class="py-3 px-2 text-black/70 hidden lg:table-cell font-semibold">{{ $artist->genre ?? '-' }}</td>
                                 <td class="py-3 px-2 text-center font-bold text-black">{{ $artist->albums_count }}</td>
                                 <td class="py-3 px-2 text-center font-bold text-black">{{ $artist->songs_count }}</td>
-                                <td class="py-3 px-2 text-right font-black text-black">${{ number_format($artist->total_earnings, 2) }}</td>
+                                <td class="py-3 px-2 text-right font-black text-black">${{ number_format($artist->getArtistShareAttribute((float) ($artist->royalties_sum_amount ?? 0)), 2) }}</td>
                                 <td class="py-3 px-2 text-right">
                                     <a href="{{ route('admin.artists.edit', $artist) }}" class="font-extrabold text-black underline decoration-brand-500 decoration-2 underline-offset-2 hover:decoration-black text-xs">Edit</a>
                                 </td>
