@@ -24,7 +24,7 @@ class AdminRoyaltyCsvImportTest extends TestCase
         $album = Album::create(['artist_id' => $artist->id, 'title' => 'CSV Album', 'release_type' => 'single']);
         $song = Song::create(['album_id' => $album->id, 'artist_id' => $artist->id, 'title' => 'CSV Song', 'isrc_code' => 'USRC17607839']);
         $store = MusicStore::where('name', 'Apple Music')->firstOrFail();
-        $csv = "artist,month,music_store,isrc,track_title,units,net_revenue_eur\nCSV Artist,2026-04,Apple Music,US-RC1-76-07839,CSV Song,500,0.019978313588\nCSV Artist,2026-04,Soundcloud,US-RC1-76-07839,CSV Song,10,0.010000000000\n";
+        $csv = "artist,month,music_store,isrc,track_title,units,net_revenue_eur\nCSV Artist,2026-04,Apple Music,US-RC1-76-07839,CSV Song,500,0.019978313588\nCSV Artist,2026-04,Amazon Prime,US-RC1-76-07839,CSV Song,2,-0.010000000000\nCSV Artist,2026-04,Soundcloud,US-RC1-76-07839,CSV Song,10,0.010000000000\n";
         $defaults = ['royalty_type' => 'royalties'];
 
         $this->actingAs($admin)->post(route('admin.royalties.import'), $defaults + [
@@ -39,12 +39,12 @@ class AdminRoyaltyCsvImportTest extends TestCase
             'currency' => 'EUR', 'streams' => 500,
         ]);
         $this->assertEqualsWithDelta(0.0199783136, (float) $song->royalties()->first()->amount, 0.0000000001);
-        $this->assertEqualsWithDelta(0.0139848195, (float) $artist->fresh()->available_balance, 0.0000000001);
+        $this->assertEqualsWithDelta(0.0069848195, (float) $artist->fresh()->available_balance, 0.0000000001);
 
         $this->actingAs($admin)->post(route('admin.royalties.import'), $defaults + [
             'csv_file' => UploadedFile::fake()->createWithContent('report.csv', $csv),
-        ])->assertSessionHasErrors('csv_file');
-        $this->assertDatabaseCount('royalties', 1);
+        ])->assertSessionHas('info', fn ($message) => str_contains($message, '2 rows were already imported'));
+        $this->assertDatabaseCount('royalties', 2);
     }
 
     public function test_import_rolls_back_when_an_isrc_does_not_match(): void

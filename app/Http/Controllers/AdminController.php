@@ -213,6 +213,10 @@ class AdminController extends Controller
         $redirect = redirect()->route('admin.royalties')
             ->with('success', "{$result['imported']} royalty rows imported successfully.");
 
+        if ($result['already_imported'] > 0) {
+            $redirect->with('info', "{$result['already_imported']} rows were already imported and were not duplicated.");
+        }
+
         if ($result['skipped'] > 0) {
             $message = "{$result['skipped']} rows were skipped. ".implode(' ', $result['skip_messages']);
             $redirect->with('warning', $message);

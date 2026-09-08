@@ -17,9 +17,7 @@ class RoyaltyCsvImportService
     public function import(UploadedFile $file, array $defaults, User $admin): array
     {
         $hash = hash_file('sha256', $file->getRealPath());
-        if (RoyaltyImport::where('file_hash', $hash)->exists()) {
-            throw new RuntimeException('This exact CSV file has already been imported.');
-        }
+        $existingImport = RoyaltyImport::where('file_hash', $hash)->first();
 
         [$headers, $rows] = $this->read($file);
         $isrcColumn = $this->column($headers, ['isrc', 'isrccode', 'trackisrc']);
@@ -39,18 +37,25 @@ class RoyaltyCsvImportService
         $storesByName = $stores->keyBy(fn (MusicStore $store) => $this->normalize($store->name));
         $storesBySlug = $stores->keyBy(fn (MusicStore $store) => $this->normalize($store->slug));
 
-        return DB::transaction(function () use ($file, $hash, $rows, $headers, $isrcColumn, $amountColumn, $defaults, $admin, $songs, $storesById, $storesByName, $storesBySlug) {
-            $import = RoyaltyImport::create([
+        return DB::transaction(function () use ($file, $hash, $existingImport, $rows, $headers, $isrcColumn, $amountColumn, $defaults, $admin, $songs, $storesById, $storesByName, $storesBySlug) {
+            $import = $existingImport ?? RoyaltyImport::create([
                 'file_name' => $file->getClientOriginalName(),
                 'file_hash' => $hash,
                 'entered_by' => $admin->id,
             ]);
+            $importedRows = $import->royalties()->whereNotNull('import_row')->pluck('import_row')->flip();
             $count = 0;
+            $alreadyImported = 0;
             $errors = [];
 
             foreach ($rows as $index => $values) {
                 $line = $index + 2;
                 if (count(array_filter($values, fn ($value) => trim((string) $value) !== '')) === 0) {
+                    continue;
+                }
+                if ($importedRows->has($line)) {
+                    $alreadyImported++;
+
                     continue;
                 }
                 $row = array_combine($headers, array_pad(array_slice($values, 0, count($headers)), count($headers), ''));
@@ -74,7 +79,7 @@ class RoyaltyCsvImportService
                 $amount = $this->decimal($row[$amountColumn] ?? '');
                 [$month, $year] = $this->period($row, $defaults);
                 $streams = $this->decimal($this->value($row, ['streams', 'streamcount', 'quantity', 'units']) ?: '0');
-                if ($amount === null || $amount < 0 || $month < 1 || $month > 12 || $year < 2020) {
+                if ($amount === null || $month < 1 || $month > 12 || $year < 2020) {
                     $errors[] = "Row {$line}: invalid amount, month, or year.";
 
                     continue;
@@ -99,15 +104,16 @@ class RoyaltyCsvImportService
                 $count++;
             }
 
-            if ($count === 0) {
+            if ($count === 0 && $alreadyImported === 0) {
                 throw new RuntimeException('No rows could be imported. '.implode(' ', array_slice($errors, 0, 10)));
             }
-            $import->update(['row_count' => $count]);
+            $import->update(['row_count' => $import->royalties()->count()]);
 
             return [
                 'imported' => $count,
                 'skipped' => count($errors),
                 'skip_messages' => array_slice($errors, 0, 10),
+                'already_imported' => $alreadyImported,
             ];
         });
     }
@@ -183,6 +189,8 @@ class RoyaltyCsvImportService
     {
         $name = $this->normalize($value);
         $aliases = [
+            'amazonprime' => 'amazon',
+            'amazonprimemusic' => 'amazon',
             'meta' => 'instagramfacebookmeta',
             'facebook' => 'instagramfacebookmeta',
             'instagram' => 'instagramfacebookmeta',
