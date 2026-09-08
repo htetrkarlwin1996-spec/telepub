@@ -4,41 +4,40 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
-use App\Services\OtpService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Inertia\Inertia;
-use Inertia\Response;
+use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
 {
-    public function create(): Response
+    /**
+     * Display the login view.
+     */
+    public function create(): View
     {
-        return Inertia::render('Auth/Login', [
-            'status' => session('status'),
-        ]);
+        return view('auth.login');
     }
 
-    public function store(LoginRequest $request, OtpService $otpService): RedirectResponse
+    /**
+     * Handle an incoming authentication request.
+     */
+    public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
 
         $request->session()->regenerate();
 
-        $user = Auth::user();
+        $fallbackRoute = $request->user()->isAdmin()
+            ? route('admin.dashboard', absolute: false)
+            : route('dashboard', absolute: false);
 
-        if (!$user->hasVerifiedEmail()) {
-            if (!$user->email_otp_code || !$user->email_otp_expires_at || now()->greaterThan($user->email_otp_expires_at)) {
-                $otpService->sendEmailOtp($user);
-            }
-
-            return redirect()->route('verification.notice');
-        }
-
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect()->intended($fallbackRoute);
     }
 
+    /**
+     * Destroy an authenticated session.
+     */
     public function destroy(Request $request): RedirectResponse
     {
         Auth::guard('web')->logout();

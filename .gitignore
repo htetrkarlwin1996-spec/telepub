@@ -1,11 +1,13 @@
 *.log
+error_log
+php.ini
+.user.ini
+/public/php.ini
+/public/.user.ini
 .DS_Store
 .env
 .env.backup
 .env.production
-.env.*
-!.env.example
-error_log
 .phpactor.json
 .phpunit.result.cache
 /.codex
