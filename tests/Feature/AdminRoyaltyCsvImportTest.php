@@ -16,6 +16,19 @@ class AdminRoyaltyCsvImportTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_royalty_page_renders_with_new_and_unknown_store_logos(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        MusicStore::create(['name' => 'Unknown DSP', 'slug' => 'unknown-dsp']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.royalties'))
+            ->assertOk()
+            ->assertSee('YouTube Audio Content ID')
+            ->assertSee('YouTube Art Tracks')
+            ->assertSee('Unknown DSP');
+    }
+
     public function test_admin_can_import_by_isrc_and_duplicate_file_is_rejected(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);

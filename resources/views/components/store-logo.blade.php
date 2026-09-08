@@ -34,7 +34,7 @@
     ];
 
     $logo = $logos[$slug] ?? '';
-    $bg = $logos[$slug] ? 'bg-white' : 'bg-gray-100';
+    $bg = $logo !== '' ? 'bg-white' : 'bg-gray-100';
 
     // Tailwind JIT needs literal class names — use a mapping instead of dynamic w-{{ $size }}
     $sizeClass = match ((int) $size) {
