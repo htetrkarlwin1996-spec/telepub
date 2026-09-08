@@ -6,10 +6,6 @@
         <div class="max-w-7xl mx-auto">
             @php
                 $artist = auth()->user()->artist;
-                $artistPct = $artist->revenue_share_percentage ?? 70;
-                $teleMusicPct = 100 - $artistPct;
-                $netRoyalties = $artist->getArtistShareAttribute($totalRoyalties);
-                $teleMusicFees = $artist->getTeleMusicFeeAttribute($totalRoyalties);
             @endphp
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
                 @foreach(\App\Models\Royalty::TYPES as $type => $label)
@@ -23,22 +19,9 @@
                     <div class="text-2xl font-black mt-1">${{ number_format($balanceBreakdown->sum(), 2) }}</div>
                 </div>
             </div>
-            <!-- Summary -->
             <div class="bg-brand-500 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6 mb-8">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <div class="text-xs font-extrabold uppercase tracking-wider text-black/60">Total Revenue</div>
-                        <div class="text-4xl font-black text-black mt-1">${{ number_format($totalRoyalties, 2) }}</div>
-                    </div>
-                    <div>
-                        <div class="text-xs font-extrabold uppercase tracking-wider text-black/60">Your Share ({{ $artistPct }}%)</div>
-                        <div class="text-4xl font-black text-emerald-700 mt-1">${{ number_format($netRoyalties, 2) }}</div>
-                    </div>
-                    <div>
-                        <div class="text-xs font-extrabold uppercase tracking-wider text-black/60">TeleMusic Fee ({{ $teleMusicPct }}%)</div>
-                        <div class="text-4xl font-black text-black/50 mt-1">${{ number_format($teleMusicFees, 2) }}</div>
-                    </div>
-                </div>
+                <div class="text-xs font-extrabold uppercase tracking-wider text-black/60">Total Earnings</div>
+                <div class="text-4xl font-black text-black mt-1">${{ number_format($totalRoyalties, 2) }}</div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -101,9 +84,7 @@
                             <th class="text-left py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Store</th>
                             <th class="text-left py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Type</th>
                             <th class="text-left py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Period</th>
-                            <th class="text-right py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Total Revenue</th>
-                            <th class="text-right py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Your Share</th>
-                            <th class="text-center py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">TeleMusic Fee</th>
+                            <th class="text-right py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Earnings</th>
                             <th class="text-right py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Streams</th>
                             <th class="text-left py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Notes</th>
                         </tr></thead>
@@ -111,7 +92,6 @@
                             @forelse($royalties as $royalty)
                             @php
                                 $itemArtistShare = $artist->getArtistShareAttribute($royalty->amount);
-                                $itemTeleMusicFee = $artist->getTeleMusicFeeAttribute($royalty->amount);
                                 $hasCollaborators = $royalty->relationLoaded('album') && $royalty->album && $royalty->album->relationLoaded('collaboratingArtists') && $royalty->album->collaboratingArtists->count() > 0;
                             @endphp
                             <tr class="border-b border-black/10 hover:bg-brand-500/10 transition-colors">
@@ -123,15 +103,13 @@
                                 </td>
                                 <td class="py-3 px-2 font-bold text-black/70">{{ $royalty->royalty_type_label }}</td>
                                 <td class="py-3 px-2 font-semibold text-black/70">{{ $royalty->month }}/{{ $royalty->year }}</td>
-                                <td class="py-3 px-2 text-right font-black text-black">${{ number_format($royalty->amount, 2) }}</td>
                                 <td class="py-3 px-2 text-right font-black text-emerald-600">+${{ number_format($itemArtistShare, 2) }}</td>
-                                <td class="py-3 px-2 text-center font-bold text-black/60 text-xs">{{ $teleMusicPct }}%<br><span class="text-[10px] text-black/40">${{ number_format($itemTeleMusicFee, 2) }}</span></td>
                                 <td class="py-3 px-2 text-right font-bold text-black/70">{{ $royalty->streams ? number_format($royalty->streams) : '-' }}</td>
                                 <td class="py-3 px-2 text-xs font-semibold text-black/50">{{ $royalty->notes ?? '-' }}</td>
                             </tr>
                             @if($hasCollaborators)
                                 <tr class="bg-purple-50 border-b border-black/10">
-                                    <td colspan="8" class="py-2 px-6 text-xs font-bold text-black/70">
+                                    <td colspan="6" class="py-2 px-6 text-xs font-bold text-black/70">
                                         <span class="font-extrabold uppercase text-[10px]">Collaborator Revenue Split:</span>
                                         @foreach($royalty->album->collaboratingArtists as $collab)
                                             <span class="ml-3 inline-flex items-center gap-1">
@@ -142,7 +120,7 @@
                                 </tr>
                             @endif
                             @empty
-                            <tr><td colspan="8" class="py-8 text-center font-bold text-black/40">No royalties recorded yet.</td></tr>
+                            <tr><td colspan="6" class="py-8 text-center font-bold text-black/40">No royalties recorded yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>

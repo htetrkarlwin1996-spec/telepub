@@ -26,8 +26,16 @@ class RoyaltyController extends Controller
             ->orderBy('month', 'desc')
             ->paginate($request->get('per_page', 20));
 
+        $items = collect($royalties->items())->map(function (Royalty $royalty) use ($artist) {
+            $data = $royalty->toArray();
+            $data['amount'] = $artist->getArtistShareAttribute((float) $royalty->amount);
+            $data['earnings'] = $data['amount'];
+
+            return $data;
+        });
+
         return response()->json([
-            'data' => $royalties->items(),
+            'data' => $items,
             'meta' => [
                 'current_page' => $royalties->currentPage(),
                 'last_page' => $royalties->lastPage(),
@@ -76,21 +84,18 @@ class RoyaltyController extends Controller
         $balanceBreakdown = collect(Royalty::TYPES)->mapWithKeys(fn ($label, $type) => [
             $type => round($artist->getArtistShareAttribute((float) ($grossByType[$type] ?? 0)), 2),
         ]);
+        $monthly->each(fn ($row) => $row->amount = $artist->getArtistShareAttribute((float) $row->amount));
+        $byStore->each(fn ($row) => $row->amount = $artist->getArtistShareAttribute((float) $row->amount));
+        $totalEarnings = $artist->getArtistShareAttribute((float) $totals->total_amount);
 
         return response()->json([
             'data' => [
-                'total_amount' => (float) $totals->total_amount,
+                'total_amount' => $totalEarnings,
+                'total_earnings' => $totalEarnings,
                 'total_streams' => (int) $totals->total_streams,
-                'artist_share' => $artist->getArtistShareAttribute($totals->total_amount),
-                'tele_music_fee' => $artist->getTeleMusicFeeAttribute($totals->total_amount),
                 'balance_breakdown' => [
                     ...$balanceBreakdown->all(),
                     'total_balance' => round($balanceBreakdown->sum(), 2),
-                    'gross_amount' => (float) $totals->total_amount,
-                    'revenue_share_percentage' => (float) $artist->revenue_share_percentage,
-                    'artist_share_amount' => $artist->getArtistShareAttribute($totals->total_amount),
-                    'telemusic_fee_percentage' => (float) $artist->tele_music_fee_percentage,
-                    'telemusic_fee_amount' => $artist->getTeleMusicFeeAttribute($totals->total_amount),
                     'currency' => 'USD',
                 ],
                 'monthly' => $monthly,
@@ -110,8 +115,17 @@ class RoyaltyController extends Controller
             abort(403, 'Unauthorized.');
         }
 
-        return response()->json([
-            'data' => $royalty->load('store', 'album', 'song', 'artist'),
-        ]);
+        $royalty->load('store', 'album', 'song', 'artist');
+
+        if ($user->isAdmin()) {
+            return response()->json(['data' => $royalty]);
+        }
+
+        $data = $royalty->toArray();
+        $data['amount'] = $user->artist->getArtistShareAttribute((float) $royalty->amount);
+        $data['earnings'] = $data['amount'];
+        unset($data['artist']);
+
+        return response()->json(['data' => $data]);
     }
 }

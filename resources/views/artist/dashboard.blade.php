@@ -35,24 +35,6 @@
                         <div class="text-3xl font-black text-black mt-1">${{ number_format($balanceBreakdown->sum(), 2) }}</div>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6 pt-6 border-t-2 border-black">
-                    <div class="bg-white/30 border-2 border-black p-4">
-                        <div class="text-xs font-extrabold uppercase text-black/60">Gross Amount</div>
-                        <div class="text-2xl font-black mt-1">${{ number_format($totalRoyalties, 2) }}</div>
-                    </div>
-                    <div class="bg-white/30 border-2 border-black p-4">
-                        <div class="text-xs font-extrabold uppercase text-black/60">Revenue Share</div>
-                        <div class="text-2xl font-black mt-1">{{ number_format($artist->revenue_share_percentage, 2) }}%</div>
-                    </div>
-                    <div class="bg-white/30 border-2 border-black p-4">
-                        <div class="text-xs font-extrabold uppercase text-black/60">Artist Share Amount</div>
-                        <div class="text-2xl font-black mt-1">${{ number_format($balanceBreakdown->sum(), 2) }}</div>
-                    </div>
-                    <div class="bg-black text-white border-2 border-black p-4">
-                        <div class="text-xs font-extrabold uppercase text-white/60">TeleMusic Fee ({{ number_format($artist->tele_music_fee_percentage, 2) }}%)</div>
-                        <div class="text-2xl font-black mt-1">${{ number_format($artist->getTeleMusicFeeAttribute($totalRoyalties), 2) }}</div>
-                    </div>
-                </div>
                 @if($artist->available_balance > 0)
                 <div class="mt-4">
                     <a href="{{ route('artist.withdrawals.create') }}" class="inline-flex items-center px-4 py-2 bg-white border-2 border-black font-extrabold text-xs text-black uppercase tracking-widest shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all rounded-none">
@@ -89,7 +71,7 @@
                 <div class="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-6">
                     <div class="flex items-center justify-between">
                         <div>
-                            <div class="text-xs font-extrabold uppercase tracking-wider text-black/50">Total Royalties</div>
+                            <div class="text-xs font-extrabold uppercase tracking-wider text-black/50">Total Earnings</div>
                             <div class="mt-1 text-3xl font-black text-black">${{ number_format($totalRoyalties, 2) }}</div>
                         </div>
                         <div class="w-12 h-12 bg-emerald-400 border-2 border-black flex items-center justify-center">
@@ -151,7 +133,7 @@
                                 <div class="font-bold text-black">{{ $royalty->store->name ?? 'N/A' }}</div>
                                 <div class="text-xs font-semibold text-black/50">{{ $royalty->month }}/{{ $royalty->year }}</div>
                             </div>
-                            <span class="font-black text-black">+${{ number_format($royalty->amount, 2) }}</span>
+                            <span class="font-black text-black">+${{ number_format($artist->getArtistShareAttribute($royalty->amount), 2) }}</span>
                         </div>
                         @empty
                         <p class="font-bold text-black/40 text-center py-4">No royalties recorded yet.</p>

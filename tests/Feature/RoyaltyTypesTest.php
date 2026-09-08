@@ -14,7 +14,7 @@ class RoyaltyTypesTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_can_add_each_income_type_and_mobile_summary_returns_total_balance(): void
+    public function test_artist_only_sees_their_earnings_while_admin_keeps_gross_totals(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
         $artistUser = User::factory()->create(['role' => 'artist']);
@@ -44,15 +44,34 @@ class RoyaltyTypesTest extends TestCase
         Sanctum::actingAs($artistUser);
         $this->getJson('/api/artist/royalties/summary')
             ->assertOk()
+            ->assertJsonPath('data.total_amount', 280)
+            ->assertJsonPath('data.total_earnings', 280)
             ->assertJsonPath('data.balance_breakdown.royalties', 70)
             ->assertJsonPath('data.balance_breakdown.publishing_rights', 70)
             ->assertJsonPath('data.balance_breakdown.composer_rights', 70)
             ->assertJsonPath('data.balance_breakdown.mechanical_royalties', 70)
             ->assertJsonPath('data.balance_breakdown.total_balance', 280)
-            ->assertJsonPath('data.balance_breakdown.gross_amount', 400)
-            ->assertJsonPath('data.balance_breakdown.revenue_share_percentage', 70)
-            ->assertJsonPath('data.balance_breakdown.artist_share_amount', 280)
-            ->assertJsonPath('data.balance_breakdown.telemusic_fee_percentage', 30)
-            ->assertJsonPath('data.balance_breakdown.telemusic_fee_amount', 120);
+            ->assertJsonMissingPath('data.tele_music_fee')
+            ->assertJsonMissingPath('data.balance_breakdown.gross_amount')
+            ->assertJsonMissingPath('data.balance_breakdown.telemusic_fee_amount');
+
+        $royalty = Royalty::firstOrFail();
+
+        $this->getJson('/api/artist/royalties')
+            ->assertOk()
+            ->assertJsonPath('data.0.amount', 70)
+            ->assertJsonPath('data.0.earnings', 70);
+
+        $this->getJson('/api/artist/royalties/'.$royalty->id)
+            ->assertOk()
+            ->assertJsonPath('data.amount', 70)
+            ->assertJsonPath('data.earnings', 70)
+            ->assertJsonMissingPath('data.artist');
+
+        $this->actingAs($artistUser)->get('/dashboard')
+            ->assertOk()
+            ->assertSee('Total Earnings')
+            ->assertDontSee('Gross Amount')
+            ->assertDontSee('TeleMusic Fee');
     }
 }

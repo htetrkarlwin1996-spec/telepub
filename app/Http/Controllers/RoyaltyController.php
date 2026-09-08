@@ -16,20 +16,22 @@ class RoyaltyController extends Controller
             ->latest()
             ->paginate(20);
 
-        $totalRoyalties = Royalty::where('artist_id', $artist->id)->sum('amount');
+        $grossRoyalties = (float) Royalty::where('artist_id', $artist->id)->sum('amount');
         
         $monthlyRoyalties = Royalty::where('artist_id', $artist->id)
             ->selectRaw('month, year, SUM(amount) as total, SUM(streams) as total_streams')
             ->groupBy('year', 'month')
             ->orderBy('year', 'desc')
             ->orderBy('month', 'desc')
-            ->get();
+            ->get()
+            ->each(fn ($row) => $row->total = $artist->getArtistShareAttribute((float) $row->total));
 
         $storeBreakdown = Royalty::where('artist_id', $artist->id)
             ->selectRaw('store_id, SUM(amount) as total')
             ->with('store')
             ->groupBy('store_id')
-            ->get();
+            ->get()
+            ->each(fn ($row) => $row->total = $artist->getArtistShareAttribute((float) $row->total));
 
         $grossByType = Royalty::where('artist_id', $artist->id)
             ->selectRaw('royalty_type, COALESCE(SUM(amount), 0) as total')
@@ -38,6 +40,8 @@ class RoyaltyController extends Controller
         $balanceBreakdown = collect(Royalty::TYPES)->mapWithKeys(fn ($label, $type) => [
             $type => $artist->getArtistShareAttribute((float) ($grossByType[$type] ?? 0)),
         ]);
+
+        $totalRoyalties = $artist->getArtistShareAttribute($grossRoyalties);
 
         return view('artist.royalties.index', compact(
             'royalties', 'totalRoyalties', 'monthlyRoyalties', 'storeBreakdown', 'balanceBreakdown'

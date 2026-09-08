@@ -30,7 +30,6 @@ class DashboardController extends Controller
         $songs = Song::where('artist_id', $artist->id)->latest()->take(5)->get();
         $totalSongs = Song::where('artist_id', $artist->id)->count();
         $totalAlbums = Album::where('artist_id', $artist->id)->count();
-        $totalRoyalties = Royalty::where('artist_id', $artist->id)->sum('amount');
         $totalStreams = \App\Models\Analytics::where('artist_id', $artist->id)->sum('streams');
         $recentRoyalties = Royalty::where('artist_id', $artist->id)->with('store')->latest()->take(5)->get();
         $grossByType = Royalty::where('artist_id', $artist->id)
@@ -40,6 +39,7 @@ class DashboardController extends Controller
         $balanceBreakdown = collect(Royalty::TYPES)->mapWithKeys(fn ($label, $type) => [
             $type => $artist->getArtistShareAttribute((float) ($grossByType[$type] ?? 0)),
         ]);
+        $totalRoyalties = $balanceBreakdown->sum();
         $distributions = Distribution::where('artist_id', $artist->id)->with('store', 'song')->latest()->take(5)->get();
         $pendingWithdrawals = Withdrawal::where('artist_id', $artist->id)->where('status', 'pending')->sum('amount');
 
