@@ -25,7 +25,7 @@
                 </div>
                 @endforeach
                 <div class="bg-brand-500 border-2 border-black p-4 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
-                    <div class="text-xs font-extrabold uppercase text-black/60">Total Balance</div>
+                    <div class="text-xs font-extrabold uppercase text-black/60">Selected Royalties</div>
                     <div class="text-2xl font-black mt-1">${{ number_format($balanceBreakdown->sum(), 2) }}</div>
                 </div>
             </div>

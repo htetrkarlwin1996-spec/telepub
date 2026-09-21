@@ -85,4 +85,21 @@ class IreneHistoricalFinanceMigrationTest extends TestCase
         Mail::assertNothingSent();
         Notification::assertNothingSent();
     }
+
+    public function test_completed_historical_withdrawals_leave_no_available_balance_on_dashboard(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'irenezinmarmyint20224@gmail.com',
+            'role' => 'artist',
+            'email_verified_at' => now(),
+        ]);
+        Artist::create(['user_id' => $user->id, 'artist_name' => 'Irene Zin Mar Myint']);
+        (require database_path('migrations/2026_09_21_070000_import_irene_approved_royalties_and_withdrawals.php'))->up();
+        (require database_path('migrations/2026_09_21_080000_complete_irene_historical_withdrawals.php'))->up();
+
+        $this->actingAs($user)->get('/dashboard')
+            ->assertOk()
+            ->assertSeeInOrder(['Available Balance', '$0.00'])
+            ->assertSeeInOrder(['Total Earnings', '$5,146.00']);
+    }
 }

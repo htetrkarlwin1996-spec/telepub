@@ -31,8 +31,8 @@
                         <div class="text-3xl font-black text-black mt-1">${{ number_format($balanceBreakdown['mechanical_royalties'], 2) }}</div>
                     </div>
                     <div class="bg-white/30 border-2 border-black p-4">
-                        <div class="text-xs font-extrabold uppercase tracking-wider text-black/60">Total Balance</div>
-                        <div class="text-3xl font-black text-black mt-1">${{ number_format($balanceBreakdown->sum(), 2) }}</div>
+                        <div class="text-xs font-extrabold uppercase tracking-wider text-black/60">Available Balance</div>
+                        <div class="text-3xl font-black text-black mt-1">${{ number_format($artist->available_balance, 2) }}</div>
                     </div>
                 </div>
                 <div class="mt-4 flex flex-wrap gap-3">
