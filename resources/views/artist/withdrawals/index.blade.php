@@ -33,7 +33,13 @@
                                 <td class="py-3 px-2 text-right font-bold text-black">${{ number_format($w->amount, 2) }}</td>
                                 <td class="py-3 px-2 text-right font-semibold text-black/50">${{ number_format($w->fee, 2) }}</td>
                                 <td class="py-3 px-2 text-right font-black text-black">${{ number_format($w->total, 2) }}</td>
-                                <td class="py-3 px-2 font-semibold text-black/70 capitalize">{{ $w->payment_method }}</td>
+                                <td class="py-3 px-2 font-semibold text-black/70">
+                                    {{ ['kbz_pay' => 'KBZ Pay', 'wave_pay' => 'Wave Pay', 'thai_bank_transfer' => 'Thai Bank Transfer', 'wire_transfer' => 'Wire Transfer'][$w->payment_method] ?? ucwords(str_replace('_', ' ', $w->payment_method ?? '—')) }}
+                                    @php($details = json_decode($w->payment_details ?? '', true))
+                                    @if(is_array($details))
+                                        <div class="text-xs font-normal">{{ $details['account_name'] ?? $details['beneficiary_name'] ?? '' }}@if(!empty($details['phone'])) · {{ $details['phone'] }}@endif</div>
+                                    @endif
+                                </td>
                                 <td class="py-3 px-2 text-center">
                                     <span class="text-xs font-bold border border-black px-2 py-1
                                         @if($w->status == 'pending') bg-amber-200 text-black

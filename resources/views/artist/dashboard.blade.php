@@ -35,13 +35,14 @@
                         <div class="text-3xl font-black text-black mt-1">${{ number_format($balanceBreakdown->sum(), 2) }}</div>
                     </div>
                 </div>
-                @if($artist->available_balance > 0)
-                <div class="mt-4">
+                <div class="mt-4 flex flex-wrap gap-3">
+                    <a href="{{ route('artist.withdrawals') }}" class="inline-flex items-center px-4 py-2 bg-white border-2 border-black font-extrabold text-xs text-black uppercase tracking-widest">Withdrawal History</a>
+                    @if($artist->available_balance >= 10)
                     <a href="{{ route('artist.withdrawals.create') }}" class="inline-flex items-center px-4 py-2 bg-white border-2 border-black font-extrabold text-xs text-black uppercase tracking-widest shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all rounded-none">
                         Withdraw Funds
                     </a>
+                    @endif
                 </div>
-                @endif
             </div>
 
             <!-- Stats Grid -->

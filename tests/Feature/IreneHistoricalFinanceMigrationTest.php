@@ -57,4 +57,32 @@ class IreneHistoricalFinanceMigrationTest extends TestCase
         Mail::assertNothingSent();
         Notification::assertNothingSent();
     }
+
+    public function test_it_completes_historical_kbz_pay_withdrawals_once_without_changing_balance_or_email(): void
+    {
+        Mail::fake();
+        Notification::fake();
+
+        $user = User::factory()->create(['email' => 'irenezinmarmyint20224@gmail.com']);
+        $artist = Artist::create(['user_id' => $user->id, 'artist_name' => 'Irene Zin Mar Myint']);
+        (require database_path('migrations/2026_09_21_070000_import_irene_approved_royalties_and_withdrawals.php'))->up();
+        $migration = require database_path('migrations/2026_09_21_080000_complete_irene_historical_withdrawals.php');
+        $migration->up();
+        $migration->up();
+
+        $this->assertSame(5, DB::table('withdrawals')->where('artist_id', $artist->id)->where('status', 'completed')->count());
+        $this->assertSame(5, DB::table('payouts')->where('artist_id', $artist->id)->where('status', 'paid')->count());
+        $this->assertEquals(0, $artist->fresh()->available_balance);
+        foreach ([3 => 1378, 6 => 876, 7 => 996, 8 => 1173, 9 => 723] as $month => $amount) {
+            $withdrawal = DB::table('withdrawals')->where('artist_id', $artist->id)->where('requested_at', sprintf('2026-%02d-01 00:00:00', $month))->first();
+            $this->assertSame('kbz_pay', $withdrawal->payment_method);
+            $this->assertSame(['account_name' => 'Yarzar Soe Moe', 'phone' => '09775001977'], json_decode($withdrawal->payment_details, true));
+            $this->assertEquals($amount, $withdrawal->total);
+            $payout = DB::table('payouts')->where('invoice_number', 'IRENE-2026-'.sprintf('%02d', $month))->first();
+            $this->assertEquals($amount, $payout->total);
+            $this->assertSame('kbz_pay', $payout->payment_method);
+        }
+        Mail::assertNothingSent();
+        Notification::assertNothingSent();
+    }
 }

@@ -25,6 +25,10 @@
                             <x-input-label for="payment_method" value="Payment Method *" />
                             <select id="payment_method" name="payment_method" class="block mt-1 w-full border-2 border-black px-3 py-2.5 text-sm font-semibold text-black focus:border-brand-500 focus:ring-0 focus:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all rounded-none" required>
                                 <option value="">Select Method</option>
+                                <option value="kbz_pay" @selected(old('payment_method') === 'kbz_pay')>KBZ Pay</option>
+                                <option value="wave_pay" @selected(old('payment_method') === 'wave_pay')>Wave Pay</option>
+                                <option value="thai_bank_transfer" @selected(old('payment_method') === 'thai_bank_transfer')>Thai Bank Transfer</option>
+                                <option value="wire_transfer" @selected(old('payment_method') === 'wire_transfer')>Wire Transfer</option>
                                 <option value="paypal">PayPal</option>
                                 <option value="bank_transfer">Bank Transfer</option>
                                 <option value="wise">Wise</option>
@@ -32,10 +36,29 @@
                             </select>
                             <x-input-error :messages="$errors->get('payment_method')" class="mt-2" />
                         </div>
-                        <div>
+                        @foreach([
+                            'account_name' => 'Account Holder Name',
+                            'phone' => 'Phone Number',
+                            'bank_name' => 'Bank Name',
+                            'account_number' => 'Account Number / IBAN',
+                            'branch' => 'Bank Branch (Optional)',
+                            'beneficiary_name' => 'Beneficiary Name',
+                            'swift_bic' => 'SWIFT / BIC',
+                            'bank_address' => 'Bank Address',
+                            'beneficiary_address' => 'Beneficiary Address',
+                            'bank_country' => 'Bank Country',
+                            'routing_number' => 'Routing Number (If Applicable)',
+                        ] as $field => $label)
+                        <div data-payment-field="{{ $field }}" class="hidden">
+                            <x-input-label :for="$field" :value="$label" />
+                            <x-text-input :id="$field" class="block mt-1 w-full" type="text" :name="$field" :value="old($field)" />
+                            <x-input-error :messages="$errors->get($field)" class="mt-2" />
+                        </div>
+                        @endforeach
+                        <div data-payment-field="payment_details" class="hidden">
                             <x-input-label for="payment_details" value="Payment Details" />
-                            <textarea id="payment_details" class="block mt-1 w-full border-2 border-black px-3 py-2.5 text-sm font-semibold text-black placeholder:text-black/30 focus:border-brand-500 focus:ring-0 focus:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all rounded-none" name="payment_details" rows="2" placeholder="Enter your PayPal email, bank account details, etc."></textarea>
-                            <p class="text-xs font-bold text-black/50 mt-1">Make sure your payment details are correct to avoid delays.</p>
+                            <textarea id="payment_details" class="block mt-1 w-full border-2 border-black px-3 py-2.5 text-sm" name="payment_details" rows="3">{{ old('payment_details') }}</textarea>
+                            <x-input-error :messages="$errors->get('payment_details')" class="mt-2" />
                         </div>
                         <div>
                             <x-input-label for="notes" value="Notes (Optional)" />
@@ -60,6 +83,25 @@
     </div>
 
     <script>
+        const methodFields = {
+            kbz_pay: ['account_name', 'phone'],
+            wave_pay: ['account_name', 'phone'],
+            thai_bank_transfer: ['account_name', 'bank_name', 'account_number', 'branch'],
+            wire_transfer: ['beneficiary_name', 'bank_name', 'account_number', 'swift_bic', 'bank_address', 'beneficiary_address', 'bank_country', 'routing_number'],
+            paypal: ['payment_details'], bank_transfer: ['payment_details'], wise: ['payment_details'], payoneer: ['payment_details']
+        };
+        const optionalFields = ['branch', 'routing_number'];
+        function updatePaymentFields() {
+            const visible = methodFields[document.getElementById('payment_method').value] || [];
+            document.querySelectorAll('[data-payment-field]').forEach(section => {
+                const field = section.dataset.paymentField;
+                const show = visible.includes(field);
+                section.classList.toggle('hidden', !show);
+                section.querySelector('input, textarea').required = show && !optionalFields.includes(field);
+            });
+        }
+        document.getElementById('payment_method').addEventListener('change', updatePaymentFields);
+        updatePaymentFields();
         document.getElementById('amount').addEventListener('input', function() {
             let amount = parseFloat(this.value) || 0;
             let fee = amount * 0.02;
