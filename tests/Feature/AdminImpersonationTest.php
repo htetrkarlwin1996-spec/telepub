@@ -60,4 +60,23 @@ class AdminImpersonationTest extends TestCase
 
         $this->post(route('impersonation.stop'))->assertForbidden();
     }
+
+    public function test_admin_can_impersonate_a_legacy_user_with_an_artist_profile(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+        $legacyUser = User::factory()->create(['role' => 'user', 'is_active' => true]);
+        $artist = Artist::create([
+            'user_id' => $legacyUser->id,
+            'artist_name' => 'Legacy Artist',
+            'revenue_share_percentage' => 70,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.artists.impersonate', $artist))
+            ->assertRedirect(route('dashboard'));
+
+        $this->assertAuthenticatedAs($legacyUser);
+        $this->get('/dashboard')->assertOk()->assertSee('Legacy Artist');
+        $this->get('/artist/catalog')->assertOk();
+    }
 }

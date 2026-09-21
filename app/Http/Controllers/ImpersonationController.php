@@ -16,7 +16,8 @@ class ImpersonationController extends Controller
         abort_unless($admin?->isAdmin(), 403);
 
         $artist->loadMissing('user');
-        abort_unless($artist->user && $artist->user->isArtist(), 404);
+        abort_unless($artist->user, 404);
+        abort_unless($artist->user->is_active, 403);
 
         $request->session()->put([
             'impersonator_admin_id' => $admin->id,
