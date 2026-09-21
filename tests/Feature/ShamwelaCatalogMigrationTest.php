@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Artist;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -56,5 +57,19 @@ class ShamwelaCatalogMigrationTest extends TestCase
         $this->assertSame('cover_art/shamwela-1926424.jpg', $cover);
         Storage::disk('public')->assertExists($cover);
         $this->assertNull(DB::table('albums')->where('artist_id', $artist->id)->where('upc_code', '8447536072972')->value('cover_art'));
+    }
+
+    public function test_retry_command_recovers_a_previous_silent_skip(): void
+    {
+        Http::fake(['itunes.apple.com/*' => Http::response(['results' => []])]);
+        $this->assertSame(1, Artisan::call('catalog:import-shamwela'));
+        $this->assertStringContainsString('was not found', Artisan::output());
+
+        $user = User::factory()->create(['email' => 'shamwela2023@gmail.com']);
+        $artist = Artist::create(['user_id' => $user->id, 'artist_name' => 'Sha Mwe LA']);
+        $this->assertSame(0, Artisan::call('catalog:import-shamwela'));
+        $this->assertSame(15, DB::table('albums')->where('artist_id', $artist->id)->count());
+        $this->assertSame(0, Artisan::call('catalog:import-shamwela'));
+        $this->assertSame(15, DB::table('albums')->where('artist_id', $artist->id)->count());
     }
 }
