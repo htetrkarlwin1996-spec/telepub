@@ -64,7 +64,7 @@ class AdminImpersonationTest extends TestCase
     public function test_admin_can_impersonate_a_legacy_user_with_an_artist_profile(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
-        $legacyUser = User::factory()->create(['role' => 'user', 'is_active' => true]);
+        $legacyUser = User::factory()->unverified()->create(['role' => 'user', 'is_active' => true]);
         $artist = Artist::create([
             'user_id' => $legacyUser->id,
             'artist_name' => 'Legacy Artist',

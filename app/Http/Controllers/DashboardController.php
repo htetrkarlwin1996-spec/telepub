@@ -15,6 +15,10 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
+        if (! $user->hasVerifiedEmail() && ! session()->has('impersonator_admin_id')) {
+            return redirect()->route('verification.notice');
+        }
+
         if ($user->isAdmin()) {
             return app(AdminController::class)->dashboard();
         }
