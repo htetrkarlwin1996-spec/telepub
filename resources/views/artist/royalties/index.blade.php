@@ -8,10 +8,11 @@
                 $artist = auth()->user()->artist;
             @endphp
             <form method="GET" action="{{ route('artist.royalties') }}" class="bg-white border-2 border-black shadow-[4px_4px_0_#000] p-5 mb-8">
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
                     <div><x-input-label for="filter_store" value="Store" /><select id="filter_store" name="store_id" class="mt-1 w-full border-2 border-black font-bold"><option value="">All Stores</option>@foreach($stores as $store)<option value="{{ $store->id }}" @selected(($filters['store_id'] ?? '') == $store->id)>{{ $store->name }}</option>@endforeach</select></div>
                     <div><x-input-label for="filter_month" value="Month" /><select id="filter_month" name="month" class="mt-1 w-full border-2 border-black font-bold"><option value="">All Months</option>@for($month=1;$month<=12;$month++)<option value="{{ $month }}" @selected(($filters['month'] ?? '') == $month)>{{ date('F', mktime(0,0,0,$month,1)) }}</option>@endfor</select></div>
                     <div><x-input-label for="filter_year" value="Year" /><select id="filter_year" name="year" class="mt-1 w-full border-2 border-black font-bold"><option value="">All Years</option>@foreach($years as $year)<option value="{{ $year }}" @selected(($filters['year'] ?? '') == $year)>{{ $year }}</option>@endforeach</select></div>
+                    <div><x-input-label for="display_currency" value="Display Currency" /><select id="display_currency" name="display_currency" class="mt-1 w-full border-2 border-black font-bold"><option value="USD" @selected($displayCurrency === 'USD')>USD</option><option value="EUR" @selected($displayCurrency === 'EUR')>EUR</option></select></div>
                     <button class="px-4 py-2.5 bg-brand-500 border-2 border-black font-extrabold uppercase shadow-[3px_3px_0_#000]">View Period</button>
                     <a href="{{ route('artist.royalties') }}" class="px-4 py-2.5 bg-white border-2 border-black text-center font-extrabold uppercase">All Time</a>
                 </div>
@@ -21,17 +22,17 @@
                 @foreach(\App\Models\Royalty::TYPES as $type => $label)
                 <div class="bg-white border-2 border-black p-4 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
                     <div class="text-xs font-extrabold uppercase text-black/50">{{ $label }}</div>
-                    <div class="text-2xl font-black mt-1">${{ number_format($balanceBreakdown[$type], 2) }}</div>
+                    <div class="text-2xl font-black mt-1">{{ $displayCurrency }} {{ number_format($balanceBreakdown[$type], 2) }}</div>
                 </div>
                 @endforeach
                 <div class="bg-brand-500 border-2 border-black p-4 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
                     <div class="text-xs font-extrabold uppercase text-black/60">Selected Royalties</div>
-                    <div class="text-2xl font-black mt-1">${{ number_format($balanceBreakdown->sum(), 2) }}</div>
+                    <div class="text-2xl font-black mt-1">{{ $displayCurrency }} {{ number_format($balanceBreakdown->sum(), 2) }}</div>
                 </div>
             </div>
             <div class="bg-brand-500 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6 mb-8">
                 <div class="text-xs font-extrabold uppercase tracking-wider text-black/60">Total Earnings</div>
-                <div class="text-4xl font-black text-black mt-1">${{ number_format($totalRoyalties, 2) }}</div>
+                <div class="text-4xl font-black text-black mt-1">{{ $displayCurrency }} {{ number_format($totalRoyalties, 2) }}</div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -51,7 +52,7 @@
                                 @forelse($monthlyRoyalties as $mr)
                                 <tr class="border-b border-black/10 hover:bg-brand-500/10 transition-colors">
                                     <td class="py-3 px-2 font-bold text-black">{{ date('F', mktime(0,0,0,$mr->month,1)) }} {{ $mr->year }}</td>
-                                    <td class="py-3 px-2 text-right font-black text-black">+${{ number_format($mr->total, 2) }}</td>
+                                    <td class="py-3 px-2 text-right font-black text-black">+{{ $displayCurrency }} {{ number_format($mr->total, 2) }}</td>
                                     <td class="py-3 px-2 text-right font-bold text-black/70">{{ number_format($mr->total_streams) }}</td>
                                 </tr>
                                 @empty
@@ -74,7 +75,7 @@
                                 <x-store-logo :store="$sb->store" size="5" />
                                 {{ $sb->store->name ?? 'N/A' }}
                             </span>
-                            <span class="font-black text-black">${{ number_format($sb->total, 2) }}</span>
+                            <span class="font-black text-black">{{ $displayCurrency }} {{ number_format($sb->total, 2) }}</span>
                         </div>
                         @empty
                         <p class="font-bold text-black/40 text-center py-4">No data</p>
@@ -95,7 +96,7 @@
                                 <div class="font-bold text-black truncate">{{ $item->album->title ?? 'Deleted Album' }}</div>
                                 <div class="text-xs font-bold text-black/50">{{ number_format($item->total_streams ?? 0) }} streams</div>
                             </div>
-                            <span class="font-black text-black whitespace-nowrap">${{ number_format($item->total, 2) }}</span>
+                            <span class="font-black text-black whitespace-nowrap">{{ $displayCurrency }} {{ number_format($item->total, 2) }}</span>
                         </div>
                         @empty
                         <p class="font-bold text-black/40 text-center py-4">No album-linked royalty data.</p>
@@ -114,7 +115,7 @@
                                 <div class="font-bold text-black truncate">{{ $item->song->title ?? 'Deleted Track' }}</div>
                                 <div class="text-xs font-bold text-black/50 truncate">{{ $item->album->title ?? 'No album' }} · {{ number_format($item->total_streams ?? 0) }} streams</div>
                             </div>
-                            <span class="font-black text-black whitespace-nowrap">${{ number_format($item->total, 2) }}</span>
+                            <span class="font-black text-black whitespace-nowrap">{{ $displayCurrency }} {{ number_format($item->total, 2) }}</span>
                         </div>
                         @empty
                         <p class="font-bold text-black/40 text-center py-4">No track-linked royalty data.</p>
@@ -125,7 +126,7 @@
 
             @if($unassignedRoyalties > 0)
             <div class="bg-amber-100 border-2 border-black p-4 mb-8 font-bold text-sm">
-                <span class="font-extrabold">Unassigned royalties: ${{ number_format($unassignedRoyalties, 2) }}</span>
+                <span class="font-extrabold">Unassigned royalties: {{ $displayCurrency }} {{ number_format($unassignedRoyalties, 2) }}</span>
                 <span class="text-black/60"> — these entries were recorded by store and period without an album or track.</span>
             </div>
             @endif
@@ -165,7 +166,7 @@
                                     <div class="text-xs font-semibold text-black/50">{{ $royalty->album->title ?? 'No album linked' }}</div>
                                 </td>
                                 <td class="py-3 px-2 font-semibold text-black/70">{{ date('F', mktime(0,0,0,$royalty->month,1)) }} {{ $royalty->year }}</td>
-                                <td class="py-3 px-2 text-right font-black text-emerald-600">+${{ number_format($itemArtistShare, 2) }}</td>
+                                <td class="py-3 px-2 text-right font-black text-emerald-600">+{{ $displayCurrency }} {{ number_format($itemArtistShare, 2) }}</td>
                                 <td class="py-3 px-2 text-right font-bold text-black/70">{{ $royalty->streams ? number_format($royalty->streams) : '-' }}</td>
                                 <td class="py-3 px-2 text-xs font-semibold text-black/50">{{ $royalty->notes ?? '-' }}</td>
                             </tr>
