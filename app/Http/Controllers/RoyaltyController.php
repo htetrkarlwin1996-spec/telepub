@@ -47,6 +47,29 @@ class RoyaltyController extends Controller
             ->get()
             ->each(fn ($row) => $row->total = $artist->getArtistShareAttribute((float) $row->total));
 
+        $albumBreakdown = (clone $baseQuery)
+            ->whereNotNull('album_id')
+            ->selectRaw('album_id, SUM(amount) as total, SUM(streams) as total_streams')
+            ->with('album')
+            ->groupBy('album_id')
+            ->orderByDesc('total')
+            ->get()
+            ->each(fn ($row) => $row->total = $artist->getArtistShareAttribute((float) $row->total));
+
+        $trackBreakdown = (clone $baseQuery)
+            ->whereNotNull('song_id')
+            ->selectRaw('song_id, album_id, SUM(amount) as total, SUM(streams) as total_streams')
+            ->with(['song', 'album'])
+            ->groupBy('song_id', 'album_id')
+            ->orderByDesc('total')
+            ->get()
+            ->each(fn ($row) => $row->total = $artist->getArtistShareAttribute((float) $row->total));
+
+        $unassignedRoyalties = $artist->getArtistShareAttribute((float) (clone $baseQuery)
+            ->whereNull('song_id')
+            ->whereNull('album_id')
+            ->sum('amount'));
+
         $grossByType = (clone $baseQuery)
             ->selectRaw('royalty_type, COALESCE(SUM(amount), 0) as total')
             ->groupBy('royalty_type')
@@ -62,6 +85,7 @@ class RoyaltyController extends Controller
 
         return view('artist.royalties.index', compact(
             'royalties', 'totalRoyalties', 'monthlyRoyalties', 'storeBreakdown',
+            'albumBreakdown', 'trackBreakdown', 'unassignedRoyalties',
             'balanceBreakdown', 'stores', 'years', 'filters'
         ));
     }
@@ -72,6 +96,7 @@ class RoyaltyController extends Controller
         if ($royalty->artist_id !== $artist->id) {
             abort(403);
         }
+
         return view('artist.royalties.show', compact('royalty'));
     }
 }

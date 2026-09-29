@@ -106,6 +106,13 @@ class AdminRoyaltyCsvImportTest extends TestCase
         $this->assertEqualsWithDelta(0.0199783136, (float) $song->royalties()->first()->amount, 0.0000000001);
         $this->assertEqualsWithDelta(0.0069848195, (float) $artist->fresh()->available_balance, 0.0000000001);
 
+        $this->actingAs($artistUser)->get(route('artist.royalties'))
+            ->assertOk()
+            ->assertSee('Earnings by Album')
+            ->assertSee('Earnings by Track')
+            ->assertSee('CSV Album')
+            ->assertSee('CSV Song');
+
         $this->actingAs($admin)->post(route('admin.royalties.import'), $defaults + [
             'csv_file' => UploadedFile::fake()->createWithContent('report.csv', $csv),
         ])->assertSessionHas('info', fn ($message) => str_contains($message, '2 rows were already imported'));

@@ -83,6 +83,53 @@
                 </div>
             </div>
 
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                    <div class="p-6 border-b-2 border-black">
+                        <h3 class="font-extrabold text-lg text-black tracking-tight">Earnings by Album</h3>
+                    </div>
+                    <div class="p-6">
+                        @forelse($albumBreakdown as $item)
+                        <div class="flex items-center justify-between gap-4 py-3 border-b border-black/10 last:border-0">
+                            <div class="min-w-0">
+                                <div class="font-bold text-black truncate">{{ $item->album->title ?? 'Deleted Album' }}</div>
+                                <div class="text-xs font-bold text-black/50">{{ number_format($item->total_streams ?? 0) }} streams</div>
+                            </div>
+                            <span class="font-black text-black whitespace-nowrap">${{ number_format($item->total, 2) }}</span>
+                        </div>
+                        @empty
+                        <p class="font-bold text-black/40 text-center py-4">No album-linked royalty data.</p>
+                        @endforelse
+                    </div>
+                </div>
+
+                <div class="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                    <div class="p-6 border-b-2 border-black">
+                        <h3 class="font-extrabold text-lg text-black tracking-tight">Earnings by Track</h3>
+                    </div>
+                    <div class="p-6">
+                        @forelse($trackBreakdown as $item)
+                        <div class="flex items-center justify-between gap-4 py-3 border-b border-black/10 last:border-0">
+                            <div class="min-w-0">
+                                <div class="font-bold text-black truncate">{{ $item->song->title ?? 'Deleted Track' }}</div>
+                                <div class="text-xs font-bold text-black/50 truncate">{{ $item->album->title ?? 'No album' }} · {{ number_format($item->total_streams ?? 0) }} streams</div>
+                            </div>
+                            <span class="font-black text-black whitespace-nowrap">${{ number_format($item->total, 2) }}</span>
+                        </div>
+                        @empty
+                        <p class="font-bold text-black/40 text-center py-4">No track-linked royalty data.</p>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+
+            @if($unassignedRoyalties > 0)
+            <div class="bg-amber-100 border-2 border-black p-4 mb-8 font-bold text-sm">
+                <span class="font-extrabold">Unassigned royalties: ${{ number_format($unassignedRoyalties, 2) }}</span>
+                <span class="text-black/60"> — these entries were recorded by store and period without an album or track.</span>
+            </div>
+            @endif
+
             <!-- Royalty History -->
             <div class="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                 <div class="p-6 border-b-2 border-black">
@@ -93,6 +140,7 @@
                         <thead><tr class="border-b-2 border-black">
                             <th class="text-left py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Store</th>
                             <th class="text-left py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Type</th>
+                            <th class="text-left py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Album / Track</th>
                             <th class="text-left py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Period</th>
                             <th class="text-right py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Earnings</th>
                             <th class="text-right py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Streams</th>
@@ -112,6 +160,10 @@
                                     </div>
                                 </td>
                                 <td class="py-3 px-2 font-bold text-black/70">{{ $royalty->royalty_type_label }}</td>
+                                <td class="py-3 px-2">
+                                    <div class="font-bold text-black">{{ $royalty->song->title ?? 'Unassigned' }}</div>
+                                    <div class="text-xs font-semibold text-black/50">{{ $royalty->album->title ?? 'No album linked' }}</div>
+                                </td>
                                 <td class="py-3 px-2 font-semibold text-black/70">{{ date('F', mktime(0,0,0,$royalty->month,1)) }} {{ $royalty->year }}</td>
                                 <td class="py-3 px-2 text-right font-black text-emerald-600">+${{ number_format($itemArtistShare, 2) }}</td>
                                 <td class="py-3 px-2 text-right font-bold text-black/70">{{ $royalty->streams ? number_format($royalty->streams) : '-' }}</td>
@@ -119,7 +171,7 @@
                             </tr>
                             @if($hasCollaborators)
                                 <tr class="bg-purple-50 border-b border-black/10">
-                                    <td colspan="6" class="py-2 px-6 text-xs font-bold text-black/70">
+                                    <td colspan="7" class="py-2 px-6 text-xs font-bold text-black/70">
                                         <span class="font-extrabold uppercase text-[10px]">Collaborator Revenue Split:</span>
                                         @foreach($royalty->album->collaboratingArtists as $collab)
                                             <span class="ml-3 inline-flex items-center gap-1">
@@ -130,7 +182,7 @@
                                 </tr>
                             @endif
                             @empty
-                            <tr><td colspan="6" class="py-8 text-center font-bold text-black/40">No royalties recorded yet.</td></tr>
+                            <tr><td colspan="7" class="py-8 text-center font-bold text-black/40">No royalties recorded yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
