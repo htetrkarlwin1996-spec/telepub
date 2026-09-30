@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Middleware\AdminMiddleware;
+use App\Http\Middleware\EnsureHasArtist;
+use App\Http\Middleware\PublicMaintenanceMode;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -16,15 +19,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'webhooks/stripe/releases',
             'webhooks/myanmyanpay/releases',
-            'webhooks/paypal/releases',
         ]);
         // This application-level mode keeps Laravel running so an administrator
         // can always reach the panel and turn maintenance mode back off.
-        $middleware->append(\App\Http\Middleware\PublicMaintenanceMode::class);
+        $middleware->append(PublicMaintenanceMode::class);
 
         $middleware->alias([
-            'admin' => \App\Http\Middleware\AdminMiddleware::class,
-            'artist' => \App\Http\Middleware\EnsureHasArtist::class,
+            'admin' => AdminMiddleware::class,
+            'artist' => EnsureHasArtist::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -13,8 +13,8 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DistributionController;
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\RoyaltyController;
 use App\Http\Controllers\ReleaseCheckoutController;
+use App\Http\Controllers\RoyaltyController;
 use App\Http\Controllers\SongController;
 use App\Http\Controllers\WithdrawalController;
 use Illuminate\Support\Facades\Route;
@@ -31,7 +31,6 @@ Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('aut
 
 Route::post('/webhooks/stripe/releases', [ReleaseCheckoutController::class, 'stripeWebhook'])->name('webhooks.stripe');
 Route::post('/webhooks/myanmyanpay/releases', [ReleaseCheckoutController::class, 'myanWebhook'])->name('webhooks.myanmyanpay');
-Route::post('/webhooks/paypal/releases', [ReleaseCheckoutController::class, 'paypalWebhook'])->name('webhooks.paypal');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

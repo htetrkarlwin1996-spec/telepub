@@ -50,7 +50,6 @@ return [
     'paypal' => [
         'client_id' => env('PAYPAL_CLIENT_ID'),
         'secret' => env('PAYPAL_SECRET'),
-        'webhook_id' => env('PAYPAL_WEBHOOK_ID'),
         'base_url' => env('PAYPAL_BASE_URL', 'https://api-m.paypal.com'),
     ],
 
@@ -59,7 +58,7 @@ return [
         'publishable_key' => env('MYANMYANPAY_PUBLISHABLE_KEY'),
         'secret_key' => env('MYANMYANPAY_SECRET_KEY'),
         'api_base_url' => env('MYANMYANPAY_API_BASE_URL', 'https://ezapi.myanmyanpay.com'),
-        'sandbox' => env('MYANMYANPAY_SANDBOX', false),
+        'sandbox' => env('MYANMYANPAY_SANDBOX', true),
     ],
 
 ];

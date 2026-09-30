@@ -122,31 +122,6 @@ class ReleaseCheckoutController extends Controller
         return response()->json(['received' => true]);
     }
 
-    public function paypalWebhook(Request $request, ReleaseSubmission $submission)
-    {
-        abort_unless(config('services.paypal.webhook_id'), 503);
-        $base = config('services.paypal.base_url');
-        $token = Http::asForm()->withBasicAuth(config('services.paypal.client_id'), config('services.paypal.secret'))->post($base.'/v1/oauth2/token', ['grant_type' => 'client_credentials'])->throw()->json('access_token');
-        $verification = Http::withToken($token)->post($base.'/v1/notifications/verify-webhook-signature', [
-            'auth_algo' => $request->header('PAYPAL-AUTH-ALGO'),
-            'cert_url' => $request->header('PAYPAL-CERT-URL'),
-            'transmission_id' => $request->header('PAYPAL-TRANSMISSION-ID'),
-            'transmission_sig' => $request->header('PAYPAL-TRANSMISSION-SIG'),
-            'transmission_time' => $request->header('PAYPAL-TRANSMISSION-TIME'),
-            'webhook_id' => config('services.paypal.webhook_id'),
-            'webhook_event' => $request->json()->all(),
-        ])->throw()->json();
-        abort_unless(($verification['verification_status'] ?? '') === 'SUCCESS', 400);
-        if ($request->json('event_type') === 'PAYMENT.CAPTURE.COMPLETED') {
-            $reference = $request->json('resource.custom_id') ?? $request->json('resource.invoice_id');
-            if ($reference && ($payment = ReleasePayment::where('reference', $reference)->first())) {
-                $this->markPaid($payment, $submission);
-            }
-        }
-
-        return response()->json(['received' => true]);
-    }
-
     public function myanWebhook(Request $request, MyanMyanPayService $mmpay, ReleaseSubmission $submission)
     {
         abort_unless($mmpay->verify($request->getContent(), $request->header('X-Mmpay-Nonce', ''), $request->header('X-Mmpay-Signature', '')), 400);
