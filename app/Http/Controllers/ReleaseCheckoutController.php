@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 class ReleaseCheckoutController extends Controller
 {
@@ -56,9 +57,19 @@ class ReleaseCheckoutController extends Controller
             $response = $mmpay->pay(['orderId' => $reference, 'amount' => (int) $amount, 'currency' => 'MMK', 'callbackUrl' => route('webhooks.myanmyanpay'), 'customMessage' => 'TeleMusic release: '.$album->title, 'items' => [['name' => $album->title, 'amount' => (int) $amount, 'quantity' => 1]]]);
             $qr = data_get($response, 'qr') ?? data_get($response, 'data.qr') ?? data_get($response, 'qrCode') ?? data_get($response, 'data.qrCode');
             $url = data_get($response, 'paymentUrl') ?? data_get($response, 'data.paymentUrl') ?? data_get($response, 'url');
-            $payment->update(['qr_data' => is_string($qr) ? $qr : json_encode($qr), 'checkout_url' => $url, 'gateway_response' => $response]);
+            $gatewayStatus = strtoupper((string) (data_get($response, 'status') ?? data_get($response, 'data.status') ?? 'PENDING'));
 
-            return redirect()->route('artist.catalog.checkout', $album)->with('success', 'MMQR payment request created. Scan the QR code below.');
+            if (in_array($gatewayStatus, ['FAILED', 'CANCELLED', 'CANCELED', 'EXPIRED'], true)) {
+                throw new RuntimeException('MyanMyanPay returned payment status '.$gatewayStatus.'.');
+            }
+
+            if (! is_string($qr) || trim($qr) === '') {
+                throw new RuntimeException('MyanMyanPay did not return an MMQR payment code.');
+            }
+
+            $payment->update(['qr_data' => $qr, 'checkout_url' => $url, 'gateway_response' => $response]);
+
+            return redirect()->route('artist.catalog.checkout', $album)->with('success', 'MMQR payment request created. Scan the QR code in the popup.');
         } catch (\Throwable $e) {
             report($e);
             $payment->update(['status' => 'failed', 'gateway_response' => ['error' => $e->getMessage()]]);

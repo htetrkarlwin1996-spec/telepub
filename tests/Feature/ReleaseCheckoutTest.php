@@ -69,4 +69,28 @@ class ReleaseCheckoutTest extends TestCase
         Storage::disk('public')->assertExists($path);
         $this->assertSame($content, Storage::disk('public')->get($path));
     }
+
+    public function test_pending_myanmyanpay_qr_opens_in_a_popup(): void
+    {
+        $user = User::factory()->create(['role' => 'artist']);
+        $artist = Artist::create(['user_id' => $user->id, 'artist_name' => 'QR Artist']);
+        $album = Album::create(['artist_id' => $artist->id, 'title' => 'QR Single', 'release_type' => 'single', 'status' => 'draft']);
+        ReleasePayment::create([
+            'album_id' => $album->id,
+            'user_id' => $user->id,
+            'provider' => 'myanmyanpay',
+            'amount' => 8955,
+            'currency' => 'MMK',
+            'reference' => 'REL-MYA-POPUP',
+            'qr_data' => 'test-emvco-mmqr-payload',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('artist.catalog.checkout', $album))
+            ->assertOk()
+            ->assertSee('id="mmqr-modal"', false)
+            ->assertSee('Scan MMQR')
+            ->assertSee('MMQR Payment Pending')
+            ->assertSee('REL-MYA-POPUP');
+    }
 }
