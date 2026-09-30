@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use Aws\S3\S3Client;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -12,6 +14,14 @@ class ChunkedAudioUpload
 {
     public function handle(Request $request): array
     {
+        if ($request->input('action') === 'init') {
+            return $this->initializeSpacesUpload($request);
+        }
+
+        if ($request->input('action') === 'complete') {
+            return $this->completeSpacesUpload($request);
+        }
+
         $maxBytes = max(1, (int) config('filesystems.release_audio_max_mb', 500)) * 1024 * 1024;
         $maxChunks = (int) ceil($maxBytes / (1024 * 1024));
 
@@ -86,5 +96,91 @@ class ChunkedAudioUpload
         }
 
         return ['success' => true, 'complete' => true, 'path' => $path, 'filename' => $validated['original_name']];
+    }
+
+    private function initializeSpacesUpload(Request $request): array
+    {
+        $maxBytes = max(1, (int) config('filesystems.release_audio_max_mb', 500)) * 1024 * 1024;
+        $validated = $request->validate([
+            'original_name' => ['required', 'string', 'max:255'],
+            'total_size' => ['required', 'integer', 'min:1', 'max:'.$maxBytes],
+            'content_type' => ['nullable', 'string', 'max:100'],
+        ]);
+        $extension = strtolower(pathinfo($validated['original_name'], PATHINFO_EXTENSION));
+        if (! in_array($extension, ['mp3', 'wav', 'aac', 'flac', 'ogg'], true)) {
+            throw ValidationException::withMessages(['audio_file' => 'The audio file must be MP3, WAV, AAC, FLAC, or OGG.']);
+        }
+
+        try {
+            $client = $this->spacesClient();
+            $prefix = config('filesystems.release_audio_prefix');
+            $key = ($prefix ? $prefix.'/' : '').'tracks/'.Str::uuid().'.'.$extension;
+            $result = $client->createMultipartUpload([
+                'Bucket' => config('filesystems.disks.s3.bucket'),
+                'Key' => $key,
+                'ContentType' => $validated['content_type'] ?: 'application/octet-stream',
+            ]);
+            $chunkSize = 10 * 1024 * 1024;
+            $partCount = (int) ceil($validated['total_size'] / $chunkSize);
+            $urls = [];
+            for ($part = 1; $part <= $partCount; $part++) {
+                $command = $client->getCommand('UploadPart', [
+                    'Bucket' => config('filesystems.disks.s3.bucket'),
+                    'Key' => $key,
+                    'UploadId' => $result['UploadId'],
+                    'PartNumber' => $part,
+                ]);
+                $urls[] = ['part_number' => $part, 'url' => (string) $client->createPresignedRequest($command, '+2 hours')->getUri()];
+            }
+            Log::channel('audio_upload')->info('Spaces multipart upload initialized.', ['user_id' => $request->user()->id, 'key' => $key, 'size' => $validated['total_size'], 'parts' => $partCount]);
+
+            return ['success' => true, 'mode' => 'direct', 'upload_id' => $result['UploadId'], 'key' => $key, 'chunk_size' => $chunkSize, 'parts' => $urls];
+        } catch (Throwable $exception) {
+            Log::channel('audio_upload')->error('Spaces multipart initialization failed.', ['user_id' => $request->user()?->id, 'error' => $exception->getMessage(), 'trace' => $exception->getTraceAsString()]);
+            throw ValidationException::withMessages(['audio_file' => 'Spaces upload could not start: '.$exception->getMessage()]);
+        }
+    }
+
+    private function completeSpacesUpload(Request $request): array
+    {
+        $validated = $request->validate([
+            'upload_id' => ['required', 'string', 'max:1000'],
+            'key' => ['required', 'string', 'max:500'],
+            'original_name' => ['required', 'string', 'max:255'],
+            'parts' => ['required', 'array', 'min:1', 'max:100'],
+            'parts.*.PartNumber' => ['required', 'integer', 'min:1', 'max:10000'],
+            'parts.*.ETag' => ['required', 'string', 'max:255'],
+        ]);
+        $prefix = config('filesystems.release_audio_prefix');
+        $allowedPrefix = ($prefix ? $prefix.'/' : '').'tracks/';
+        abort_unless(str_starts_with($validated['key'], $allowedPrefix), 422);
+
+        try {
+            $this->spacesClient()->completeMultipartUpload([
+                'Bucket' => config('filesystems.disks.s3.bucket'),
+                'Key' => $validated['key'],
+                'UploadId' => $validated['upload_id'],
+                'MultipartUpload' => ['Parts' => collect($validated['parts'])->sortBy('PartNumber')->values()->all()],
+            ]);
+            Log::channel('audio_upload')->info('Spaces multipart upload completed.', ['user_id' => $request->user()->id, 'key' => $validated['key'], 'parts' => count($validated['parts'])]);
+
+            return ['success' => true, 'complete' => true, 'path' => $validated['key'], 'filename' => $validated['original_name']];
+        } catch (Throwable $exception) {
+            Log::channel('audio_upload')->error('Spaces multipart completion failed.', ['user_id' => $request->user()?->id, 'key' => $validated['key'], 'error' => $exception->getMessage(), 'trace' => $exception->getTraceAsString()]);
+            throw ValidationException::withMessages(['audio_file' => 'Spaces upload could not be completed: '.$exception->getMessage()]);
+        }
+    }
+
+    private function spacesClient(): S3Client
+    {
+        $config = config('filesystems.disks.s3');
+
+        return new S3Client([
+            'version' => 'latest',
+            'region' => $config['region'],
+            'endpoint' => $config['endpoint'],
+            'use_path_style_endpoint' => (bool) $config['use_path_style_endpoint'],
+            'credentials' => ['key' => $config['key'], 'secret' => $config['secret']],
+        ]);
     }
 }

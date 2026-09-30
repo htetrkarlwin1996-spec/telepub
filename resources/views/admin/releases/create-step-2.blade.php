@@ -147,24 +147,59 @@
 
             const totalChunks = Math.ceil(file.size / audioChunkSize);
             const uploadId = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+            const directToSpaces = @json(config('filesystems.release_audio_disk') === 's3');
 
             try {
                 let response = null;
-                for (let index = 0; index < totalChunks; index++) {
-                    const formData = new FormData();
-                    formData.append('audio_file', file.slice(index * audioChunkSize, Math.min(file.size, (index + 1) * audioChunkSize)), file.name + '.part');
-                    formData.append('_token', csrfToken);
-                    formData.append('upload_id', uploadId);
-                    formData.append('chunk_index', index);
-                    formData.append('total_chunks', totalChunks);
-                    formData.append('original_name', file.name);
-                    formData.append('total_size', file.size);
-                    const request = await fetch(uploadAudioRoute, { method: 'POST', body: formData, headers: { 'Accept': 'application/json' } });
-                    response = await request.json().catch(() => ({}));
-                    if (!request.ok || !response.success) throw new Error(Object.values(response.errors || {}).flat()[0] || response.message || `Upload failed (HTTP ${request.status})`);
-                    const percent = Math.round(((index + 1) / totalChunks) * 100);
-                    progressBar.style.width = percent + '%';
-                    progressBar.textContent = percent + '%';
+                if (directToSpaces) {
+                    const initForm = new FormData();
+                    initForm.append('_token', csrfToken);
+                    initForm.append('action', 'init');
+                    initForm.append('original_name', file.name);
+                    initForm.append('total_size', file.size);
+                    initForm.append('content_type', file.type || 'application/octet-stream');
+                    const initRequest = await fetch(uploadAudioRoute, { method: 'POST', body: initForm, headers: { 'Accept': 'application/json' } });
+                    const init = await initRequest.json().catch(() => ({}));
+                    if (!initRequest.ok || !init.success) throw new Error(Object.values(init.errors || {}).flat()[0] || init.message || `Spaces initialization failed (HTTP ${initRequest.status})`);
+
+                    const completedParts = [];
+                    for (let index = 0; index < init.parts.length; index++) {
+                        const part = init.parts[index];
+                        const start = index * init.chunk_size;
+                        const putRequest = await fetch(part.url, { method: 'PUT', body: file.slice(start, Math.min(file.size, start + init.chunk_size)) });
+                        if (!putRequest.ok) throw new Error(`Spaces rejected part ${part.part_number} (HTTP ${putRequest.status})`);
+                        const etag = putRequest.headers.get('ETag');
+                        if (!etag) throw new Error('Spaces CORS must expose the ETag response header.');
+                        completedParts.push({ PartNumber: part.part_number, ETag: etag });
+                        const percent = Math.round(((index + 1) / init.parts.length) * 100);
+                        progressBar.style.width = percent + '%';
+                        progressBar.textContent = percent + '%';
+                    }
+
+                    const completeRequest = await fetch(uploadAudioRoute, {
+                        method: 'POST',
+                        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                        body: JSON.stringify({ action: 'complete', upload_id: init.upload_id, key: init.key, original_name: file.name, parts: completedParts }),
+                    });
+                    response = await completeRequest.json().catch(() => ({}));
+                    if (!completeRequest.ok || !response.success) throw new Error(Object.values(response.errors || {}).flat()[0] || response.message || `Spaces completion failed (HTTP ${completeRequest.status})`);
+                } else {
+                    for (let index = 0; index < totalChunks; index++) {
+                        const formData = new FormData();
+                        formData.append('audio_file', file.slice(index * audioChunkSize, Math.min(file.size, (index + 1) * audioChunkSize)), file.name + '.part');
+                        formData.append('_token', csrfToken);
+                        formData.append('upload_id', uploadId);
+                        formData.append('chunk_index', index);
+                        formData.append('total_chunks', totalChunks);
+                        formData.append('original_name', file.name);
+                        formData.append('total_size', file.size);
+                        const request = await fetch(uploadAudioRoute, { method: 'POST', body: formData, headers: { 'Accept': 'application/json' } });
+                        response = await request.json().catch(() => ({}));
+                        if (!request.ok || !response.success) throw new Error(Object.values(response.errors || {}).flat()[0] || response.message || `Upload failed (HTTP ${request.status})`);
+                        const percent = Math.round(((index + 1) / totalChunks) * 100);
+                        progressBar.style.width = percent + '%';
+                        progressBar.textContent = percent + '%';
+                    }
                 }
                 if (!response?.complete || !response?.path) throw new Error('Upload could not be completed.');
                 pathInput.value = response.path;

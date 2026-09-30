@@ -9,6 +9,7 @@ use App\Models\Song;
 use App\Services\ChunkedAudioUpload;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -471,7 +472,18 @@ class CatalogController extends Controller
      */
     public function uploadAudio(Request $request, ChunkedAudioUpload $uploader)
     {
-        return response()->json($uploader->handle($request));
+        try {
+            return response()->json($uploader->handle($request));
+        } catch (\Throwable $exception) {
+            Log::channel('audio_upload')->error('Artist audio upload request failed.', [
+                'user_id' => $request->user()?->id,
+                'action' => $request->input('action', 'chunk'),
+                'error' => $exception->getMessage(),
+                'trace' => $exception->getTraceAsString(),
+            ]);
+
+            throw $exception;
+        }
     }
 
     /**
