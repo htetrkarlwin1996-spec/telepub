@@ -46,7 +46,8 @@ class ChunkedAudioUpload
         }
 
         $filename = Str::uuid().'.'.$extension;
-        $path = 'tracks/'.$filename;
+        $prefix = config('filesystems.release_audio_prefix');
+        $path = ($prefix ? $prefix.'/' : '').'tracks/'.$filename;
         $assembledPath = $disk->path($directory.'/assembled');
 
         try {

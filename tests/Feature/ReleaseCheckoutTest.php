@@ -49,7 +49,10 @@ class ReleaseCheckoutTest extends TestCase
     {
         Storage::fake('local');
         Storage::fake('s3');
-        config(['filesystems.release_audio_disk' => 's3']);
+        config([
+            'filesystems.release_audio_disk' => 's3',
+            'filesystems.release_audio_prefix' => 'dashboardtelemusic',
+        ]);
         $user = User::factory()->create(['role' => 'artist']);
         Artist::create(['user_id' => $user->id, 'artist_name' => 'Upload Artist']);
         $content = 'first-audio-partsecond-audio-part';
@@ -62,6 +65,7 @@ class ReleaseCheckoutTest extends TestCase
             ->assertOk()->assertJson(['success' => true, 'complete' => true]);
 
         $path = $response->json('path');
+        $this->assertStringStartsWith('dashboardtelemusic/tracks/', $path);
         Storage::disk('s3')->assertExists($path);
         $this->assertSame($content, Storage::disk('s3')->get($path));
     }
