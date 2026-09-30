@@ -21,6 +21,8 @@ return [
 
     'release_audio_prefix' => trim((string) env('RELEASE_AUDIO_PREFIX', ''), '/'),
 
+    'release_audio_direct' => (bool) env('RELEASE_AUDIO_DIRECT', false),
+
     /*
     |--------------------------------------------------------------------------
     | Filesystem Disks

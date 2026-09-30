@@ -148,7 +148,7 @@
 
             const totalChunks = Math.ceil(file.size / audioChunkSize);
             const uploadId = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
-            const directToSpaces = @json(config('filesystems.release_audio_disk') === 's3');
+            const directToSpaces = @json(config('filesystems.release_audio_disk') === 's3' && config('filesystems.release_audio_direct'));
 
             try {
                 let response = null;

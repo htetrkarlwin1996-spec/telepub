@@ -48,9 +48,9 @@ class ReleaseCheckoutTest extends TestCase
     public function test_audio_upload_accepts_chunks_and_reassembles_the_original_file(): void
     {
         Storage::fake('local');
-        Storage::fake('s3');
+        Storage::fake('public');
         config([
-            'filesystems.release_audio_disk' => 's3',
+            'filesystems.release_audio_disk' => 'public',
             'filesystems.release_audio_prefix' => 'dashboardtelemusic',
         ]);
         $user = User::factory()->create(['role' => 'artist']);
@@ -66,7 +66,7 @@ class ReleaseCheckoutTest extends TestCase
 
         $path = $response->json('path');
         $this->assertStringStartsWith('dashboardtelemusic/tracks/', $path);
-        Storage::disk('s3')->assertExists($path);
-        $this->assertSame($content, Storage::disk('s3')->get($path));
+        Storage::disk('public')->assertExists($path);
+        $this->assertSame($content, Storage::disk('public')->get($path));
     }
 }

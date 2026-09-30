@@ -45,6 +45,10 @@ class ChunkedAudioUpload
             throw ValidationException::withMessages(['audio_file' => 'The server could not write the upload chunk. Check storage permissions.']);
         }
 
+        if (config('filesystems.release_audio_disk') === 's3') {
+            return $this->handleServerSideSpacesChunk($request, $validated, $directory);
+        }
+
         if ($validated['total_chunks'] > $validated['chunk_index'] + 1) {
             return ['success' => true, 'complete' => false];
         }
@@ -127,6 +131,92 @@ class ChunkedAudioUpload
         } catch (Throwable $exception) {
             Log::channel('audio_upload')->error('Spaces multipart initialization failed.', ['user_id' => $request->user()?->id, 'error' => $exception->getMessage(), 'trace' => $exception->getTraceAsString()]);
             throw ValidationException::withMessages(['audio_file' => 'Spaces upload could not start: '.$exception->getMessage()]);
+        }
+    }
+
+    private function handleServerSideSpacesChunk(Request $request, array $validated, string $directory): array
+    {
+        $disk = Storage::disk('local');
+        $metadataPath = $directory.'/metadata.json';
+
+        try {
+            if (! $disk->exists($metadataPath)) {
+                abort_unless((int) $validated['chunk_index'] === 0, 422, 'Upload metadata is missing. Please restart the upload.');
+                $extension = strtolower(pathinfo($validated['original_name'], PATHINFO_EXTENSION));
+                $prefix = config('filesystems.release_audio_prefix');
+                $key = ($prefix ? $prefix.'/' : '').'tracks/'.Str::uuid().'.'.$extension;
+                $result = $this->spacesClient()->createMultipartUpload([
+                    'Bucket' => config('filesystems.disks.s3.bucket'),
+                    'Key' => $key,
+                    'ContentType' => $request->file('audio_file')->getMimeType() ?: 'application/octet-stream',
+                ]);
+                $disk->put($metadataPath, json_encode([
+                    'upload_id' => $result['UploadId'],
+                    'key' => $key,
+                    'parts' => [],
+                    'uploaded_bytes' => 0,
+                ], JSON_THROW_ON_ERROR));
+                Log::channel('audio_upload')->info('Server-side Spaces multipart upload initialized.', ['user_id' => $request->user()->id, 'key' => $key, 'size' => $validated['total_size']]);
+            }
+
+            $metadata = json_decode($disk->get($metadataPath), true, flags: JSON_THROW_ON_ERROR);
+            $isLastChunk = (int) $validated['chunk_index'] + 1 === (int) $validated['total_chunks'];
+            $shouldUploadPart = (((int) $validated['chunk_index'] + 1) % 5 === 0) || $isLastChunk;
+            if (! $shouldUploadPart) {
+                return ['success' => true, 'complete' => false];
+            }
+
+            $pendingChunks = collect($disk->files($directory))
+                ->filter(fn (string $path) => preg_match('/\/\d{5}$/', $path))
+                ->sort()
+                ->values();
+            abort_if($pendingChunks->isEmpty(), 422, 'No pending audio chunks were found.');
+
+            $partPath = $disk->path($directory.'/part-upload');
+            $output = fopen($partPath, 'wb');
+            foreach ($pendingChunks as $chunk) {
+                $input = fopen($disk->path($chunk), 'rb');
+                stream_copy_to_stream($input, $output);
+                fclose($input);
+            }
+            fclose($output);
+
+            $partNumber = count($metadata['parts']) + 1;
+            $stream = fopen($partPath, 'rb');
+            $result = $this->spacesClient()->uploadPart([
+                'Bucket' => config('filesystems.disks.s3.bucket'),
+                'Key' => $metadata['key'],
+                'UploadId' => $metadata['upload_id'],
+                'PartNumber' => $partNumber,
+                'Body' => $stream,
+            ]);
+            fclose($stream);
+
+            $partBytes = filesize($partPath);
+            $metadata['parts'][] = ['PartNumber' => $partNumber, 'ETag' => $result['ETag']];
+            $metadata['uploaded_bytes'] += $partBytes;
+            $disk->put($metadataPath, json_encode($metadata, JSON_THROW_ON_ERROR));
+            $disk->delete($pendingChunks->all());
+            $disk->delete($directory.'/part-upload');
+
+            if (! $isLastChunk) {
+                return ['success' => true, 'complete' => false];
+            }
+
+            abort_unless((int) $metadata['uploaded_bytes'] === (int) $validated['total_size'], 422, 'Uploaded file size did not match. Please retry.');
+            $this->spacesClient()->completeMultipartUpload([
+                'Bucket' => config('filesystems.disks.s3.bucket'),
+                'Key' => $metadata['key'],
+                'UploadId' => $metadata['upload_id'],
+                'MultipartUpload' => ['Parts' => $metadata['parts']],
+            ]);
+            $disk->deleteDirectory($directory);
+            Log::channel('audio_upload')->info('Server-side Spaces multipart upload completed.', ['user_id' => $request->user()->id, 'key' => $metadata['key'], 'parts' => count($metadata['parts'])]);
+
+            return ['success' => true, 'complete' => true, 'path' => $metadata['key'], 'filename' => $validated['original_name']];
+        } catch (Throwable $exception) {
+            Log::channel('audio_upload')->error('Server-side Spaces chunk upload failed.', ['user_id' => $request->user()?->id, 'chunk' => $validated['chunk_index'], 'error' => $exception->getMessage(), 'trace' => $exception->getTraceAsString()]);
+            throw ValidationException::withMessages(['audio_file' => 'Spaces upload failed: '.$exception->getMessage()]);
         }
     }
 
