@@ -15,6 +15,10 @@ return [
 
     'default' => env('FILESYSTEM_DISK', 'local'),
 
+    'release_audio_disk' => env('RELEASE_AUDIO_DISK', 'public'),
+
+    'release_audio_max_mb' => (int) env('RELEASE_AUDIO_MAX_MB', 500),
+
     /*
     |--------------------------------------------------------------------------
     | Filesystem Disks

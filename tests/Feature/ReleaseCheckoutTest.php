@@ -48,7 +48,8 @@ class ReleaseCheckoutTest extends TestCase
     public function test_audio_upload_accepts_chunks_and_reassembles_the_original_file(): void
     {
         Storage::fake('local');
-        Storage::fake('public');
+        Storage::fake('s3');
+        config(['filesystems.release_audio_disk' => 's3']);
         $user = User::factory()->create(['role' => 'artist']);
         Artist::create(['user_id' => $user->id, 'artist_name' => 'Upload Artist']);
         $content = 'first-audio-partsecond-audio-part';
@@ -61,7 +62,7 @@ class ReleaseCheckoutTest extends TestCase
             ->assertOk()->assertJson(['success' => true, 'complete' => true]);
 
         $path = $response->json('path');
-        Storage::disk('public')->assertExists($path);
-        $this->assertSame($content, Storage::disk('public')->get($path));
+        Storage::disk('s3')->assertExists($path);
+        $this->assertSame($content, Storage::disk('s3')->get($path));
     }
 }

@@ -121,6 +121,7 @@
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
             || document.querySelector('input[name="_token"]')?.value;
         const audioChunkSize = 1 * 1024 * 1024;
+        const maxAudioBytes = {{ config('filesystems.release_audio_max_mb', 500) }} * 1024 * 1024;
 
         document.addEventListener('change', async function(e) {
             const fileInput = e.target.closest('.audio-file-input');
@@ -134,8 +135,8 @@
             const progressContainer = zone.querySelector('.audio-progress');
             const progressBar = zone.querySelector('.audio-progress-bar');
             const statusText = zone.querySelector('.audio-status');
-            if (file.size > 50 * 1024 * 1024) {
-                fileLabel.innerHTML = '<span class="text-red-600">✗ Audio files cannot exceed 50MB.</span>';
+            if (file.size > maxAudioBytes) {
+                fileLabel.innerHTML = '<span class="text-red-600">✗ Audio files cannot exceed {{ config('filesystems.release_audio_max_mb', 500) }}MB.</span>';
                 return;
             }
 
@@ -161,7 +162,7 @@
                     formData.append('total_size', file.size);
                     const request = await fetch(uploadAudioRoute, { method: 'POST', body: formData, headers: { 'Accept': 'application/json' } });
                     response = await request.json().catch(() => ({}));
-                    if (!request.ok || !response.success) throw new Error(response.message || Object.values(response.errors || {}).flat()[0] || 'Upload failed');
+                    if (!request.ok || !response.success) throw new Error(Object.values(response.errors || {}).flat()[0] || response.message || `Upload failed (HTTP ${request.status})`);
                     const percent = Math.round(((index + 1) / totalChunks) * 100);
                     progressBar.style.width = percent + '%';
                     progressBar.textContent = percent + '%';

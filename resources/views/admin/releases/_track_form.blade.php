@@ -317,7 +317,7 @@
 <!-- Audio File Upload -->
 <div class="mt-4">
     <label class="block font-extrabold text-xs uppercase mb-1">Audio File</label>
-    <p class="text-[10px] font-bold text-black/50 mb-2">MP3, WAV, AAC, FLAC, OGG · Max 50MB</p>
+    <p class="text-[10px] font-bold text-black/50 mb-2">MP3, WAV, AAC, FLAC, OGG · Max {{ config('filesystems.release_audio_max_mb', 500) }}MB</p>
     <div class="border-2 border-dashed border-black p-4 text-center audio-upload-zone" data-track="{{ $index }}">
         <!-- Hidden input to store the uploaded file path (from AJAX upload) -->
         <input type="hidden" name="tracks[{{ $index }}][audio_file_path]" value="{{ $song->audio_file ?? '' }}" class="audio-path-input">
