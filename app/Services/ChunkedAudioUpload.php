@@ -250,7 +250,9 @@ class ChunkedAudioUpload
 
         return new S3Client([
             'version' => 'latest',
-            'region' => $config['region'],
+            // DigitalOcean Spaces expects AWS Signature V4 requests to use
+            // us-east-1. The actual datacenter remains selected by endpoint.
+            'region' => $config['signing_region'] ?? 'us-east-1',
             'endpoint' => $config['endpoint'],
             'use_path_style_endpoint' => (bool) $config['use_path_style_endpoint'],
             'signature_version' => 'v4',
