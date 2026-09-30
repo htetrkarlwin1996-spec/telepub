@@ -42,6 +42,8 @@ return new class extends Migration
 
             foreach ($this->months() as $month => $data) {
                 $date = sprintf('2026-%02d-01', $month);
+                $reportingMonth = $month - 1;
+                $reportingDate = sprintf('2026-%02d-01', $reportingMonth);
 
                 foreach ($data['stores'] as $slug => $netAmount) {
                     $note = self::SOURCE."; month={$month}; store={$slug}; artist net USD {$netAmount}.";
@@ -60,13 +62,13 @@ return new class extends Migration
                         'artist_id' => $artist->id,
                         'store_id' => $stores[$slug],
                         'royalty_type' => 'royalties',
-                        'month' => $month,
+                        'month' => $reportingMonth,
                         'year' => 2026,
                         'amount' => $grossAmount,
                         'currency' => 'USD',
                         'notes' => $note,
                         'entered_by' => $artist->user_id,
-                        'created_at' => $date.' 00:00:00',
+                        'created_at' => $reportingDate.' 00:00:00',
                         'updated_at' => now(),
                     ]);
 

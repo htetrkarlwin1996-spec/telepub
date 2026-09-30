@@ -35,8 +35,9 @@ class IreneHistoricalFinanceMigrationTest extends TestCase
         $this->assertSame(5, DB::table('withdrawals')->where('artist_id', $artist->id)->where('status', 'approved')->count());
         $this->assertSame(0, DB::table('payouts')->where('artist_id', $artist->id)->count());
 
-        foreach ([3 => 1378, 6 => 876, 7 => 996, 8 => 1173, 9 => 723] as $month => $expected) {
-            $gross = (float) DB::table('royalties')->where('artist_id', $artist->id)->where('year', 2026)->where('month', $month)->sum('amount');
+        foreach ([3 => ['reporting_month' => 2, 'amount' => 1378], 6 => ['reporting_month' => 5, 'amount' => 876], 7 => ['reporting_month' => 6, 'amount' => 996], 8 => ['reporting_month' => 7, 'amount' => 1173], 9 => ['reporting_month' => 8, 'amount' => 723]] as $month => $data) {
+            $expected = $data['amount'];
+            $gross = (float) DB::table('royalties')->where('artist_id', $artist->id)->where('year', 2026)->where('month', $data['reporting_month'])->sum('amount');
             $this->assertEqualsWithDelta($expected, round($gross * 0.85, 2), 0.001);
 
             $withdrawal = DB::table('withdrawals')->where('artist_id', $artist->id)->where('requested_at', sprintf('2026-%02d-01 00:00:00', $month))->first();
@@ -45,14 +46,14 @@ class IreneHistoricalFinanceMigrationTest extends TestCase
             $this->assertSame('approved', $withdrawal->status);
         }
 
-        $youtubeMarchGross = (float) DB::table('royalties')
+        $youtubeFebruaryGross = (float) DB::table('royalties')
             ->join('music_stores', 'music_stores.id', '=', 'royalties.store_id')
             ->where('royalties.artist_id', $artist->id)
             ->where('royalties.year', 2026)
-            ->where('royalties.month', 3)
+            ->where('royalties.month', 2)
             ->where('music_stores.slug', 'youtube-music')
             ->value('royalties.amount');
-        $this->assertEquals(1008, round($youtubeMarchGross * 0.85, 2));
+        $this->assertEquals(1008, round($youtubeFebruaryGross * 0.85, 2));
 
         Mail::assertNothingSent();
         Notification::assertNothingSent();
@@ -84,6 +85,26 @@ class IreneHistoricalFinanceMigrationTest extends TestCase
         }
         Mail::assertNothingSent();
         Notification::assertNothingSent();
+    }
+
+    public function test_it_corrects_existing_royalty_reporting_months_without_changing_withdrawals(): void
+    {
+        $user = User::factory()->create(['email' => 'irenezinmarmyint20224@gmail.com']);
+        $artist = Artist::create(['user_id' => $user->id, 'artist_name' => 'Irene Zin Mar Myint']);
+        (require database_path('migrations/2026_09_21_070000_import_irene_approved_royalties_and_withdrawals.php'))->up();
+
+        foreach ([8 => 9, 7 => 8, 6 => 7, 5 => 6, 2 => 3] as $reportingMonth => $oldMonth) {
+            DB::table('royalties')->where('artist_id', $artist->id)->where('month', $reportingMonth)->update(['month' => $oldMonth]);
+        }
+
+        $migration = require database_path('migrations/2026_09_30_000000_fix_irene_royalty_reporting_months.php');
+        $migration->up();
+        $migration->up();
+
+        $this->assertSame([2, 5, 6, 7, 8], DB::table('royalties')->where('artist_id', $artist->id)->distinct()->orderBy('month')->pluck('month')->all());
+        $this->assertSame([3, 6, 7, 8, 9], DB::table('withdrawals')->where('artist_id', $artist->id)->orderBy('requested_at')->get()->map(fn ($withdrawal) => (int) date('n', strtotime($withdrawal->requested_at)))->all());
+        $this->assertEquals(5146, $artist->fresh()->total_earnings);
+        $this->assertEquals(0, $artist->fresh()->available_balance);
     }
 
     public function test_completed_historical_withdrawals_leave_no_available_balance_on_dashboard(): void
