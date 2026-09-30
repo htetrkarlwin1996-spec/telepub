@@ -26,9 +26,9 @@
                             @forelse($withdrawals as $w)
                             <tr class="border-b border-black/10 hover:bg-brand-500/10 transition-colors">
                                 <td class="py-3 px-2 font-bold text-black">{{ $w->artist->artist_name ?? 'N/A' }}</td>
-                                <td class="py-3 px-2 text-right font-bold text-black">${{ number_format($w->amount, 2) }}</td>
-                                <td class="py-3 px-2 text-right font-semibold text-black/50 hidden md:table-cell">${{ number_format($w->fee, 2) }}</td>
-                                <td class="py-3 px-2 text-right font-black text-black">${{ number_format($w->total, 2) }}</td>
+                                <td class="py-3 px-2 text-right font-bold text-black">{{ money($w->amount) }}</td>
+                                <td class="py-3 px-2 text-right font-semibold text-black/50 hidden md:table-cell">{{ money($w->fee) }}</td>
+                                <td class="py-3 px-2 text-right font-black text-black">{{ money($w->total) }}</td>
                                 <td class="py-3 px-2 font-semibold text-black/70 hidden lg:table-cell">{{ $w->payment_method }}</td>
                                 <td class="py-3 px-2 text-center">
                                     <span class="text-xs font-bold border border-black px-2 py-1

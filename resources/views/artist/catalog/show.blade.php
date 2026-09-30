@@ -56,7 +56,7 @@
                             </div>
                             <div>
                                 <span class="text-[10px] font-extrabold uppercase text-black/50">Price</span>
-                                <p class="font-extrabold">${{ number_format($album->price ?? 0, 2) }}</p>
+                                <p class="font-extrabold">{{ money($album->price ?? 0) }}</p>
                             <div class="col-span-2">
                                 <span class="text-[10px] font-extrabold uppercase text-black/50">Revenue Share</span>
                                 <p class="font-extrabold">{{ $album->artist->artist_name }} (Primary): {{ $album->artist->revenue_share_percentage }}% Artist / {{ $album->artist->teleMusicFeePercentage }}% TeleMusic</p>

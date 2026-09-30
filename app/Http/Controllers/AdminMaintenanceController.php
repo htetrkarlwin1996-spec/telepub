@@ -29,7 +29,7 @@ class AdminMaintenanceController extends Controller
         $maintenanceMode->enable($durationSeconds);
 
         return redirect()
-            ->route('admin.dashboard')
+            ->route('admin.settings')
             ->with('success', 'Maintenance mode enabled. Public visitors now see the maintenance page.');
     }
 
@@ -42,7 +42,7 @@ class AdminMaintenanceController extends Controller
         $maintenanceMode->disable();
 
         return redirect()
-            ->route('admin.dashboard')
+            ->route('admin.settings')
             ->with('success', 'Maintenance mode disabled. The public site is live again.');
     }
 }

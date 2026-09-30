@@ -164,7 +164,7 @@
                             </select>
                         </div>
                         <div>
-                            <x-input-label for="amount" value="Amount (USD)" />
+                            <x-input-label for="amount" :value="'Amount ('.display_currency().')'" />
                             <x-text-input id="amount" class="block mt-1 w-full" type="number" step="0.01" min="0" name="amount" required />
                         </div>
                         <div>
@@ -242,9 +242,9 @@
                                 </td>
                                 <td class="py-3 px-2 font-bold text-black/70">{{ $royalty->royalty_type_label }}</td>
                                 <td class="py-3 px-2 font-bold text-black/60">{{ date('F', mktime(0,0,0,$royalty->month,1)) }} {{ $royalty->year }}</td>
-                                <td class="py-3 px-2 text-right font-black text-black">USD {{ number_format($royalty->amount, 6) }}</td>
-                                <td class="py-3 px-2 text-right font-black text-emerald-600">USD {{ number_format($artistShare, 6) }}</td>
-                                <td class="py-3 px-2 text-center font-bold text-black/60">{{ $teleMusicPct }}%<br><span class="text-xs text-black/40">USD {{ number_format($teleMusicFee, 6) }}</span></td>
+                                <td class="py-3 px-2 text-right font-black text-black">{{ money($royalty->amount, 6) }}</td>
+                                <td class="py-3 px-2 text-right font-black text-emerald-600">{{ money($artistShare, 6) }}</td>
+                                <td class="py-3 px-2 text-center font-bold text-black/60">{{ $teleMusicPct }}%<br><span class="text-xs text-black/40">{{ money($teleMusicFee, 6) }}</span></td>
                                 <td class="py-3 px-2 text-center font-bold text-black/60">{{ number_format($royalty->streams) ?? '-' }}</td>
                                 <td class="py-3 px-2 text-right">
                                     <a href="{{ route('admin.royalties.edit', $royalty) }}" class="font-extrabold text-black underline decoration-brand-500 decoration-2 underline-offset-2 hover:decoration-black text-xs">Edit</a>

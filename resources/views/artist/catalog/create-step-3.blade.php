@@ -59,13 +59,13 @@
 
                 <!-- Price -->
                 <div class="bg-white border-2 border-black shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] p-6">
-                    <label class="block font-extrabold text-sm uppercase mb-2">Album Price (USD) <span class="text-red-500">*</span></label>
-                    <p class="text-xs font-bold text-black/50 mb-2">Set the price for iTunes, Amazon Music, and other stores. Max $999.99.</p>
+                    <label class="block font-extrabold text-sm uppercase mb-2">Album Price ({{ display_currency() }}) <span class="text-red-500">*</span></label>
+                    <p class="text-xs font-bold text-black/50 mb-2">Set the price for iTunes, Amazon Music, and other stores. Max {{ money(999.99) }}.</p>
                     <div class="relative">
-                        <span class="absolute left-4 top-1/2 -translate-y-1/2 font-extrabold text-lg">$</span>
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 font-extrabold text-sm">{{ display_currency() }}</span>
                         <input type="number" name="price" value="{{ old('price', $album->price) }}" required
                             step="0.01" min="0" max="999.99"
-                            class="w-full pl-10 pr-4 py-3 border-2 border-black font-bold text-lg focus:outline-none focus:ring-0 focus:border-brand-500"
+                            class="w-full pl-16 pr-4 py-3 border-2 border-black font-bold text-lg focus:outline-none focus:ring-0 focus:border-brand-500"
                             placeholder="9.99">
                     </div>
                 </div>

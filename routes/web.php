@@ -1,26 +1,28 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminBulkReleaseController;
 use App\Http\Controllers\AdminCatalogController;
+use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminMaintenanceController;
+use App\Http\Controllers\AdminSettingsController;
+use App\Http\Controllers\AlbumController;
+use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\ArtistController;
 use App\Http\Controllers\CatalogController;
-use App\Http\Controllers\AlbumController;
-use App\Http\Controllers\SongController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DistributionController;
-use App\Http\Controllers\RoyaltyController;
-use App\Http\Controllers\WithdrawalController;
-use App\Http\Controllers\AnalyticsController;
-use App\Http\Controllers\AdminMaintenanceController;
 use App\Http\Controllers\ImpersonationController;
-use App\Http\Controllers\AdminBulkReleaseController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RoyaltyController;
+use App\Http\Controllers\SongController;
+use App\Http\Controllers\WithdrawalController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     if (auth()->check()) {
         return redirect()->route(auth()->user()->isAdmin() ? 'admin.dashboard' : 'dashboard');
     }
+
     return redirect()->route('login');
 });
 
@@ -110,6 +112,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::post('/maintenance/enable', [AdminMaintenanceController::class, 'enable'])->name('maintenance.enable');
         Route::post('/maintenance/disable', [AdminMaintenanceController::class, 'disable'])->name('maintenance.disable');
+        Route::get('/settings', [AdminSettingsController::class, 'index'])->name('settings');
+        Route::put('/settings/currency', [AdminSettingsController::class, 'updateCurrency'])->name('settings.currency');
 
         // Artists
         Route::get('/artists', [AdminController::class, 'artists'])->name('artists');

@@ -7,8 +7,8 @@
             <!-- Balance Info -->
             <div class="bg-brand-500 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6 mb-6">
                 <div class="text-xs font-extrabold uppercase tracking-wider text-black/60">Available Balance</div>
-                <div class="text-3xl font-black text-black mt-1">${{ number_format($artist->available_balance, 2) }}</div>
-                <div class="text-xs font-extrabold text-black/60 mt-2">Minimum withdrawal: $10.00</div>
+                <div class="text-3xl font-black text-black mt-1">{{ money($artist->available_balance) }}</div>
+                <div class="text-xs font-extrabold text-black/60 mt-2">Minimum withdrawal: {{ money(10) }}</div>
             </div>
 
             <div class="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-6">
@@ -16,9 +16,9 @@
                     @csrf
                     <div class="grid grid-cols-1 gap-4">
                         <div>
-                            <x-input-label for="amount" value="Withdrawal Amount ($)" />
+                            <x-input-label for="amount" :value="'Withdrawal Amount ('.display_currency().')'" />
                             <x-text-input id="amount" class="block mt-1 w-full" type="number" step="0.01" min="10" max="{{ $artist->available_balance }}" name="amount" required placeholder="Enter amount to withdraw" />
-                            <p class="text-xs font-bold text-black/50 mt-1">Min: $10.00 | Max: ${{ number_format($artist->available_balance, 2) }}</p>
+                            <p class="text-xs font-bold text-black/50 mt-1">Min: {{ money(10) }} | Max: {{ money($artist->available_balance) }}</p>
                             <x-input-error :messages="$errors->get('amount')" class="mt-2" />
                         </div>
                         <div>
@@ -68,9 +68,9 @@
 
                     <div class="bg-brand-500/20 border-2 border-black p-4 mt-4">
                         <h4 class="font-extrabold text-black mb-2">Summary</h4>
-                        <div class="flex justify-between text-sm font-bold text-black/70"><span>Withdrawal Amount:</span><span id="summary-amount">$0.00</span></div>
-                        <div class="flex justify-between text-sm font-bold text-black/70"><span>Processing Fee (2%):</span><span id="summary-fee">$0.00</span></div>
-                        <div class="flex justify-between text-sm font-black text-black border-t-2 border-black pt-1 mt-1"><span>You'll Receive:</span><span id="summary-total">$0.00</span></div>
+                        <div class="flex justify-between text-sm font-bold text-black/70"><span>Withdrawal Amount:</span><span id="summary-amount">{{ money(0) }}</span></div>
+                        <div class="flex justify-between text-sm font-bold text-black/70"><span>Processing Fee (2%):</span><span id="summary-fee">{{ money(0) }}</span></div>
+                        <div class="flex justify-between text-sm font-black text-black border-t-2 border-black pt-1 mt-1"><span>You'll Receive:</span><span id="summary-total">{{ money(0) }}</span></div>
                     </div>
 
                     <div class="flex justify-end mt-4 gap-3">
@@ -106,9 +106,10 @@
             let amount = parseFloat(this.value) || 0;
             let fee = amount * 0.02;
             let total = amount - fee;
-            document.getElementById('summary-amount').textContent = '$' + amount.toFixed(2);
-            document.getElementById('summary-fee').textContent = '$' + fee.toFixed(2);
-            document.getElementById('summary-total').textContent = '$' + total.toFixed(2);
+            const currency = @json(display_currency());
+            document.getElementById('summary-amount').textContent = currency + ' ' + amount.toFixed(2);
+            document.getElementById('summary-fee').textContent = currency + ' ' + fee.toFixed(2);
+            document.getElementById('summary-total').textContent = currency + ' ' + total.toFixed(2);
         });
     </script>
 </x-app-layout>

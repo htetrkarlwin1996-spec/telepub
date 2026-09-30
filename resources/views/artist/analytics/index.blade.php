@@ -32,7 +32,7 @@
                         </div>
                         <span class="text-xs font-extrabold uppercase tracking-wider text-black/50">Total Earnings</span>
                     </div>
-                    <div class="text-3xl font-black text-black">${{ number_format($totalRevenue, 2) }}</div>
+                    <div class="text-3xl font-black text-black">{{ money($totalRevenue) }}</div>
                 </div>
                 <div class="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-6">
                     <div class="flex items-center gap-3 mb-3">
@@ -67,7 +67,7 @@
                                     <td class="py-3 px-2 font-bold text-black">{{ date('F', mktime(0,0,0,$data->month,1)) }} {{ $data->year }}</td>
                                     <td class="py-3 px-2 text-right font-bold text-black/70">{{ number_format($data->total_streams) }}</td>
                                     <td class="py-3 px-2 text-right font-bold text-black/70">{{ number_format($data->total_downloads) }}</td>
-                                    <td class="py-3 px-2 text-right font-black text-black">+${{ number_format($data->total_revenue, 2) }}</td>
+                                    <td class="py-3 px-2 text-right font-black text-black">+{{ money($data->total_revenue) }}</td>
                                 </tr>
                                 @empty
                                 <tr><td colspan="4" class="py-8 text-center font-bold text-black/40">No analytics data yet.</td></tr>
@@ -92,7 +92,7 @@
                                     <div class="text-xs font-bold text-black/50">{{ number_format($sd->total_streams) }} streams</div>
                                 </div>
                             </div>
-                            <span class="font-black text-black">${{ number_format($sd->total_revenue, 2) }}</span>
+                            <span class="font-black text-black">{{ money($sd->total_revenue) }}</span>
                         </div>
                         @empty
                         <p class="font-bold text-black/40 text-center py-4">No data</p>
@@ -112,7 +112,7 @@
                                 <div class="font-bold text-black">{{ $sp->song->title ?? 'N/A' }}</div>
                                 <div class="text-xs font-bold text-black/50">{{ number_format($sp->total_streams) }} streams</div>
                             </div>
-                            <span class="font-black text-black">${{ number_format($sp->total_revenue, 2) }}</span>
+                            <span class="font-black text-black">{{ money($sp->total_revenue) }}</span>
                         </div>
                         @empty
                         <p class="font-bold text-black/40 text-center py-4">No data</p>

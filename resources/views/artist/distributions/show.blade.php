@@ -16,7 +16,7 @@
                         @elseif($distribution->status == 'live') bg-emerald-400 text-black
                         @else bg-red-200 text-black
                         @endif">{{ ucfirst($distribution->status) }}</span></dd></div>
-                    <div class="flex justify-between py-2 border-b border-black/10"><dt class="font-bold text-black/60">Fee:</dt><dd class="font-bold text-black">${{ number_format($distribution->distribution_fee, 2) }}</dd></div>
+                    <div class="flex justify-between py-2 border-b border-black/10"><dt class="font-bold text-black/60">Fee:</dt><dd class="font-bold text-black">{{ money($distribution->distribution_fee) }}</dd></div>
                     <div class="flex justify-between py-2 border-b border-black/10"><dt class="font-bold text-black/60">Submitted:</dt><dd class="font-semibold text-black/70">{{ $distribution->submitted_at ? $distribution->submitted_at->format('Y-m-d H:i') : '-' }}</dd></div>
                     <div class="flex justify-between py-2 border-b border-black/10"><dt class="font-bold text-black/60">Store URL:</dt><dd>{!! $distribution->store_url ? '<a href="'.$distribution->store_url.'" target="_blank" class="font-extrabold text-black underline decoration-brand-500 decoration-2 underline-offset-2 hover:decoration-black">View on Store →</a>' : '<span class="font-semibold text-black/40">-</span>' !!}</dd></div>
                 </dl>

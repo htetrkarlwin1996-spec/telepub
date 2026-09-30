@@ -13,7 +13,7 @@
                             <select id="artist_id" name="artist_id" class="block mt-1 w-full border-2 border-black px-3 py-2.5 text-sm font-semibold text-black focus:border-brand-500 focus:ring-0 focus:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all rounded-none" required>
                                 <option value="">Select Artist</option>
                                 @foreach($artists as $a)
-                                <option value="{{ $a->id }}">{{ $a->artist_name }} (${{ number_format($a->available_balance, 2) }} available)</option>
+                                <option value="{{ $a->id }}">{{ $a->artist_name }} ({{ money($a->available_balance) }} available)</option>
                                 @endforeach
                             </select>
                         </div>

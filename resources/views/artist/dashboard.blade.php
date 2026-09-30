@@ -16,23 +16,23 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
                     <div>
                         <div class="text-xs font-extrabold uppercase tracking-wider text-black/60">Royalties</div>
-                        <div class="text-3xl font-black text-black mt-1">${{ number_format($balanceBreakdown['royalties'], 2) }}</div>
+                        <div class="text-3xl font-black text-black mt-1">{{ money($balanceBreakdown['royalties']) }}</div>
                     </div>
                     <div>
                         <div class="text-xs font-extrabold uppercase tracking-wider text-black/60">Publishing Rights</div>
-                        <div class="text-3xl font-black text-black mt-1">${{ number_format($balanceBreakdown['publishing_rights'], 2) }}</div>
+                        <div class="text-3xl font-black text-black mt-1">{{ money($balanceBreakdown['publishing_rights']) }}</div>
                     </div>
                     <div>
                         <div class="text-xs font-extrabold uppercase tracking-wider text-black/60">Composer Rights</div>
-                        <div class="text-3xl font-black text-black mt-1">${{ number_format($balanceBreakdown['composer_rights'], 2) }}</div>
+                        <div class="text-3xl font-black text-black mt-1">{{ money($balanceBreakdown['composer_rights']) }}</div>
                     </div>
                     <div>
                         <div class="text-xs font-extrabold uppercase tracking-wider text-black/60">Mechanical Royalties</div>
-                        <div class="text-3xl font-black text-black mt-1">${{ number_format($balanceBreakdown['mechanical_royalties'], 2) }}</div>
+                        <div class="text-3xl font-black text-black mt-1">{{ money($balanceBreakdown['mechanical_royalties']) }}</div>
                     </div>
                     <div class="bg-white/30 border-2 border-black p-4">
                         <div class="text-xs font-extrabold uppercase tracking-wider text-black/60">Available Balance</div>
-                        <div class="text-3xl font-black text-black mt-1">${{ number_format($artist->available_balance, 2) }}</div>
+                        <div class="text-3xl font-black text-black mt-1">{{ money($artist->available_balance) }}</div>
                     </div>
                 </div>
                 <div class="mt-4 flex flex-wrap gap-3">
@@ -73,7 +73,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <div class="text-xs font-extrabold uppercase tracking-wider text-black/50">Total Earnings</div>
-                            <div class="mt-1 text-3xl font-black text-black">${{ number_format($totalRoyalties, 2) }}</div>
+                            <div class="mt-1 text-3xl font-black text-black">{{ money($totalRoyalties) }}</div>
                         </div>
                         <div class="w-12 h-12 bg-emerald-400 border-2 border-black flex items-center justify-center">
                             <svg class="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -134,7 +134,7 @@
                                 <div class="font-bold text-black">{{ $royalty->store->name ?? 'N/A' }}</div>
                                 <div class="text-xs font-semibold text-black/50">{{ $royalty->month }}/{{ $royalty->year }}</div>
                             </div>
-                            <span class="font-black text-black">+${{ number_format($artist->getArtistShareAttribute($royalty->amount), 2) }}</span>
+                            <span class="font-black text-black">+{{ money($artist->getArtistShareAttribute($royalty->amount)) }}</span>
                         </div>
                         @empty
                         <p class="font-bold text-black/40 text-center py-4">No royalties recorded yet.</p>

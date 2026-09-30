@@ -86,7 +86,7 @@
                                         @endif">{{ ucfirst($dist->status) }}</span>
                                 </td>
                                 <td class="py-3 px-2 text-xs font-bold text-black/50 hidden md:table-cell">{{ $dist->submitted_at ? $dist->submitted_at->format('Y-m-d') : '-' }}</td>
-                                <td class="py-3 px-2 text-right font-bold text-black">${{ number_format($dist->distribution_fee, 2) }}</td>
+                                <td class="py-3 px-2 text-right font-bold text-black">{{ money($dist->distribution_fee) }}</td>
                             </tr>
                             @empty
                             <tr><td colspan="6" class="py-8 text-center font-bold text-black/40">No distributions yet.</td></tr>

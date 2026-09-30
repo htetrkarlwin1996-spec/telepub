@@ -32,7 +32,7 @@
                                 <td class="py-3 px-2 text-black/70 hidden lg:table-cell font-semibold">{{ $artist->genre ?? '-' }}</td>
                                 <td class="py-3 px-2 text-center font-bold text-black">{{ $artist->albums_count }}</td>
                                 <td class="py-3 px-2 text-center font-bold text-black">{{ $artist->songs_count }}</td>
-                                <td class="py-3 px-2 text-right font-black text-black">${{ number_format($artist->getArtistShareAttribute((float) ($artist->royalties_sum_amount ?? 0)), 2) }}</td>
+                                <td class="py-3 px-2 text-right font-black text-black">{{ money($artist->getArtistShareAttribute((float) ($artist->royalties_sum_amount ?? 0))) }}</td>
                                 <td class="py-3 px-2 text-right">
                                     <div class="inline-flex items-center justify-end gap-2">
                                         <form method="POST" action="{{ route('admin.artists.impersonate', $artist) }}">

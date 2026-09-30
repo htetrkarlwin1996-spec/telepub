@@ -29,9 +29,9 @@
                             <tr class="border-b border-black/10 hover:bg-brand-500/10 transition-colors">
                                 <td class="py-3 px-2 font-mono text-xs font-bold text-black">{{ $payout->invoice_number }}</td>
                                 <td class="py-3 px-2 font-bold text-black/70">{{ $payout->artist->artist_name ?? 'N/A' }}</td>
-                                <td class="py-3 px-2 text-right font-bold text-black">${{ number_format($payout->amount, 2) }}</td>
-                                <td class="py-3 px-2 text-right font-semibold text-black/50 hidden md:table-cell">${{ number_format($payout->fee, 2) }}</td>
-                                <td class="py-3 px-2 text-right font-black text-black">${{ number_format($payout->total, 2) }}</td>
+                                <td class="py-3 px-2 text-right font-bold text-black">{{ money($payout->amount) }}</td>
+                                <td class="py-3 px-2 text-right font-semibold text-black/50 hidden md:table-cell">{{ money($payout->fee) }}</td>
+                                <td class="py-3 px-2 text-right font-black text-black">{{ money($payout->total) }}</td>
                                 <td class="py-3 px-2 text-center">
                                     <span class="text-xs font-bold border border-black px-2 py-1
                                         @if($payout->status == 'paid') bg-emerald-400 text-black

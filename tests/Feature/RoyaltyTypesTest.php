@@ -44,8 +44,8 @@ class RoyaltyTypesTest extends TestCase
         $artist->update(['total_earnings' => 1]);
         $this->actingAs($admin)->get('/admin/artists')
             ->assertOk()
-            ->assertSee('$280.00')
-            ->assertDontSee('$1.00');
+            ->assertSee('USD 280.00')
+            ->assertDontSee('USD 1.00');
 
         Sanctum::actingAs($artistUser);
         $this->getJson('/api/artist/royalties/summary')

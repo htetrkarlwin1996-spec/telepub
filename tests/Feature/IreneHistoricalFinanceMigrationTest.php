@@ -99,7 +99,7 @@ class IreneHistoricalFinanceMigrationTest extends TestCase
 
         $this->actingAs($user)->get('/dashboard')
             ->assertOk()
-            ->assertSeeInOrder(['Available Balance', '$0.00'])
-            ->assertSeeInOrder(['Total Earnings', '$5,146.00']);
+            ->assertSeeInOrder(['Available Balance', 'USD 0.00'])
+            ->assertSeeInOrder(['Total Earnings', 'USD 5,146.00']);
     }
 }

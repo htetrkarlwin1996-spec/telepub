@@ -62,7 +62,7 @@
                                 <div class="text-xs font-bold text-black/60 space-y-1 mb-4">
                                     <div>{{ $album->songs->count() }} track(s) · {{ $album->release_date ? $album->release_date->format('M d, Y') : 'TBA' }}</div>
                                     @if($album->price)
-                                        <div>${{ number_format($album->price, 2) }}</div>
+                                        <div>{{ money($album->price) }}</div>
                                     @endif
                                 </div>
 

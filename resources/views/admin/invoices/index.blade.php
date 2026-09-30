@@ -82,7 +82,7 @@
                             <tr class="border-b border-black/10 hover:bg-brand-500/10 transition-colors">
                                 <td class="py-3 px-2 font-mono text-xs font-bold text-black">{{ $invoice->invoice_number }}</td>
                                 <td class="py-3 px-2 font-bold text-black/70">{{ $invoice->artist->artist_name ?? 'N/A' }}</td>
-                                <td class="py-3 px-2 text-right font-black text-black">${{ number_format($invoice->amount, 2) }}</td>
+                                <td class="py-3 px-2 text-right font-black text-black">{{ money($invoice->amount) }}</td>
                                 <td class="py-3 px-2 font-semibold text-black/70 hidden md:table-cell">{{ ucfirst(str_replace('_', ' ', $invoice->type)) }}</td>
                                 <td class="py-3 px-2 text-center">
                                     <span class="text-xs font-bold border border-black px-2 py-1

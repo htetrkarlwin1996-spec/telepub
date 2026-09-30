@@ -15,10 +15,7 @@ class RoyaltyController extends Controller
             'year' => ['nullable', 'integer', 'min:2020', 'max:'.(date('Y') + 1)],
             'month' => ['nullable', 'integer', 'min:1', 'max:12'],
             'store_id' => ['nullable', 'integer', 'exists:music_stores,id'],
-            'display_currency' => ['nullable', 'in:USD,EUR'],
         ]);
-        $displayCurrency = $filters['display_currency'] ?? session('royalty_display_currency', 'USD');
-        session(['royalty_display_currency' => $displayCurrency]);
 
         $baseQuery = Royalty::where('artist_id', $artist->id)
             ->when($filters['year'] ?? null, fn ($query, $year) => $query->where('year', $year))
@@ -89,7 +86,7 @@ class RoyaltyController extends Controller
         return view('artist.royalties.index', compact(
             'royalties', 'totalRoyalties', 'monthlyRoyalties', 'storeBreakdown',
             'albumBreakdown', 'trackBreakdown', 'unassignedRoyalties',
-            'balanceBreakdown', 'stores', 'years', 'filters', 'displayCurrency'
+            'balanceBreakdown', 'stores', 'years', 'filters'
         ));
     }
 
@@ -100,8 +97,6 @@ class RoyaltyController extends Controller
             abort(403);
         }
 
-        $displayCurrency = session('royalty_display_currency', 'USD');
-
-        return view('artist.royalties.show', compact('royalty', 'displayCurrency'));
+        return view('artist.royalties.show', compact('royalty'));
     }
 }

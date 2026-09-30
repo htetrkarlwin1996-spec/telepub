@@ -28,7 +28,7 @@ class AdminMaintenanceManagementTest extends TestCase
                 'hours' => 1,
                 'minutes' => 30,
             ])
-            ->assertRedirect(route('admin.dashboard'));
+            ->assertRedirect(route('admin.settings'));
 
         $this->assertTrue(app(MaintenanceMode::class)->active());
         $this->assertGreaterThan(5300, app(MaintenanceMode::class)->remainingSeconds());
@@ -41,7 +41,7 @@ class AdminMaintenanceManagementTest extends TestCase
 
         $this->actingAs($admin)
             ->post(route('admin.maintenance.disable'))
-            ->assertRedirect(route('admin.dashboard'));
+            ->assertRedirect(route('admin.settings'));
 
         $this->assertFalse(app(MaintenanceMode::class)->active());
     }

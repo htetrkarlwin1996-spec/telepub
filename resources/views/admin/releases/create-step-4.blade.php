@@ -60,7 +60,7 @@
                     </div>
                     <div>
                         <span class="text-[10px] font-extrabold uppercase text-black/50">Price</span>
-                        <p class="font-extrabold">${{ number_format($album->price, 2) }}</p>
+                        <p class="font-extrabold">{{ money($album->price) }}</p>
                     </div>
                 </div>
             </div>

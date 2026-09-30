@@ -2,16 +2,25 @@
 
 namespace Tests\Feature;
 
+use App\Models\AppSetting;
 use App\Models\Artist;
 use App\Models\MusicStore;
 use App\Models\Royalty;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class RoyaltyFilteringAnalyticsTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function tearDown(): void
+    {
+        Cache::forget('app_setting.display_currency');
+
+        parent::tearDown();
+    }
 
     public function test_royalties_are_sorted_by_period_and_can_be_filtered_and_edited_from_analytics(): void
     {
@@ -55,7 +64,9 @@ class RoyaltyFilteringAnalyticsTest extends TestCase
             ->assertSee('USD 70.00')
             ->assertViewHas('royalties', fn ($rows) => $rows->pluck('store_id')->all() === [$oldStore->id]);
 
-        $this->get('/artist/royalties?year=2025&month=12&display_currency=EUR')
+        AppSetting::where('key', 'display_currency')->update(['value' => 'EUR']);
+        Cache::forget('app_setting.display_currency');
+        $this->get('/artist/royalties?year=2025&month=12')
             ->assertOk()
             ->assertSee('EUR 70.00')
             ->assertViewHas('totalRoyalties', 70.0);
@@ -63,7 +74,7 @@ class RoyaltyFilteringAnalyticsTest extends TestCase
         $this->get('/artist/analytics?year=2026&month=4')
             ->assertOk()
             ->assertSee('April 2026')
-            ->assertSee('$140.00')
+            ->assertSee('EUR 140.00')
             ->assertViewHas('storeData', fn ($rows) => $rows->pluck('store_id')->all() === [$newStore->id]);
     }
 }

@@ -30,9 +30,9 @@
                             @forelse($withdrawals as $w)
                             <tr class="border-b border-black/10 hover:bg-brand-500/10 transition-colors">
                                 <td class="py-3 px-2 text-xs font-mono font-bold text-black/50">#{{ $w->id }}</td>
-                                <td class="py-3 px-2 text-right font-bold text-black">${{ number_format($w->amount, 2) }}</td>
-                                <td class="py-3 px-2 text-right font-semibold text-black/50">${{ number_format($w->fee, 2) }}</td>
-                                <td class="py-3 px-2 text-right font-black text-black">${{ number_format($w->total, 2) }}</td>
+                                <td class="py-3 px-2 text-right font-bold text-black">{{ money($w->amount) }}</td>
+                                <td class="py-3 px-2 text-right font-semibold text-black/50">{{ money($w->fee) }}</td>
+                                <td class="py-3 px-2 text-right font-black text-black">{{ money($w->total) }}</td>
                                 <td class="py-3 px-2 font-semibold text-black/70">
                                     {{ ['kbz_pay' => 'KBZ Pay', 'wave_pay' => 'Wave Pay', 'thai_bank_transfer' => 'Thai Bank Transfer', 'wire_transfer' => 'Wire Transfer'][$w->payment_method] ?? ucwords(str_replace('_', ' ', $w->payment_method ?? '—')) }}
                                     @php($details = json_decode($w->payment_details ?? '', true))
