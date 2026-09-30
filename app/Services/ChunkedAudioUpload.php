@@ -253,6 +253,9 @@ class ChunkedAudioUpload
             'region' => $config['region'],
             'endpoint' => $config['endpoint'],
             'use_path_style_endpoint' => (bool) $config['use_path_style_endpoint'],
+            'signature_version' => 'v4',
+            'request_checksum_calculation' => 'when_required',
+            'response_checksum_validation' => 'when_required',
             'credentials' => ['key' => $config['key'], 'secret' => $config['secret']],
         ]);
     }
