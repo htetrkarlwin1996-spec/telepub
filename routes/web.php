@@ -93,6 +93,9 @@ Route::middleware('auth')->group(function () {
 
         // Artist - Royalties
         Route::get('/artist/royalties', [RoyaltyController::class, 'index'])->name('artist.royalties');
+        Route::get('/artist/royalties/all/{section}', [RoyaltyController::class, 'all'])
+            ->whereIn('section', ['months', 'stores', 'albums', 'tracks', 'transactions'])
+            ->name('artist.royalties.all');
         Route::get('/artist/royalties/{royalty}', [RoyaltyController::class, 'show'])->name('artist.royalties.show');
 
         // Artist - Withdrawals

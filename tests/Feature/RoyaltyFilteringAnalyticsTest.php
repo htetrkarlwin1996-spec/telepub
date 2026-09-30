@@ -81,4 +81,43 @@ class RoyaltyFilteringAnalyticsTest extends TestCase
             ->assertSee('EUR 140.00')
             ->assertViewHas('storeData', fn ($rows) => $rows->pluck('store_id')->all() === [$newStore->id]);
     }
+
+    public function test_royalty_summary_is_limited_and_see_all_pages_are_paginated(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $artistUser = User::factory()->create(['role' => 'artist']);
+        $artist = Artist::create(['user_id' => $artistUser->id, 'artist_name' => 'Summary Artist', 'revenue_share_percentage' => 85]);
+        $store = MusicStore::create(['name' => 'Summary Store', 'slug' => 'summary-store']);
+
+        foreach (range(1, 30) as $index) {
+            Royalty::create([
+                'artist_id' => $artist->id,
+                'store_id' => $store->id,
+                'month' => (($index - 1) % 12) + 1,
+                'year' => $index > 12 ? 2026 : 2025,
+                'amount' => $index,
+                'streams' => $index * 100,
+                'currency' => 'USD',
+                'royalty_type' => 'royalties',
+                'notes' => "Summary row {$index}",
+                'entered_by' => $admin->id,
+            ]);
+        }
+
+        $this->actingAs($artistUser)->get(route('artist.royalties'))
+            ->assertOk()
+            ->assertSee('See All')
+            ->assertViewHas('royalties', fn ($rows) => $rows->count() === 8)
+            ->assertViewHas('monthlyRoyalties', fn ($rows) => $rows->count() === 5);
+
+        $this->get(route('artist.royalties.all', 'transactions'))
+            ->assertOk()
+            ->assertSee('Transaction History')
+            ->assertViewHas('items', fn ($items) => $items->total() === 30 && $items->count() === 25);
+
+        $this->get(route('artist.royalties.all', 'months'))
+            ->assertOk()
+            ->assertSee('Monthly Breakdown')
+            ->assertViewHas('items', fn ($items) => $items->total() === 24);
+    }
 }

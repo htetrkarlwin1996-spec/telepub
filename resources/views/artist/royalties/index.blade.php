@@ -45,8 +45,9 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
                 <!-- Monthly Breakdown -->
                 <div class="lg:col-span-2 bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                    <div class="p-6 border-b-2 border-black">
+                    <div class="p-6 border-b-2 border-black flex items-center justify-between gap-4">
                         <h3 class="font-extrabold text-lg text-black tracking-tight">Monthly Breakdown</h3>
+                        <a href="{{ route('artist.royalties.all', ['section' => 'months'] + $filters) }}" class="font-extrabold text-sm underline decoration-brand-500 decoration-2 underline-offset-4">See All →</a>
                     </div>
                     <div class="p-6">
                         <table class="w-full text-sm">
@@ -74,8 +75,9 @@
 
                 <!-- Store Breakdown -->
                 <div class="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                    <div class="p-6 border-b-2 border-black">
+                    <div class="p-6 border-b-2 border-black flex items-center justify-between gap-4">
                         <h3 class="font-extrabold text-lg text-black tracking-tight">By Store</h3>
+                        <a href="{{ route('artist.royalties.all', ['section' => 'stores'] + $filters) }}" class="font-extrabold text-sm underline decoration-brand-500 decoration-2 underline-offset-4">See All →</a>
                     </div>
                     <div class="p-6">
                         @forelse($storeBreakdown as $sb)
@@ -95,8 +97,9 @@
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                 <div class="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                    <div class="p-6 border-b-2 border-black">
+                    <div class="p-6 border-b-2 border-black flex items-center justify-between gap-4">
                         <h3 class="font-extrabold text-lg text-black tracking-tight">Earnings by Album</h3>
+                        <a href="{{ route('artist.royalties.all', ['section' => 'albums'] + $filters) }}" class="font-extrabold text-sm underline decoration-brand-500 decoration-2 underline-offset-4">See All →</a>
                     </div>
                     <div class="p-6">
                         @forelse($albumBreakdown as $item)
@@ -114,8 +117,9 @@
                 </div>
 
                 <div class="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                    <div class="p-6 border-b-2 border-black">
+                    <div class="p-6 border-b-2 border-black flex items-center justify-between gap-4">
                         <h3 class="font-extrabold text-lg text-black tracking-tight">Earnings by Track</h3>
+                        <a href="{{ route('artist.royalties.all', ['section' => 'tracks'] + $filters) }}" class="font-extrabold text-sm underline decoration-brand-500 decoration-2 underline-offset-4">See All →</a>
                     </div>
                     <div class="p-6">
                         @forelse($trackBreakdown as $item)
@@ -142,8 +146,9 @@
 
             <!-- Royalty History -->
             <div class="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                <div class="p-6 border-b-2 border-black">
+                <div class="p-6 border-b-2 border-black flex items-center justify-between gap-4">
                     <h3 class="font-extrabold text-lg text-black tracking-tight">Transaction History</h3>
+                    <a href="{{ route('artist.royalties.all', ['section' => 'transactions'] + $filters) }}" class="font-extrabold text-sm underline decoration-brand-500 decoration-2 underline-offset-4">See All →</a>
                 </div>
                 <div class="p-6">
                     <table class="w-full text-sm">
@@ -198,7 +203,6 @@
                             @endforelse
                         </tbody>
                     </table>
-                    <div class="mt-4">{{ $royalties->links() }}</div>
                 </div>
             </div>
         </div>
