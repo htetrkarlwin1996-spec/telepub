@@ -42,7 +42,7 @@ return new class extends Migration
 
             foreach ($this->months() as $month => $data) {
                 $date = sprintf('2026-%02d-01', $month);
-                $reportingMonth = $month - 1;
+                $reportingMonth = $this->reportingMonths()[$month];
                 $reportingDate = sprintf('2026-%02d-01', $reportingMonth);
 
                 foreach ($data['stores'] as $slug => $netAmount) {
@@ -130,6 +130,17 @@ return new class extends Migration
             9 => ['total' => 723, 'stores' => [
                 'youtube-music' => 688, 'tiktok' => 23, 'spotify' => 12,
             ]],
+        ];
+    }
+
+    private function reportingMonths(): array
+    {
+        return [
+            3 => 1,
+            6 => 2,
+            7 => 3,
+            8 => 4,
+            9 => 5,
         ];
     }
 

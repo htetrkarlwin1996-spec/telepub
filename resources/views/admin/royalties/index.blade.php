@@ -62,7 +62,7 @@
                             </select>
                         </div>
                         <div>
-                            <x-input-label for="bulk_month" value="Month" />
+                            <x-input-label for="bulk_month" value="Earning Month" />
                             <select id="bulk_month" name="month" class="block mt-1 w-full border-2 border-black px-3 py-2.5 font-bold rounded-none">
                                 @for($month = 1; $month <= 12; $month++)<option value="{{ $month }}" @selected($month == date('n'))>{{ date('F', mktime(0, 0, 0, $month, 1)) }}</option>@endfor
                             </select>
@@ -148,7 +148,7 @@
                             </select>
                         </div>
                         <div>
-                            <x-input-label for="month" value="Month" />
+                            <x-input-label for="month" value="Earning Month" />
                             <select id="month" name="month" class="block mt-1 w-full border-2 border-black px-3 py-2.5 text-sm font-semibold text-black focus:border-brand-500 focus:ring-0 focus:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all rounded-none" required>
                                 @for($m = 1; $m <= 12; $m++)
                                 <option value="{{ $m }}" {{ date('n') == $m ? 'selected' : '' }}>{{ date('F', mktime(0,0,0,$m,1)) }}</option>
