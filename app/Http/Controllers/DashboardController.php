@@ -3,11 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Album;
-use App\Models\Song;
+use App\Models\Analytics;
 use App\Models\Distribution;
 use App\Models\Royalty;
+use App\Models\Song;
 use App\Models\Withdrawal;
-use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
@@ -26,7 +26,7 @@ class DashboardController extends Controller
         // Artist dashboard
         $artist = $user->artist;
 
-        if (!$artist) {
+        if (! $artist) {
             return redirect()->route('artist.setup');
         }
 
@@ -34,7 +34,7 @@ class DashboardController extends Controller
         $songs = Song::where('artist_id', $artist->id)->latest()->take(5)->get();
         $totalSongs = Song::where('artist_id', $artist->id)->count();
         $totalAlbums = Album::where('artist_id', $artist->id)->count();
-        $totalStreams = \App\Models\Analytics::where('artist_id', $artist->id)->sum('streams');
+        $totalStreams = Analytics::where('artist_id', $artist->id)->sum('streams');
         $recentRoyalties = Royalty::where('artist_id', $artist->id)->with('store')->latest()->take(5)->get();
         $grossByType = Royalty::where('artist_id', $artist->id)
             ->selectRaw('royalty_type, COALESCE(SUM(amount), 0) as total')
@@ -43,13 +43,14 @@ class DashboardController extends Controller
         $balanceBreakdown = collect(Royalty::TYPES)->mapWithKeys(fn ($label, $type) => [
             $type => $artist->getArtistShareAttribute((float) ($grossByType[$type] ?? 0)),
         ]);
+        $grossRoyalties = $grossByType->sum();
         $totalRoyalties = $balanceBreakdown->sum();
         $distributions = Distribution::where('artist_id', $artist->id)->with('store', 'song')->latest()->take(5)->get();
         $pendingWithdrawals = Withdrawal::where('artist_id', $artist->id)->where('status', 'pending')->sum('amount');
 
         return view('artist.dashboard', compact(
             'artist', 'albums', 'songs', 'totalSongs', 'totalAlbums',
-            'totalRoyalties', 'totalStreams', 'recentRoyalties',
+            'grossRoyalties', 'totalRoyalties', 'totalStreams', 'recentRoyalties',
             'distributions', 'pendingWithdrawals', 'balanceBreakdown'
         ));
     }

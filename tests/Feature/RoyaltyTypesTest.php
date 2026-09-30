@@ -44,6 +44,8 @@ class RoyaltyTypesTest extends TestCase
         $artist->update(['total_earnings' => 1]);
         $this->actingAs($admin)->get('/admin/artists')
             ->assertOk()
+            ->assertSee('Gross Revenue')
+            ->assertSee('USD 400.00')
             ->assertSee('USD 280.00')
             ->assertDontSee('USD 1.00');
 
@@ -76,8 +78,10 @@ class RoyaltyTypesTest extends TestCase
 
         $this->actingAs($artistUser)->get('/dashboard')
             ->assertOk()
-            ->assertSee('Total Earnings')
-            ->assertDontSee('Gross Amount')
+            ->assertSee('Gross Revenue')
+            ->assertSee('USD 400.00')
+            ->assertSee('Artist Earnings')
+            ->assertSee('USD 280.00')
             ->assertDontSee('TeleMusic Fee');
     }
 }

@@ -20,7 +20,8 @@
                                 <th class="text-left py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider hidden lg:table-cell">Genre</th>
                                 <th class="text-center py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Albums</th>
                                 <th class="text-center py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Songs</th>
-                                <th class="text-right py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Earnings</th>
+                                <th class="text-right py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Gross Revenue</th>
+                                <th class="text-right py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Artist Earnings</th>
                                 <th class="text-right py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Actions</th>
                             </tr>
                         </thead>
@@ -32,6 +33,7 @@
                                 <td class="py-3 px-2 text-black/70 hidden lg:table-cell font-semibold">{{ $artist->genre ?? '-' }}</td>
                                 <td class="py-3 px-2 text-center font-bold text-black">{{ $artist->albums_count }}</td>
                                 <td class="py-3 px-2 text-center font-bold text-black">{{ $artist->songs_count }}</td>
+                                <td class="py-3 px-2 text-right font-bold text-black/70">{{ money((float) ($artist->royalties_sum_amount ?? 0)) }}</td>
                                 <td class="py-3 px-2 text-right font-black text-black">{{ money($artist->getArtistShareAttribute((float) ($artist->royalties_sum_amount ?? 0))) }}</td>
                                 <td class="py-3 px-2 text-right">
                                     <div class="inline-flex items-center justify-end gap-2">
@@ -44,7 +46,7 @@
                                 </td>
                             </tr>
                             @empty
-                            <tr><td colspan="7" class="py-8 text-center font-bold text-black/40">No artists found.</td></tr>
+                            <tr><td colspan="8" class="py-8 text-center font-bold text-black/40">No artists found.</td></tr>
                             @endforelse
                         </tbody>
                     </table>

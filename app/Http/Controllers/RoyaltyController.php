@@ -84,7 +84,7 @@ class RoyaltyController extends Controller
         $years = Royalty::where('artist_id', $artist->id)->distinct()->orderByDesc('year')->pluck('year');
 
         return view('artist.royalties.index', compact(
-            'royalties', 'totalRoyalties', 'monthlyRoyalties', 'storeBreakdown',
+            'royalties', 'grossRoyalties', 'totalRoyalties', 'monthlyRoyalties', 'storeBreakdown',
             'albumBreakdown', 'trackBreakdown', 'unassignedRoyalties',
             'balanceBreakdown', 'stores', 'years', 'filters'
         ));

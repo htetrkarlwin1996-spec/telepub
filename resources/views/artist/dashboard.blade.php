@@ -46,7 +46,12 @@
             </div>
 
             <!-- Stats Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+                <div class="bg-blue-100 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-6">
+                    <div class="text-xs font-extrabold uppercase tracking-wider text-black/50">Gross Revenue</div>
+                    <div class="mt-1 text-3xl font-black text-black">{{ money($grossRoyalties) }}</div>
+                    <div class="mt-1 text-xs font-bold text-black/50">Before revenue share</div>
+                </div>
                 <div class="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-6">
                     <div class="flex items-center justify-between">
                         <div>
@@ -72,8 +77,9 @@
                 <div class="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-6">
                     <div class="flex items-center justify-between">
                         <div>
-                            <div class="text-xs font-extrabold uppercase tracking-wider text-black/50">Total Earnings</div>
+                            <div class="text-xs font-extrabold uppercase tracking-wider text-black/50">Artist Earnings</div>
                             <div class="mt-1 text-3xl font-black text-black">{{ money($totalRoyalties) }}</div>
+                            <div class="mt-1 text-xs font-bold text-black/50">After {{ number_format($artist->revenue_share_percentage, 0) }}% share</div>
                         </div>
                         <div class="w-12 h-12 bg-emerald-400 border-2 border-black flex items-center justify-center">
                             <svg class="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
