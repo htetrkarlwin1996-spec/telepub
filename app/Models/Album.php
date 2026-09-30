@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class Album extends Model
 {
@@ -11,15 +11,16 @@ class Album extends Model
 
     protected $fillable = [
         'artist_id', 'title', 'slug', 'release_type', 'cover_art', 'genre', 'label',
-        'release_date', 'physical_release_date', 'price', 'upc_code', 'status',
+        'release_date', 'physical_release_date', 'price', 'selected_store_ids', 'payment_status', 'upc_code', 'status',
         'copyright_holder', 'phonogram_right_holder', 'request_new_isrc',
-        'approved_at', 'rejected_at', 'rejection_reason', 'notes'
+        'approved_at', 'rejected_at', 'rejection_reason', 'notes',
     ];
 
     protected $casts = [
         'release_date' => 'date',
         'physical_release_date' => 'date',
         'price' => 'decimal:2',
+        'selected_store_ids' => 'array',
         'request_new_isrc' => 'boolean',
         'approved_at' => 'datetime',
         'rejected_at' => 'datetime',
@@ -96,17 +97,17 @@ class Album extends Model
 
     public function isApproved(): bool
     {
-        return !is_null($this->approved_at);
+        return ! is_null($this->approved_at);
     }
 
     public function isRejected(): bool
     {
-        return !is_null($this->rejected_at);
+        return ! is_null($this->rejected_at);
     }
 
     public function isPending(): bool
     {
-        return $this->status === 'submitted' && !$this->isApproved() && !$this->isRejected();
+        return $this->status === 'submitted' && ! $this->isApproved() && ! $this->isRejected();
     }
 
     public function scopeReleased($query)

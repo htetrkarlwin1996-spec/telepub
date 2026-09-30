@@ -14,6 +14,7 @@ use App\Http\Controllers\DistributionController;
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RoyaltyController;
+use App\Http\Controllers\ReleaseCheckoutController;
 use App\Http\Controllers\SongController;
 use App\Http\Controllers\WithdrawalController;
 use Illuminate\Support\Facades\Route;
@@ -27,6 +28,10 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('auth')->name('dashboard');
+
+Route::post('/webhooks/stripe/releases', [ReleaseCheckoutController::class, 'stripeWebhook'])->name('webhooks.stripe');
+Route::post('/webhooks/myanmyanpay/releases', [ReleaseCheckoutController::class, 'myanWebhook'])->name('webhooks.myanmyanpay');
+Route::post('/webhooks/paypal/releases', [ReleaseCheckoutController::class, 'paypalWebhook'])->name('webhooks.paypal');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -58,6 +63,9 @@ Route::middleware('auth')->group(function () {
         // Step 4 — Stores
         Route::get('/artist/catalog/{album}/step4', [CatalogController::class, 'step4'])->name('artist.catalog.step4');
         Route::post('/artist/catalog/{album}/step4', [CatalogController::class, 'storeStep4'])->name('artist.catalog.store-step4');
+        Route::get('/artist/catalog/{album}/checkout', [ReleaseCheckoutController::class, 'show'])->name('artist.catalog.checkout');
+        Route::post('/artist/catalog/{album}/checkout', [ReleaseCheckoutController::class, 'pay'])->name('artist.catalog.pay');
+        Route::get('/payments/paypal/{payment}/return', [ReleaseCheckoutController::class, 'paypalReturn'])->name('payments.paypal.return');
 
         // AJAX audio file upload (with progress tracking)
         Route::post('/artist/catalog/upload-audio', [CatalogController::class, 'uploadAudio'])->name('artist.catalog.upload-audio');
@@ -117,6 +125,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/maintenance/disable', [AdminMaintenanceController::class, 'disable'])->name('maintenance.disable');
         Route::get('/settings', [AdminSettingsController::class, 'index'])->name('settings');
         Route::put('/settings/currency', [AdminSettingsController::class, 'updateCurrency'])->name('settings.currency');
+        Route::put('/settings/release-pricing', [AdminSettingsController::class, 'updateReleasePricing'])->name('settings.release-pricing');
+        Route::post('/release-payments/{payment}/approve', [ReleaseCheckoutController::class, 'approve'])->name('release-payments.approve');
 
         // Artists
         Route::get('/artists', [AdminController::class, 'artists'])->name('artists');

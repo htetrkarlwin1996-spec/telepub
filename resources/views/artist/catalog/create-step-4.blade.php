@@ -93,7 +93,7 @@
                         ← Back to Pricing
                     </a>
                     <button type="submit" class="px-8 py-3 bg-green-500 border-2 border-black font-extrabold text-sm uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all">
-                        🚀 Submit Release
+                        Checkout & Submit →
                     </button>
                 </div>
             </form>

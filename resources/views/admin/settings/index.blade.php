@@ -61,6 +61,30 @@
                 </div>
             </section>
 
+            <section class="bg-white border-2 border-black shadow-[4px_4px_0_#000]">
+                <div class="p-6 border-b-2 border-black"><h3 class="text-xl font-black">Release Checkout Pricing</h3><p class="mt-2 text-sm font-bold text-black/60">First release uses one fixed USD price. Later releases use the Single, EP, or Album price. THB and MMK values are converted at checkout with the rates below.</p></div>
+                <form method="POST" action="{{ route('admin.settings.release-pricing') }}" class="p-6 space-y-6">@csrf @method('PUT')
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        @foreach(['release_price_first_usd'=>'First Release (USD)','release_price_single_usd'=>'Single (USD)','release_price_ep_usd'=>'EP (USD)','release_price_album_usd'=>'Album (USD)'] as $key=>$label)
+                            <label class="text-xs font-black uppercase">{{ $label }}<input type="number" step="0.01" min="0" name="{{ $key }}" value="{{ old($key, $releasePricing[str_replace(['release_price_','_usd'], '', $key)]) }}" class="mt-1 block w-full border-2 border-black px-3 py-2.5 font-black"></label>
+                        @endforeach
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <label class="text-xs font-black uppercase">1 USD to THB<input type="number" step="0.0001" name="usd_to_thb_rate" value="{{ old('usd_to_thb_rate', $releasePricing['usd_to_thb']) }}" class="mt-1 block w-full border-2 border-black px-3 py-2.5 font-black"></label>
+                        <label class="text-xs font-black uppercase">1 USD to MMK<input type="number" step="0.0001" name="usd_to_mmk_rate" value="{{ old('usd_to_mmk_rate', $releasePricing['usd_to_mmk']) }}" class="mt-1 block w-full border-2 border-black px-3 py-2.5 font-black"></label>
+                    </div>
+                    <label class="block text-xs font-black uppercase">Thai Offline Bank Transfer Instructions<textarea name="offline_bank_instructions" rows="5" class="mt-1 block w-full border-2 border-black px-3 py-2.5 font-bold">{{ old('offline_bank_instructions', $releasePricing['offline_instructions']) }}</textarea></label>
+                    <button class="px-6 py-3 bg-brand-500 border-2 border-black font-black uppercase shadow-[3px_3px_0_#000]">Save Release Pricing</button>
+                </form>
+            </section>
+
+            @if($pendingOfflinePayments->isNotEmpty())
+            <section class="bg-amber-100 border-2 border-black shadow-[4px_4px_0_#000]">
+                <div class="p-6 border-b-2 border-black"><h3 class="text-xl font-black">Pending Offline Release Payments</h3></div>
+                <div class="p-6 space-y-3">@foreach($pendingOfflinePayments as $payment)<div class="bg-white border-2 border-black p-4 flex flex-wrap items-center justify-between gap-4"><div><div class="font-black">{{ $payment->album->title }}</div><div class="text-sm font-bold text-black/60">{{ $payment->user->email }} · {{ $payment->currency }} {{ number_format($payment->amount, 2) }} · {{ $payment->reference }}</div></div><form method="POST" action="{{ route('admin.release-payments.approve', $payment) }}">@csrf<button class="px-4 py-2 bg-emerald-400 border-2 border-black font-black">Mark Paid & Submit</button></form></div>@endforeach</div>
+            </section>
+            @endif
+
             <section class="bg-blue-100 border-2 border-black shadow-[4px_4px_0_#000] p-6">
                 <h3 class="text-xl font-black">More Settings</h3>
                 <p class="mt-2 text-sm font-bold text-black/60">Future application settings can be added to this page.</p>

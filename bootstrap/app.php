@@ -13,6 +13,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/stripe/releases',
+            'webhooks/myanmyanpay/releases',
+            'webhooks/paypal/releases',
+        ]);
         // This application-level mode keeps Laravel running so an administrator
         // can always reach the panel and turn maintenance mode back off.
         $middleware->append(\App\Http\Middleware\PublicMaintenanceMode::class);

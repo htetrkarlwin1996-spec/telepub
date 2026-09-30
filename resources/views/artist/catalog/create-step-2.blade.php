@@ -116,12 +116,13 @@
     <script>
         let trackIndex = {{ $existingSongs->count() > 0 ? $existingSongs->count() : 1 }};
 
-        // ===== AUDIO FILE UPLOAD (AJAX with progress bar) =====
+        // ===== AUDIO FILE UPLOAD (chunked to avoid PHP request-size limits) =====
         const uploadAudioRoute = '{{ route('artist.catalog.upload-audio') }}';
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
             || document.querySelector('input[name="_token"]')?.value;
+        const audioChunkSize = 5 * 1024 * 1024;
 
-        document.addEventListener('change', function(e) {
+        document.addEventListener('change', async function(e) {
             const fileInput = e.target.closest('.audio-file-input');
             if (!fileInput) return;
             const file = fileInput.files[0];
@@ -133,66 +134,51 @@
             const progressContainer = zone.querySelector('.audio-progress');
             const progressBar = zone.querySelector('.audio-progress-bar');
             const statusText = zone.querySelector('.audio-status');
+            if (file.size > 50 * 1024 * 1024) {
+                fileLabel.innerHTML = '<span class="text-red-600">✗ Audio files cannot exceed 50MB.</span>';
+                return;
+            }
 
-            // Show progress bar, reset to 0%
             progressContainer.classList.remove('hidden');
             progressBar.style.width = '0%';
             progressBar.textContent = '0%';
             fileLabel.innerHTML = `<span class="text-black/60">Uploading <strong>${file.name}</strong>...</span>`;
+            statusText.textContent = 'Uploading securely in parts...';
 
-            const formData = new FormData();
-            formData.append('audio_file', file);
-            formData.append('_token', csrfToken);
+            const totalChunks = Math.ceil(file.size / audioChunkSize);
+            const uploadId = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', uploadAudioRoute, true);
-
-            xhr.upload.addEventListener('progress', function(evt) {
-                if (evt.lengthComputable) {
-                    const percent = Math.round((evt.loaded / evt.total) * 100);
+            try {
+                let response = null;
+                for (let index = 0; index < totalChunks; index++) {
+                    const formData = new FormData();
+                    formData.append('audio_file', file.slice(index * audioChunkSize, Math.min(file.size, (index + 1) * audioChunkSize)), file.name + '.part');
+                    formData.append('_token', csrfToken);
+                    formData.append('upload_id', uploadId);
+                    formData.append('chunk_index', index);
+                    formData.append('total_chunks', totalChunks);
+                    formData.append('original_name', file.name);
+                    formData.append('total_size', file.size);
+                    const request = await fetch(uploadAudioRoute, { method: 'POST', body: formData, headers: { 'Accept': 'application/json' } });
+                    response = await request.json().catch(() => ({}));
+                    if (!request.ok || !response.success) throw new Error(response.message || Object.values(response.errors || {}).flat()[0] || 'Upload failed');
+                    const percent = Math.round(((index + 1) / totalChunks) * 100);
                     progressBar.style.width = percent + '%';
                     progressBar.textContent = percent + '%';
                 }
-            });
-
-            xhr.addEventListener('load', function() {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    const response = JSON.parse(xhr.responseText);
-                    if (response.success) {
-                        pathInput.value = response.path;
-                        fileLabel.innerHTML = `<span class="text-green-600">✓ Uploaded: ${response.filename}</span>`;
-                        progressBar.style.width = '100%';
-                        progressBar.textContent = '100%';
-                        statusText.textContent = 'Upload complete!';
-                        statusText.classList.add('text-green-600');
-                        statusText.classList.remove('text-black/60');
-                    } else {
-                        fileLabel.innerHTML = `<span class="text-red-600">✗ Upload failed: ${response.message || 'Unknown error'}</span>`;
-                        statusText.textContent = 'Failed. Please try again.';
-                        statusText.classList.add('text-red-600');
-                        statusText.classList.remove('text-black/60');
-                    }
-                } else {
-                    let errMsg = 'Upload failed';
-                    try {
-                        const err = JSON.parse(xhr.responseText);
-                        errMsg = err.message || errMsg;
-                    } catch(e) {}
-                    fileLabel.innerHTML = `<span class="text-red-600">✗ ${errMsg}</span>`;
-                    statusText.textContent = 'Server error. Please try again.';
-                    statusText.classList.add('text-red-600');
-                    statusText.classList.remove('text-black/60');
-                }
-            });
-
-            xhr.addEventListener('error', function() {
-                fileLabel.innerHTML = `<span class="text-red-600">✗ Network error. Please try again.</span>`;
-                statusText.textContent = 'Connection failed.';
+                if (!response?.complete || !response?.path) throw new Error('Upload could not be completed.');
+                pathInput.value = response.path;
+                fileLabel.innerHTML = `<span class="text-green-600">✓ Uploaded: ${response.filename}</span>`;
+                statusText.textContent = 'Upload complete!';
+                statusText.classList.add('text-green-600');
+                statusText.classList.remove('text-red-600', 'text-black/60');
+            } catch (error) {
+                pathInput.value = '';
+                fileLabel.innerHTML = `<span class="text-red-600">✗ ${error.message}</span>`;
+                statusText.textContent = 'Upload failed. Please retry.';
                 statusText.classList.add('text-red-600');
-                statusText.classList.remove('text-black/60');
-            });
-
-            xhr.send(formData);
+                statusText.classList.remove('text-green-600', 'text-black/60');
+            }
         });
 
         // ===== TRACK CLONING =====

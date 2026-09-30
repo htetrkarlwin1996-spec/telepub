@@ -3,14 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Album;
-use App\Models\Song;
 use App\Models\Artist;
 use App\Models\MusicStore;
-use App\Models\Distribution;
+use App\Models\Song;
+use App\Services\ChunkedAudioUpload;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class CatalogController extends Controller
 {
@@ -37,6 +37,7 @@ class CatalogController extends Controller
             ->with('songs')
             ->latest()
             ->paginate(10);
+
         return view('artist.catalog.index', compact('albums'));
     }
 
@@ -50,6 +51,7 @@ class CatalogController extends Controller
             ->with('songs', 'artist')
             ->latest()
             ->paginate(10);
+
         return view('artist.catalog.collaborations', compact('albums'));
     }
 
@@ -62,6 +64,7 @@ class CatalogController extends Controller
         $artists = Artist::where('id', '!=', auth()->user()->artist->id)
             ->orderBy('artist_name')
             ->get();
+
         return view('artist.catalog.create-step-1', compact('genres', 'artists'));
     }
 
@@ -82,7 +85,7 @@ class CatalogController extends Controller
             'phonogram_right_holder' => 'required|string|max:255',
             // Collaborating artists
             'collaborating_artists' => 'nullable|array',
-            'collaborating_artists.*' => 'exists:artists,id|different:' . $artist->id,
+            'collaborating_artists.*' => 'exists:artists,id|different:'.$artist->id,
             'collaborating_shares' => 'nullable|array',
             'collaborating_shares.*' => 'numeric|min:0|max:100',
         ]);
@@ -91,7 +94,7 @@ class CatalogController extends Controller
         $image = $request->file('cover_art');
         [$width, $height] = getimagesize($image);
         if ($width !== 3000 || $height !== 3000) {
-            return back()->withErrors(['cover_art' => 'Album art must be exactly 3000×3000 pixels. Uploaded image is ' . $width . '×' . $height . ' pixels.'])->withInput();
+            return back()->withErrors(['cover_art' => 'Album art must be exactly 3000×3000 pixels. Uploaded image is '.$width.'×'.$height.' pixels.'])->withInput();
         }
 
         // Store cover art
@@ -101,7 +104,7 @@ class CatalogController extends Controller
         $album = Album::create([
             'artist_id' => $artist->id,
             'title' => $validated['title'],
-            'slug' => Str::slug($validated['title']) . '-' . uniqid(),
+            'slug' => Str::slug($validated['title']).'-'.uniqid(),
             'release_type' => $validated['release_type'],
             'cover_art' => $coverPath,
             'genre' => $validated['genre'],
@@ -112,7 +115,7 @@ class CatalogController extends Controller
         ]);
 
         // Save collaborating artists
-        if (!empty($validated['collaborating_artists'])) {
+        if (! empty($validated['collaborating_artists'])) {
             $pivotData = [];
             foreach ($validated['collaborating_artists'] as $index => $collabArtistId) {
                 $pivotData[$collabArtistId] = [
@@ -136,6 +139,7 @@ class CatalogController extends Controller
         $this->authorizeAlbum($album);
 
         $existingSongs = $album->songs()->orderBy('track_number')->get();
+
         return view('artist.catalog.create-step-2', compact('album', 'existingSongs'));
     }
 
@@ -159,7 +163,7 @@ class CatalogController extends Controller
             $entries = [];
             foreach ($value as $item) {
                 // Form submits each person as an array with 'name' key
-                if (is_array($item) && isset($item['name']) && !empty(trim($item['name']))) {
+                if (is_array($item) && isset($item['name']) && ! empty(trim($item['name']))) {
                     $entries[] = [
                         'name' => trim($item['name']),
                         'spotify_url' => trim($item['spotify_url'] ?? ''),
@@ -169,22 +173,24 @@ class CatalogController extends Controller
                     ];
                 }
             }
-            return !empty($entries) ? $entries : null;
+
+            return ! empty($entries) ? $entries : null;
         }
 
         // Old format: comma-separated string (fallback for API calls)
         if (is_string($value) && trim($value) !== '') {
             $parts = preg_split('/\s*(?:,|&| and |\/)\s*/', $value);
             $parts = array_map('trim', $parts);
-            $parts = array_filter($parts, fn($v) => !empty($v));
-            $entries = array_map(fn($name) => [
+            $parts = array_filter($parts, fn ($v) => ! empty($v));
+            $entries = array_map(fn ($name) => [
                 'name' => $name,
                 'spotify_url' => '',
                 'apple_music_url' => '',
                 'youtube_url' => '',
                 'tidal_url' => '',
             ], array_values($parts));
-            return !empty($entries) ? $entries : null;
+
+            return ! empty($entries) ? $entries : null;
         }
 
         return null;
@@ -272,9 +278,9 @@ class CatalogController extends Controller
             ];
 
             // Handle audio file - AJAX upload path takes priority, then direct upload
-            if (isset($trackData['audio_file_path']) && !empty($trackData['audio_file_path'])) {
+            if (isset($trackData['audio_file_path']) && ! empty($trackData['audio_file_path'])) {
                 $songData['audio_file'] = $trackData['audio_file_path'];
-            } elseif (isset($trackData['audio_file']) && $trackData['audio_file'] instanceof \Illuminate\Http\UploadedFile) {
+            } elseif (isset($trackData['audio_file']) && $trackData['audio_file'] instanceof UploadedFile) {
                 $songData['audio_file'] = $trackData['audio_file']->store('tracks', 'public');
             }
 
@@ -291,6 +297,7 @@ class CatalogController extends Controller
     public function step3(Album $album)
     {
         $this->authorizeAlbum($album);
+
         return view('artist.catalog.create-step-3', compact('album'));
     }
 
@@ -324,6 +331,7 @@ class CatalogController extends Controller
     {
         $this->authorizeAlbum($album);
         $stores = MusicStore::where('is_active', true)->get();
+
         return view('artist.catalog.create-step-4', compact('album', 'stores'));
     }
 
@@ -339,30 +347,10 @@ class CatalogController extends Controller
             'stores.*' => 'exists:music_stores,id',
         ]);
 
-        $artist = auth()->user()->artist;
+        $album->update(['selected_store_ids' => array_values($validated['stores']), 'payment_status' => 'unpaid']);
 
-        // Create distributions for each selected store
-        foreach ($validated['stores'] as $storeId) {
-            // Create one distribution per song per store
-            $songs = $album->songs;
-            foreach ($songs as $song) {
-                Distribution::create([
-                    'song_id' => $song->id,
-                    'album_id' => $album->id,
-                    'store_id' => $storeId,
-                    'artist_id' => $artist->id,
-                    'status' => 'submitted',
-                    'submitted_at' => now(),
-                    'distribution_fee' => 0.00,
-                ]);
-            }
-        }
-
-        // Update album status to submitted
-        $album->update(['status' => 'submitted']);
-
-        return redirect()->route('artist.catalog.show', $album)
-            ->with('success', 'Release submitted successfully! It is now pending admin approval.');
+        return redirect()->route('artist.catalog.checkout', $album)
+            ->with('success', 'Stores saved. Complete checkout to submit your release.');
     }
 
     /**
@@ -372,6 +360,7 @@ class CatalogController extends Controller
     {
         $this->authorizeAlbum($album);
         $album->load('songs', 'distributions.store', 'collaboratingArtists');
+
         return view('artist.catalog.show', compact('album'));
     }
 
@@ -386,6 +375,7 @@ class CatalogController extends Controller
             ->orderBy('artist_name')
             ->get();
         $album->load('songs', 'collaboratingArtists');
+
         return view('artist.catalog.edit', compact('album', 'genres', 'artists'));
     }
 
@@ -410,7 +400,7 @@ class CatalogController extends Controller
             'price' => 'required|numeric|min:0|max:999.99',
             // Collaborating artists
             'collaborating_artists' => 'nullable|array',
-            'collaborating_artists.*' => 'exists:artists,id|different:' . $artist->id,
+            'collaborating_artists.*' => 'exists:artists,id|different:'.$artist->id,
             'collaborating_shares' => 'nullable|array',
             'collaborating_shares.*' => 'numeric|min:0|max:100',
         ]);
@@ -433,7 +423,7 @@ class CatalogController extends Controller
 
         // Sync collaborating artists
         $album->collaboratingArtists()->sync([]);
-        if (!empty($validated['collaborating_artists'])) {
+        if (! empty($validated['collaborating_artists'])) {
             $pivotData = [];
             foreach ($validated['collaborating_artists'] as $index => $collabArtistId) {
                 $pivotData[$collabArtistId] = [
@@ -479,19 +469,9 @@ class CatalogController extends Controller
      * AJAX audio file upload for Step 2.
      * Handles single audio file upload with progress tracking support.
      */
-    public function uploadAudio(Request $request)
+    public function uploadAudio(Request $request, ChunkedAudioUpload $uploader)
     {
-        $request->validate([
-            'audio_file' => 'required|file|mimes:mp3,wav,aac,flac,ogg|max:51200',
-        ]);
-
-        $path = $request->file('audio_file')->store('tracks', 'public');
-
-        return response()->json([
-            'success' => true,
-            'path' => $path,
-            'filename' => basename($path),
-        ]);
+        return response()->json($uploader->handle($request));
     }
 
     /**
@@ -511,7 +491,7 @@ class CatalogController extends Controller
             ->where('artist_id', $artist->id)
             ->exists();
 
-        if (!$isCollaborator) {
+        if (! $isCollaborator) {
             abort(403, 'Unauthorized action.');
         }
     }

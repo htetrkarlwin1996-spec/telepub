@@ -3,14 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Album;
-use App\Models\Song;
 use App\Models\Artist;
-use App\Models\MusicStore;
 use App\Models\Distribution;
+use App\Models\MusicStore;
+use App\Models\Song;
+use App\Services\ChunkedAudioUpload;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class AdminCatalogController extends Controller
 {
@@ -34,6 +35,7 @@ class AdminCatalogController extends Controller
     {
         $genres = static::genres();
         $artists = Artist::with('user')->orderBy('artist_name')->get();
+
         return view('admin.releases.create-step-1', compact('genres', 'artists'));
     }
 
@@ -45,6 +47,7 @@ class AdminCatalogController extends Controller
         $genres = static::genres();
         $artists = Artist::with('user')->orderBy('artist_name')->get();
         $album->load('songs', 'collaboratingArtists');
+
         return view('admin.releases.create-step-1', compact('genres', 'artists', 'album'));
     }
 
@@ -77,7 +80,7 @@ class AdminCatalogController extends Controller
         $album = Album::create([
             'artist_id' => $validated['artist_id'],
             'title' => $validated['title'],
-            'slug' => Str::slug($validated['title']) . '-' . uniqid(),
+            'slug' => Str::slug($validated['title']).'-'.uniqid(),
             'release_type' => $validated['release_type'],
             'cover_art' => $coverPath,
             'genre' => $validated['genre'],
@@ -88,7 +91,7 @@ class AdminCatalogController extends Controller
         ]);
 
         // Save collaborating artists
-        if (!empty($validated['collaborating_artists'])) {
+        if (! empty($validated['collaborating_artists'])) {
             $pivotData = [];
             foreach ($validated['collaborating_artists'] as $index => $collabArtistId) {
                 $pivotData[$collabArtistId] = [
@@ -136,7 +139,7 @@ class AdminCatalogController extends Controller
 
         // Sync collaborating artists
         $album->collaboratingArtists()->sync([]); // clear existing
-        if (!empty($validated['collaborating_artists'])) {
+        if (! empty($validated['collaborating_artists'])) {
             $pivotData = [];
             foreach ($validated['collaborating_artists'] as $index => $collabArtistId) {
                 $pivotData[$collabArtistId] = [
@@ -158,6 +161,7 @@ class AdminCatalogController extends Controller
     {
         $album->load('songs');
         $artist = $album->artist;
+
         return view('admin.releases.create-step-2', compact('album', 'artist'));
     }
 
@@ -173,7 +177,7 @@ class AdminCatalogController extends Controller
         if (is_array($value)) {
             $entries = [];
             foreach ($value as $item) {
-                if (is_array($item) && isset($item['name']) && !empty(trim($item['name']))) {
+                if (is_array($item) && isset($item['name']) && ! empty(trim($item['name']))) {
                     $entries[] = [
                         'name' => trim($item['name']),
                         'spotify_url' => trim($item['spotify_url'] ?? ''),
@@ -183,21 +187,23 @@ class AdminCatalogController extends Controller
                     ];
                 }
             }
-            return !empty($entries) ? $entries : null;
+
+            return ! empty($entries) ? $entries : null;
         }
 
         if (is_string($value) && trim($value) !== '') {
             $parts = preg_split('/\s*(?:,|&| and |\/)\s*/', $value);
             $parts = array_map('trim', $parts);
-            $parts = array_filter($parts, fn($v) => !empty($v));
-            $entries = array_map(fn($name) => [
+            $parts = array_filter($parts, fn ($v) => ! empty($v));
+            $entries = array_map(fn ($name) => [
                 'name' => $name,
                 'spotify_url' => '',
                 'apple_music_url' => '',
                 'youtube_url' => '',
                 'tidal_url' => '',
             ], array_values($parts));
-            return !empty($entries) ? $entries : null;
+
+            return ! empty($entries) ? $entries : null;
         }
 
         return null;
@@ -286,9 +292,9 @@ class AdminCatalogController extends Controller
             ];
 
             // Handle audio file - AJAX upload path takes priority, then direct upload
-            if (isset($trackData['audio_file_path']) && !empty($trackData['audio_file_path'])) {
+            if (isset($trackData['audio_file_path']) && ! empty($trackData['audio_file_path'])) {
                 $songData['audio_file'] = $trackData['audio_file_path'];
-            } elseif (isset($trackData['audio_file']) && $trackData['audio_file'] instanceof \Illuminate\Http\UploadedFile) {
+            } elseif (isset($trackData['audio_file']) && $trackData['audio_file'] instanceof UploadedFile) {
                 $songData['audio_file'] = $trackData['audio_file']->store('tracks', 'public');
             }
 
@@ -335,6 +341,7 @@ class AdminCatalogController extends Controller
     {
         $album->load('songs', 'distributions');
         $stores = MusicStore::where('is_active', true)->get();
+
         return view('admin.releases.create-step-4', compact('album', 'stores'));
     }
 
@@ -377,25 +384,15 @@ class AdminCatalogController extends Controller
         }
 
         return redirect()->route('admin.releases.show', $album)
-            ->with('success', 'Release ' . $newStatus . ' successfully!');
+            ->with('success', 'Release '.$newStatus.' successfully!');
     }
 
     /**
      * AJAX audio file upload for Step 2.
      * Handles single audio file upload with progress tracking support.
      */
-    public function uploadAudio(Request $request)
+    public function uploadAudio(Request $request, ChunkedAudioUpload $uploader)
     {
-        $request->validate([
-            'audio_file' => 'required|file|mimes:mp3,wav,aac,flac,ogg|max:51200',
-        ]);
-
-        $path = $request->file('audio_file')->store('tracks', 'public');
-
-        return response()->json([
-            'success' => true,
-            'path' => $path,
-            'filename' => basename($path),
-        ]);
+        return response()->json($uploader->handle($request));
     }
 }

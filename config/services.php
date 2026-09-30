@@ -41,4 +41,25 @@ return [
         'base_url' => env('RAPIDAPI_SPOTIFY_SCRAPER_BASE_URL', 'https://spotify-scraper.p.rapidapi.com'),
     ],
 
+    'stripe' => [
+        'key' => env('STRIPE_KEY'),
+        'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
+
+    'paypal' => [
+        'client_id' => env('PAYPAL_CLIENT_ID'),
+        'secret' => env('PAYPAL_SECRET'),
+        'webhook_id' => env('PAYPAL_WEBHOOK_ID'),
+        'base_url' => env('PAYPAL_BASE_URL', 'https://api-m.paypal.com'),
+    ],
+
+    'myanmyanpay' => [
+        'app_id' => env('MYANMYANPAY_APP_ID'),
+        'publishable_key' => env('MYANMYANPAY_PUBLISHABLE_KEY'),
+        'secret_key' => env('MYANMYANPAY_SECRET_KEY'),
+        'api_base_url' => env('MYANMYANPAY_API_BASE_URL', 'https://ezapi.myanmyanpay.com'),
+        'sandbox' => env('MYANMYANPAY_SANDBOX', false),
+    ],
+
 ];
