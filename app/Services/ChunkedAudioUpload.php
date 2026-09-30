@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use Aws\Exception\AwsException;
 use Aws\S3\S3Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -138,103 +137,58 @@ class ChunkedAudioUpload
     private function handleServerSideSpacesChunk(Request $request, array $validated, string $directory): array
     {
         $disk = Storage::disk('local');
-        $metadataPath = $directory.'/metadata.json';
 
         try {
-            if (! $disk->exists($metadataPath)) {
-                abort_unless((int) $validated['chunk_index'] === 0, 422, 'Upload metadata is missing. Please restart the upload.');
-                $extension = strtolower(pathinfo($validated['original_name'], PATHINFO_EXTENSION));
-                $prefix = config('filesystems.release_audio_prefix');
-                $key = ($prefix ? $prefix.'/' : '').'tracks/'.Str::uuid().'.'.$extension;
-                $signatureVersion = config('filesystems.disks.s3.signature_version', 'v4');
-                $multipartArguments = [
-                    'Bucket' => config('filesystems.disks.s3.bucket'),
-                    'Key' => $key,
-                    'ContentType' => $request->file('audio_file')->getMimeType() ?: 'application/octet-stream',
-                ];
-
-                try {
-                    $result = $this->spacesClient($signatureVersion)->createMultipartUpload($multipartArguments);
-                } catch (AwsException $exception) {
-                    if ($signatureVersion === 'v2' || $exception->getAwsErrorCode() !== 'InvalidArgument') {
-                        throw $exception;
-                    }
-
-                    $signatureVersion = 'v2';
-                    Log::channel('audio_upload')->warning('Spaces rejected Signature V4 multipart initialization; retrying with Signature V2.', [
-                        'user_id' => $request->user()->id,
-                        'key' => $key,
-                        'request_id' => $exception->getAwsRequestId(),
-                    ]);
-                    $result = $this->spacesClient($signatureVersion)->createMultipartUpload($multipartArguments);
-                }
-                $disk->put($metadataPath, json_encode([
-                    'upload_id' => $result['UploadId'],
-                    'key' => $key,
-                    'signature_version' => $signatureVersion,
-                    'parts' => [],
-                    'uploaded_bytes' => 0,
-                ], JSON_THROW_ON_ERROR));
-                Log::channel('audio_upload')->info('Server-side Spaces multipart upload initialized.', ['user_id' => $request->user()->id, 'key' => $key, 'size' => $validated['total_size']]);
-            }
-
-            $metadata = json_decode($disk->get($metadataPath), true, flags: JSON_THROW_ON_ERROR);
             $isLastChunk = (int) $validated['chunk_index'] + 1 === (int) $validated['total_chunks'];
-            $shouldUploadPart = (((int) $validated['chunk_index'] + 1) % 5 === 0) || $isLastChunk;
-            if (! $shouldUploadPart) {
+            if (! $isLastChunk) {
                 return ['success' => true, 'complete' => false];
             }
 
-            $pendingChunks = collect($disk->files($directory))
+            $chunks = collect($disk->files($directory))
                 ->filter(fn (string $path) => preg_match('/\/\d{5}$/', $path))
                 ->sort()
                 ->values();
-            abort_if($pendingChunks->isEmpty(), 422, 'No pending audio chunks were found.');
+            abort_unless($chunks->count() === (int) $validated['total_chunks'], 422, 'One or more upload chunks are missing. Please retry.');
 
-            $partPath = $disk->path($directory.'/part-upload');
-            $output = fopen($partPath, 'wb');
-            foreach ($pendingChunks as $chunk) {
+            $assembledPath = $disk->path($directory.'/assembled');
+            $output = fopen($assembledPath, 'wb');
+            abort_if($output === false, 422, 'Unable to create the temporary audio file.');
+            foreach ($chunks as $chunk) {
                 $input = fopen($disk->path($chunk), 'rb');
+                abort_if($input === false, 422, 'Unable to read an uploaded chunk.');
                 stream_copy_to_stream($input, $output);
                 fclose($input);
             }
             fclose($output);
 
-            $partNumber = count($metadata['parts']) + 1;
-            $stream = fopen($partPath, 'rb');
-            $result = $this->spacesClient($metadata['signature_version'] ?? null)->uploadPart([
+            $assembledBytes = filesize($assembledPath);
+            abort_unless($assembledBytes === (int) $validated['total_size'], 422, 'Uploaded file size did not match. Please retry.');
+
+            $extension = strtolower(pathinfo($validated['original_name'], PATHINFO_EXTENSION));
+            $prefix = config('filesystems.release_audio_prefix');
+            $key = ($prefix ? $prefix.'/' : '').'tracks/'.Str::uuid().'.'.$extension;
+            $stream = fopen($assembledPath, 'rb');
+            abort_if($stream === false, 422, 'Unable to read the completed audio file.');
+
+            set_time_limit(0);
+            $this->spacesClient()->putObject([
                 'Bucket' => config('filesystems.disks.s3.bucket'),
-                'Key' => $metadata['key'],
-                'UploadId' => $metadata['upload_id'],
-                'PartNumber' => $partNumber,
+                'Key' => $key,
                 'Body' => $stream,
+                'ContentLength' => $assembledBytes,
+                'ContentType' => $request->file('audio_file')->getMimeType() ?: 'application/octet-stream',
             ]);
             fclose($stream);
-
-            $partBytes = filesize($partPath);
-            $metadata['parts'][] = ['PartNumber' => $partNumber, 'ETag' => $result['ETag']];
-            $metadata['uploaded_bytes'] += $partBytes;
-            $disk->put($metadataPath, json_encode($metadata, JSON_THROW_ON_ERROR));
-            $disk->delete($pendingChunks->all());
-            $disk->delete($directory.'/part-upload');
-
-            if (! $isLastChunk) {
-                return ['success' => true, 'complete' => false];
-            }
-
-            abort_unless((int) $metadata['uploaded_bytes'] === (int) $validated['total_size'], 422, 'Uploaded file size did not match. Please retry.');
-            $this->spacesClient($metadata['signature_version'] ?? null)->completeMultipartUpload([
-                'Bucket' => config('filesystems.disks.s3.bucket'),
-                'Key' => $metadata['key'],
-                'UploadId' => $metadata['upload_id'],
-                'MultipartUpload' => ['Parts' => $metadata['parts']],
-            ]);
             $disk->deleteDirectory($directory);
-            Log::channel('audio_upload')->info('Server-side Spaces multipart upload completed.', ['user_id' => $request->user()->id, 'key' => $metadata['key'], 'parts' => count($metadata['parts'])]);
+            Log::channel('audio_upload')->info('Staged audio upload copied from cPanel storage to Spaces.', [
+                'user_id' => $request->user()->id,
+                'key' => $key,
+                'size' => $assembledBytes,
+            ]);
 
-            return ['success' => true, 'complete' => true, 'path' => $metadata['key'], 'filename' => $validated['original_name']];
+            return ['success' => true, 'complete' => true, 'path' => $key, 'filename' => $validated['original_name']];
         } catch (Throwable $exception) {
-            Log::channel('audio_upload')->error('Server-side Spaces chunk upload failed.', ['user_id' => $request->user()?->id, 'chunk' => $validated['chunk_index'], 'error' => $exception->getMessage(), 'trace' => $exception->getTraceAsString()]);
+            Log::channel('audio_upload')->error('Staged cPanel-to-Spaces audio upload failed.', ['user_id' => $request->user()?->id, 'chunk' => $validated['chunk_index'], 'error' => $exception->getMessage(), 'trace' => $exception->getTraceAsString()]);
             throw ValidationException::withMessages(['audio_file' => 'Spaces upload failed: '.$exception->getMessage()]);
         }
     }
@@ -263,7 +217,7 @@ class ChunkedAudioUpload
         }
     }
 
-    private function spacesClient(?string $signatureVersion = null): S3Client
+    private function spacesClient(): S3Client
     {
         $config = config('filesystems.disks.s3');
 
@@ -274,7 +228,7 @@ class ChunkedAudioUpload
             'region' => $config['signing_region'] ?? 'us-east-1',
             'endpoint' => $config['endpoint'],
             'use_path_style_endpoint' => (bool) $config['use_path_style_endpoint'],
-            'signature_version' => $signatureVersion ?? $config['signature_version'] ?? 'v4',
+            'signature_version' => 'v4',
             'request_checksum_calculation' => 'when_required',
             'response_checksum_validation' => 'when_required',
             'credentials' => ['key' => $config['key'], 'secret' => $config['secret']],
