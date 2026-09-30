@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Aws\Exception\AwsException;
 use Aws\S3\S3Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -145,14 +146,32 @@ class ChunkedAudioUpload
                 $extension = strtolower(pathinfo($validated['original_name'], PATHINFO_EXTENSION));
                 $prefix = config('filesystems.release_audio_prefix');
                 $key = ($prefix ? $prefix.'/' : '').'tracks/'.Str::uuid().'.'.$extension;
-                $result = $this->spacesClient()->createMultipartUpload([
+                $signatureVersion = config('filesystems.disks.s3.signature_version', 'v4');
+                $multipartArguments = [
                     'Bucket' => config('filesystems.disks.s3.bucket'),
                     'Key' => $key,
                     'ContentType' => $request->file('audio_file')->getMimeType() ?: 'application/octet-stream',
-                ]);
+                ];
+
+                try {
+                    $result = $this->spacesClient($signatureVersion)->createMultipartUpload($multipartArguments);
+                } catch (AwsException $exception) {
+                    if ($signatureVersion === 'v2' || $exception->getAwsErrorCode() !== 'InvalidArgument') {
+                        throw $exception;
+                    }
+
+                    $signatureVersion = 'v2';
+                    Log::channel('audio_upload')->warning('Spaces rejected Signature V4 multipart initialization; retrying with Signature V2.', [
+                        'user_id' => $request->user()->id,
+                        'key' => $key,
+                        'request_id' => $exception->getAwsRequestId(),
+                    ]);
+                    $result = $this->spacesClient($signatureVersion)->createMultipartUpload($multipartArguments);
+                }
                 $disk->put($metadataPath, json_encode([
                     'upload_id' => $result['UploadId'],
                     'key' => $key,
+                    'signature_version' => $signatureVersion,
                     'parts' => [],
                     'uploaded_bytes' => 0,
                 ], JSON_THROW_ON_ERROR));
@@ -183,7 +202,7 @@ class ChunkedAudioUpload
 
             $partNumber = count($metadata['parts']) + 1;
             $stream = fopen($partPath, 'rb');
-            $result = $this->spacesClient()->uploadPart([
+            $result = $this->spacesClient($metadata['signature_version'] ?? null)->uploadPart([
                 'Bucket' => config('filesystems.disks.s3.bucket'),
                 'Key' => $metadata['key'],
                 'UploadId' => $metadata['upload_id'],
@@ -204,7 +223,7 @@ class ChunkedAudioUpload
             }
 
             abort_unless((int) $metadata['uploaded_bytes'] === (int) $validated['total_size'], 422, 'Uploaded file size did not match. Please retry.');
-            $this->spacesClient()->completeMultipartUpload([
+            $this->spacesClient($metadata['signature_version'] ?? null)->completeMultipartUpload([
                 'Bucket' => config('filesystems.disks.s3.bucket'),
                 'Key' => $metadata['key'],
                 'UploadId' => $metadata['upload_id'],
@@ -244,7 +263,7 @@ class ChunkedAudioUpload
         }
     }
 
-    private function spacesClient(): S3Client
+    private function spacesClient(?string $signatureVersion = null): S3Client
     {
         $config = config('filesystems.disks.s3');
 
@@ -255,7 +274,7 @@ class ChunkedAudioUpload
             'region' => $config['signing_region'] ?? 'us-east-1',
             'endpoint' => $config['endpoint'],
             'use_path_style_endpoint' => (bool) $config['use_path_style_endpoint'],
-            'signature_version' => 'v4',
+            'signature_version' => $signatureVersion ?? $config['signature_version'] ?? 'v4',
             'request_checksum_calculation' => 'when_required',
             'response_checksum_validation' => 'when_required',
             'credentials' => ['key' => $config['key'], 'secret' => $config['secret']],
