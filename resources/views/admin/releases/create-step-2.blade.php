@@ -162,24 +162,15 @@
                     const init = await initRequest.json().catch(() => ({}));
                     if (!initRequest.ok || !init.success) throw new Error(Object.values(init.errors || {}).flat()[0] || init.message || `Spaces initialization failed (HTTP ${initRequest.status})`);
 
-                    const completedParts = [];
-                    for (let index = 0; index < init.parts.length; index++) {
-                        const part = init.parts[index];
-                        const start = index * init.chunk_size;
-                        const putRequest = await fetch(part.url, { method: 'PUT', body: file.slice(start, Math.min(file.size, start + init.chunk_size)) });
-                        if (!putRequest.ok) throw new Error(`Spaces rejected part ${part.part_number} (HTTP ${putRequest.status})`);
-                        const etag = putRequest.headers.get('ETag');
-                        if (!etag) throw new Error('Spaces CORS must expose the ETag response header.');
-                        completedParts.push({ PartNumber: part.part_number, ETag: etag });
-                        const percent = Math.round(((index + 1) / init.parts.length) * 100);
-                        progressBar.style.width = percent + '%';
-                        progressBar.textContent = percent + '%';
-                    }
+                    const putRequest = await fetch(init.url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type || 'application/octet-stream' } });
+                    if (!putRequest.ok) throw new Error(`Spaces rejected the audio file (HTTP ${putRequest.status})`);
+                    progressBar.style.width = '100%';
+                    progressBar.textContent = '100%';
 
                     const completeRequest = await fetch(uploadAudioRoute, {
                         method: 'POST',
                         headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-                        body: JSON.stringify({ action: 'complete', upload_id: init.upload_id, key: init.key, original_name: file.name, parts: completedParts }),
+                        body: JSON.stringify({ action: 'complete', key: init.key, original_name: file.name }),
                     });
                     response = await completeRequest.json().catch(() => ({}));
                     if (!completeRequest.ok || !response.success) throw new Error(Object.values(response.errors || {}).flat()[0] || response.message || `Spaces completion failed (HTTP ${completeRequest.status})`);

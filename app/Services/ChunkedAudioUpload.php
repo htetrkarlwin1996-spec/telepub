@@ -115,26 +115,15 @@ class ChunkedAudioUpload
             $client = $this->spacesClient();
             $prefix = config('filesystems.release_audio_prefix');
             $key = ($prefix ? $prefix.'/' : '').'tracks/'.Str::uuid().'.'.$extension;
-            $result = $client->createMultipartUpload([
+            $command = $client->getCommand('PutObject', [
                 'Bucket' => config('filesystems.disks.s3.bucket'),
                 'Key' => $key,
                 'ContentType' => $validated['content_type'] ?: 'application/octet-stream',
             ]);
-            $chunkSize = 10 * 1024 * 1024;
-            $partCount = (int) ceil($validated['total_size'] / $chunkSize);
-            $urls = [];
-            for ($part = 1; $part <= $partCount; $part++) {
-                $command = $client->getCommand('UploadPart', [
-                    'Bucket' => config('filesystems.disks.s3.bucket'),
-                    'Key' => $key,
-                    'UploadId' => $result['UploadId'],
-                    'PartNumber' => $part,
-                ]);
-                $urls[] = ['part_number' => $part, 'url' => (string) $client->createPresignedRequest($command, '+2 hours')->getUri()];
-            }
-            Log::channel('audio_upload')->info('Spaces multipart upload initialized.', ['user_id' => $request->user()->id, 'key' => $key, 'size' => $validated['total_size'], 'parts' => $partCount]);
+            $url = (string) $client->createPresignedRequest($command, '+2 hours')->getUri();
+            Log::channel('audio_upload')->info('Spaces direct upload initialized.', ['user_id' => $request->user()->id, 'key' => $key, 'size' => $validated['total_size']]);
 
-            return ['success' => true, 'mode' => 'direct', 'upload_id' => $result['UploadId'], 'key' => $key, 'chunk_size' => $chunkSize, 'parts' => $urls];
+            return ['success' => true, 'mode' => 'direct', 'url' => $url, 'key' => $key];
         } catch (Throwable $exception) {
             Log::channel('audio_upload')->error('Spaces multipart initialization failed.', ['user_id' => $request->user()?->id, 'error' => $exception->getMessage(), 'trace' => $exception->getTraceAsString()]);
             throw ValidationException::withMessages(['audio_file' => 'Spaces upload could not start: '.$exception->getMessage()]);
@@ -144,25 +133,19 @@ class ChunkedAudioUpload
     private function completeSpacesUpload(Request $request): array
     {
         $validated = $request->validate([
-            'upload_id' => ['required', 'string', 'max:1000'],
             'key' => ['required', 'string', 'max:500'],
             'original_name' => ['required', 'string', 'max:255'],
-            'parts' => ['required', 'array', 'min:1', 'max:100'],
-            'parts.*.PartNumber' => ['required', 'integer', 'min:1', 'max:10000'],
-            'parts.*.ETag' => ['required', 'string', 'max:255'],
         ]);
         $prefix = config('filesystems.release_audio_prefix');
         $allowedPrefix = ($prefix ? $prefix.'/' : '').'tracks/';
         abort_unless(str_starts_with($validated['key'], $allowedPrefix), 422);
 
         try {
-            $this->spacesClient()->completeMultipartUpload([
+            $this->spacesClient()->headObject([
                 'Bucket' => config('filesystems.disks.s3.bucket'),
                 'Key' => $validated['key'],
-                'UploadId' => $validated['upload_id'],
-                'MultipartUpload' => ['Parts' => collect($validated['parts'])->sortBy('PartNumber')->values()->all()],
             ]);
-            Log::channel('audio_upload')->info('Spaces multipart upload completed.', ['user_id' => $request->user()->id, 'key' => $validated['key'], 'parts' => count($validated['parts'])]);
+            Log::channel('audio_upload')->info('Spaces direct upload confirmed.', ['user_id' => $request->user()->id, 'key' => $validated['key']]);
 
             return ['success' => true, 'complete' => true, 'path' => $validated['key'], 'filename' => $validated['original_name']];
         } catch (Throwable $exception) {
