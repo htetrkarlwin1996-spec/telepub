@@ -115,14 +115,13 @@
     <script>
         let trackIndex = {{ max($album->songs->count(), 1) }};
 
-        // ===== AUDIO FILE UPLOAD (chunked to avoid PHP request-size limits) =====
+        // ===== AUDIO FILE UPLOAD (stored on cPanel, then transferred by queue) =====
         const uploadAudioRoute = '{{ route('admin.releases.upload-audio') }}';
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
             || document.querySelector('input[name="_token"]')?.value;
-        const audioChunkSize = 1 * 1024 * 1024;
         const maxAudioBytes = {{ config('filesystems.release_audio_max_mb', 500) }} * 1024 * 1024;
 
-        document.addEventListener('change', async function(e) {
+        document.addEventListener('change', function(e) {
             const fileInput = e.target.closest('.audio-file-input');
             if (!fileInput) return;
             const file = fileInput.files[0];
@@ -134,77 +133,67 @@
             const progressContainer = zone.querySelector('.audio-progress');
             const progressBar = zone.querySelector('.audio-progress-bar');
             const statusText = zone.querySelector('.audio-status');
+
             if (file.size > maxAudioBytes) {
-                fileLabel.innerHTML = '<span class="text-red-600">✗ Audio files cannot exceed {{ config('filesystems.release_audio_max_mb', 500) }}MB.</span>';
+                fileLabel.innerHTML = '<span class="text-red-600">Audio files cannot exceed {{ config('filesystems.release_audio_max_mb', 500) }}MB.</span>';
                 return;
             }
 
             progressContainer.classList.remove('hidden');
             progressBar.style.width = '0%';
             progressBar.textContent = '0%';
-            fileLabel.innerHTML = `<span class="text-black/60">Uploading <strong>${file.name}</strong>...</span>`;
-            statusText.textContent = 'Uploading securely in parts...';
+            fileLabel.innerHTML = `<span class="text-black/60">Uploading <strong>${file.name}</strong> to secure storage...</span>`;
+            statusText.textContent = 'Uploading to cPanel storage...';
 
-            const totalChunks = Math.ceil(file.size / audioChunkSize);
-            const uploadId = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
-            const directToSpaces = @json(config('filesystems.release_audio_disk') === 's3' && config('filesystems.release_audio_direct'));
+            const formData = new FormData();
+            formData.append('_token', csrfToken);
+            formData.append('action', 'single');
+            formData.append('audio_file', file, file.name);
 
-            try {
-                let response = null;
-                if (directToSpaces) {
-                    const initForm = new FormData();
-                    initForm.append('_token', csrfToken);
-                    initForm.append('action', 'init');
-                    initForm.append('original_name', file.name);
-                    initForm.append('total_size', file.size);
-                    initForm.append('content_type', file.type || 'application/octet-stream');
-                    const initRequest = await fetch(uploadAudioRoute, { method: 'POST', body: initForm, headers: { 'Accept': 'application/json' } });
-                    const init = await initRequest.json().catch(() => ({}));
-                    if (!initRequest.ok || !init.success) throw new Error(Object.values(init.errors || {}).flat()[0] || init.message || `Spaces initialization failed (HTTP ${initRequest.status})`);
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', uploadAudioRoute);
+            xhr.setRequestHeader('Accept', 'application/json');
+            xhr.upload.addEventListener('progress', function(event) {
+                if (!event.lengthComputable) return;
+                const percent = Math.round((event.loaded / event.total) * 100);
+                progressBar.style.width = percent + '%';
+                progressBar.textContent = percent + '%';
+            });
+            xhr.addEventListener('load', function() {
+                const response = (() => {
+                    try { return JSON.parse(xhr.responseText); } catch (_) { return {}; }
+                })();
 
-                    const putRequest = await fetch(init.url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type || 'application/octet-stream' } });
-                    if (!putRequest.ok) throw new Error(`Spaces rejected the audio file (HTTP ${putRequest.status})`);
-                    progressBar.style.width = '100%';
-                    progressBar.textContent = '100%';
-
-                    const completeRequest = await fetch(uploadAudioRoute, {
-                        method: 'POST',
-                        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-                        body: JSON.stringify({ action: 'complete', key: init.key, original_name: file.name }),
-                    });
-                    response = await completeRequest.json().catch(() => ({}));
-                    if (!completeRequest.ok || !response.success) throw new Error(Object.values(response.errors || {}).flat()[0] || response.message || `Spaces completion failed (HTTP ${completeRequest.status})`);
-                } else {
-                    for (let index = 0; index < totalChunks; index++) {
-                        const formData = new FormData();
-                        formData.append('audio_file', file.slice(index * audioChunkSize, Math.min(file.size, (index + 1) * audioChunkSize)), file.name + '.part');
-                        formData.append('_token', csrfToken);
-                        formData.append('upload_id', uploadId);
-                        formData.append('chunk_index', index);
-                        formData.append('total_chunks', totalChunks);
-                        formData.append('original_name', file.name);
-                        formData.append('total_size', file.size);
-                        const request = await fetch(uploadAudioRoute, { method: 'POST', body: formData, headers: { 'Accept': 'application/json' } });
-                        response = await request.json().catch(() => ({}));
-                        if (!request.ok || !response.success) throw new Error(Object.values(response.errors || {}).flat()[0] || response.message || `Upload failed (HTTP ${request.status})`);
-                        const percent = Math.round(((index + 1) / totalChunks) * 100);
-                        progressBar.style.width = percent + '%';
-                        progressBar.textContent = percent + '%';
-                    }
+                if (xhr.status < 200 || xhr.status >= 300 || !response.success || !response.path) {
+                    const message = Object.values(response.errors || {}).flat()[0]
+                        || response.message
+                        || `Upload failed (HTTP ${xhr.status})`;
+                    pathInput.value = '';
+                    fileLabel.innerHTML = `<span class="text-red-600">${message}</span>`;
+                    statusText.textContent = 'Upload failed. Please retry.';
+                    statusText.classList.add('text-red-600');
+                    statusText.classList.remove('text-green-600', 'text-black/60');
+                    return;
                 }
-                if (!response?.complete || !response?.path) throw new Error('Upload could not be completed.');
+
                 pathInput.value = response.path;
-                fileLabel.innerHTML = `<span class="text-green-600">✓ Uploaded: ${response.filename}</span>`;
-                statusText.textContent = 'Upload complete!';
+                progressBar.style.width = '100%';
+                progressBar.textContent = '100%';
+                fileLabel.innerHTML = `<span class="text-green-600">Uploaded: ${response.filename}</span>`;
+                statusText.textContent = response.queued
+                    ? 'Saved. Transfer to Spaces is queued.'
+                    : 'Upload complete!';
                 statusText.classList.add('text-green-600');
                 statusText.classList.remove('text-red-600', 'text-black/60');
-            } catch (error) {
+            });
+            xhr.addEventListener('error', function() {
                 pathInput.value = '';
-                fileLabel.innerHTML = `<span class="text-red-600">✗ ${error.message}</span>`;
+                fileLabel.innerHTML = '<span class="text-red-600">Network error while uploading.</span>';
                 statusText.textContent = 'Upload failed. Please retry.';
                 statusText.classList.add('text-red-600');
                 statusText.classList.remove('text-green-600', 'text-black/60');
-            }
+            });
+            xhr.send(formData);
         });
 
         // ===== TRACK CLONING =====

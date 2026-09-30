@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\TransferReleaseAudioToSpaces;
 use Aws\S3\S3Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -14,6 +15,10 @@ class ChunkedAudioUpload
 {
     public function handle(Request $request): array
     {
+        if ($request->input('action') === 'single') {
+            return $this->storeSingleUpload($request);
+        }
+
         if ($request->input('action') === 'init') {
             return $this->initializeSpacesUpload($request);
         }
@@ -100,6 +105,63 @@ class ChunkedAudioUpload
         }
 
         return ['success' => true, 'complete' => true, 'path' => $path, 'filename' => $validated['original_name']];
+    }
+
+    private function storeSingleUpload(Request $request): array
+    {
+        $maxKilobytes = max(1, (int) config('filesystems.release_audio_max_mb', 500)) * 1024;
+        $validated = $request->validate([
+            'audio_file' => ['required', 'file', 'max:'.$maxKilobytes],
+        ]);
+        $file = $validated['audio_file'];
+        $extension = strtolower($file->getClientOriginalExtension());
+
+        if (! in_array($extension, ['mp3', 'wav', 'aac', 'flac', 'ogg'], true)) {
+            throw ValidationException::withMessages(['audio_file' => 'The audio file must be MP3, WAV, AAC, FLAC, or OGG.']);
+        }
+
+        $filename = Str::uuid().'.'.$extension;
+        $localPath = $file->storeAs('pending-release-audio/'.$request->user()->id, $filename, 'local');
+        if ($localPath === false) {
+            throw ValidationException::withMessages(['audio_file' => 'The server could not save the audio file to cPanel storage.']);
+        }
+
+        $prefix = config('filesystems.release_audio_prefix');
+        $destinationPath = ($prefix ? $prefix.'/' : '').'tracks/'.$filename;
+
+        if (config('filesystems.release_audio_disk') === 's3') {
+            TransferReleaseAudioToSpaces::dispatch(
+                $localPath,
+                $destinationPath,
+                (int) $request->user()->id,
+                $file->getMimeType() ?: 'application/octet-stream',
+            );
+        } else {
+            $stream = Storage::disk('local')->readStream($localPath);
+            $stored = $stream !== false && Storage::disk(config('filesystems.release_audio_disk', 'public'))->put($destinationPath, $stream);
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+            if (! $stored) {
+                throw ValidationException::withMessages(['audio_file' => 'The server could not save the completed audio file.']);
+            }
+            Storage::disk('local')->delete($localPath);
+        }
+
+        Log::channel('audio_upload')->info('Release audio staged in cPanel storage.', [
+            'user_id' => $request->user()->id,
+            'local_path' => $localPath,
+            'destination' => $destinationPath,
+            'size' => $file->getSize(),
+        ]);
+
+        return [
+            'success' => true,
+            'complete' => true,
+            'queued' => config('filesystems.release_audio_disk') === 's3',
+            'path' => $destinationPath,
+            'filename' => $file->getClientOriginalName(),
+        ];
     }
 
     private function initializeSpacesUpload(Request $request): array
