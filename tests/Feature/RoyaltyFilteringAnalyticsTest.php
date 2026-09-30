@@ -65,6 +65,7 @@ class RoyaltyFilteringAnalyticsTest extends TestCase
             ->assertSee('USD 100.00')
             ->assertSee('Artist Earnings')
             ->assertSee('USD 70.00')
+            ->assertViewHas('monthlyRoyalties', fn ($rows) => (float) $rows->first()->gross_total === 100.0 && (float) $rows->first()->total === 70.0)
             ->assertViewHas('royalties', fn ($rows) => $rows->pluck('store_id')->all() === [$oldStore->id]);
 
         AppSetting::where('key', 'display_currency')->update(['value' => 'EUR']);

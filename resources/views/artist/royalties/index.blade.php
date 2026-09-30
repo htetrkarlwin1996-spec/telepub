@@ -52,18 +52,20 @@
                         <table class="w-full text-sm">
                             <thead><tr class="border-b-2 border-black">
                                 <th class="text-left py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Period</th>
-                                <th class="text-right py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Amount</th>
+                                <th class="text-right py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Gross Revenue</th>
+                                <th class="text-right py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Artist Earnings</th>
                                 <th class="text-right py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Streams</th>
                             </tr></thead>
                             <tbody>
                                 @forelse($monthlyRoyalties as $mr)
                                 <tr class="border-b border-black/10 hover:bg-brand-500/10 transition-colors">
                                     <td class="py-3 px-2 font-bold text-black">{{ date('F', mktime(0,0,0,$mr->month,1)) }} {{ $mr->year }}</td>
+                                    <td class="py-3 px-2 text-right font-bold text-black/60">{{ money($mr->gross_total) }}</td>
                                     <td class="py-3 px-2 text-right font-black text-black">+{{ money($mr->total) }}</td>
                                     <td class="py-3 px-2 text-right font-bold text-black/70">{{ number_format($mr->total_streams) }}</td>
                                 </tr>
                                 @empty
-                                <tr><td colspan="3" class="py-8 text-center font-bold text-black/40">No royalty data yet.</td></tr>
+                                <tr><td colspan="4" class="py-8 text-center font-bold text-black/40">No royalty data yet.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>

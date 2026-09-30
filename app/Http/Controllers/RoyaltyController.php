@@ -37,7 +37,10 @@ class RoyaltyController extends Controller
             ->orderByDesc('year')
             ->orderByDesc('month')
             ->get()
-            ->each(fn ($row) => $row->total = $artist->getArtistShareAttribute((float) $row->total));
+            ->each(function ($row) use ($artist) {
+                $row->gross_total = (float) $row->total;
+                $row->total = $artist->getArtistShareAttribute($row->gross_total);
+            });
 
         $storeBreakdown = (clone $baseQuery)
             ->selectRaw('store_id, SUM(amount) as total, SUM(streams) as total_streams')
