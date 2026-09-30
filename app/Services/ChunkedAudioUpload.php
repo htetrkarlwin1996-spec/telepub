@@ -12,10 +12,10 @@ class ChunkedAudioUpload
     public function handle(Request $request): array
     {
         $validated = $request->validate([
-            'audio_file' => ['required', 'file', 'max:6144'],
+            'audio_file' => ['required', 'file', 'max:1536'],
             'upload_id' => ['required', 'string', 'regex:/^[a-zA-Z0-9-]{16,80}$/'],
             'chunk_index' => ['required', 'integer', 'min:0'],
-            'total_chunks' => ['required', 'integer', 'min:1', 'max:20'],
+            'total_chunks' => ['required', 'integer', 'min:1', 'max:60'],
             'original_name' => ['required', 'string', 'max:255'],
             'total_size' => ['required', 'integer', 'min:1', 'max:52428800'],
         ]);

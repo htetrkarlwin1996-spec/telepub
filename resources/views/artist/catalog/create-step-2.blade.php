@@ -120,7 +120,7 @@
         const uploadAudioRoute = '{{ route('artist.catalog.upload-audio') }}';
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
             || document.querySelector('input[name="_token"]')?.value;
-        const audioChunkSize = 5 * 1024 * 1024;
+        const audioChunkSize = 1 * 1024 * 1024;
 
         document.addEventListener('change', async function(e) {
             const fileInput = e.target.closest('.audio-file-input');
