@@ -1,0 +1,145 @@
+IRENE ZIN MAR MYINT — ADJUSTED PLATFORM STREAMS / EARNINGS
+
+Basis:
+- Platform = channel from the original TeleMusic CSV
+- Streams/Units = units from the original CSV
+- Amount = net_total_client_currency (EUR)
+- Adjusted Streams are scaled by the same factor used to bring each month to the requested target amount
+- January 2026 combines Sep 2025 + Oct 2025 + Nov 2025 + Dec 2025 + Jan 2026
+
+========================================================================================================================
+
+[January 2026]
+Source period: Sep 2025 through Jan 2026 combined
+Original Amount Total: 3659.927423 EUR
+Target / Adjusted Total: 1621.18 EUR
+Scaling Factor: 0.44295414
+
+Platform | Original Streams/Units | Original Amount (EUR) | Adjusted Streams/Units | Adjusted Amount (EUR)
+------------------------------------------------------------------------------------------------------------------------
+YouTube Audio Content ID | 1911909 | 1969.089851 | 846888 | 872.22
+YouTube Art Tracks | 520687 | 699.128022 | 230640 | 309.68
+TikTok | 274372715 | 551.376214 | 121534530 | 244.23
+Apple Music | 42453 | 204.862683 | 18805 | 90.75
+Spotify | 172400 | 148.922389 | 76365 | 65.97
+META | 7415277 | 75.385330 | 3284628 | 33.39
+Audible Magic Fingerprinting | 8 | 4.779308 | 4 | 2.12
+iTunes / Apple Music | 5 | 2.124463 | 2 | 0.94
+Tidal | 310 | 1.789552 | 137 | 0.79
+Tencent | 3579 | 1.329639 | 1585 | 0.59
+Amazon Prime | 295 | 0.611635 | 131 | 0.27
+Kkbox | 59 | 0.228520 | 26 | 0.10
+Soundcloud | 86 | 0.121129 | 38 | 0.05
+SnapChat | 11 | 0.118388 | 5 | 0.05
+Pandora | 8 | 0.020453 | 4 | 0.01
+Qobuz | 1 | 0.015580 | 0 | 0.01
+NetEase Cloud Music | 25 | 0.014625 | 11 | 0.01
+Deezer | 5 | 0.004993 | 2 | 0.00
+Anghami | 11 | 0.004649 | 5 | 0.00
+------------------------------------------------------------------------------------------------------------------------
+MONTH TOTAL | 284439844 | 3659.927423 | 125993806 | 1621.18 EUR
+
+[February 2026]
+Original Amount Total: 1619.771873 EUR
+Target / Adjusted Total: 1030.59 EUR
+Scaling Factor: 0.63625626
+
+Platform | Original Streams/Units | Original Amount (EUR) | Adjusted Streams/Units | Adjusted Amount (EUR)
+------------------------------------------------------------------------------------------------------------------------
+YouTube Audio Content ID | 759756 | 792.285189 | 483400 | 504.10
+YouTube Art Tracks | 244975 | 332.191567 | 155867 | 211.36
+TikTok | 305085262 | 329.329065 | 194112409 | 209.54
+Spotify | 86459 | 74.405029 | 55010 | 47.34
+Apple Music | 10853 | 47.479134 | 6905 | 30.21
+META | 3713211 | 41.985913 | 2362554 | 26.71
+Tencent | 3111 | 1.248601 | 1979 | 0.79
+iTunes / Apple Music | 1 | 0.391412 | 1 | 0.25
+Tidal | 68 | 0.312231 | 43 | 0.20
+Soundcloud | 49 | 0.064459 | 31 | 0.04
+SnapChat | 5 | 0.063536 | 3 | 0.04
+Kkbox | 4 | 0.009775 | 3 | 0.01
+Deezer | 1 | 0.003587 | 1 | 0.00
+NetEase Cloud Music | 3 | 0.002375 | 2 | 0.00
+------------------------------------------------------------------------------------------------------------------------
+MONTH TOTAL | 309903758 | 1619.771873 | 197178208 | 1030.59 EUR
+
+[March 2026]
+Original Amount Total: 2346.784056 EUR
+Target / Adjusted Total: 1171.76 EUR
+Scaling Factor: 0.49930457
+
+Platform | Original Streams/Units | Original Amount (EUR) | Adjusted Streams/Units | Adjusted Amount (EUR)
+------------------------------------------------------------------------------------------------------------------------
+YouTube Audio Content ID | 953867 | 1127.340421 | 476270 | 562.89
+YouTube Art Tracks | 1152281 | 587.531119 | 575339 | 293.36
+TikTok | 418341313 | 396.999822 | 208879729 | 198.22
+Spotify | 128657 | 108.744507 | 64239 | 54.30
+Apple Music | 15102 | 59.878701 | 7540 | 29.90
+META | 5926533 | 58.485929 | 2959145 | 29.20
+Audible Magic Fingerprinting | 6 | 3.592591 | 3 | 1.79
+Tencent | 9587 | 3.584306 | 4787 | 1.79
+Tidal | 67 | 0.256679 | 33 | 0.13
+Soundcloud | 105 | 0.188976 | 52 | 0.09
+Kkbox | 25 | 0.053221 | 12 | 0.03
+NetEase Cloud Music | 72 | 0.051237 | 36 | 0.02
+Amazon Prime | 24 | 0.043547 | 12 | 0.02
+Qobuz | 5 | 0.018290 | 2 | 0.01
+SnapChat | 1 | 0.013782 | 0 | 0.01
+Deezer | 1 | 0.000929 | 0 | 0.00
+------------------------------------------------------------------------------------------------------------------------
+MONTH TOTAL | 426527646 | 2346.784056 | 212967199 | 1171.76 EUR
+
+[April 2026]
+Original Amount Total: 2034.436019 EUR
+Target / Adjusted Total: 1380.00 EUR
+Scaling Factor: 0.67832067
+
+Platform | Original Streams/Units | Original Amount (EUR) | Adjusted Streams/Units | Adjusted Amount (EUR)
+------------------------------------------------------------------------------------------------------------------------
+YouTube Audio Content ID | 1080379 | 1037.523260 | 732843 | 703.77
+YouTube Art Tracks | 385269 | 504.063487 | 261336 | 341.92
+TikTok | 353400141 | 347.975511 | 239718620 | 236.04
+Spotify | 108554 | 86.603507 | 73634 | 58.74
+META | 4335197 | 49.242756 | 2940654 | 33.40
+Tencent | 13212 | 4.196784 | 8962 | 2.85
+Audible Magic Fingerprinting | 7 | 4.135991 | 5 | 2.81
+Tidal | 45 | 0.218292 | 31 | 0.15
+Amazon Prime | 109 | 0.158346 | 74 | 0.11
+SnapChat | 90 | 0.130964 | 61 | 0.09
+Soundcloud | 35 | 0.062632 | 24 | 0.04
+Kkbox | 21 | 0.044875 | 14 | 0.03
+Qobuz | 8 | 0.028580 | 5 | 0.02
+NetEase Cloud Music | 38 | 0.026778 | 26 | 0.02
+Deezer | 1 | 0.021899 | 1 | 0.01
+Amazon Ads | 2 | 0.002357 | 1 | 0.00
+------------------------------------------------------------------------------------------------------------------------
+MONTH TOTAL | 359323108 | 2034.436019 | 243736291 | 1380.00 EUR
+
+[May 2026]
+Original Amount Total: 1831.605226 EUR
+Target / Adjusted Total: 850.99 EUR
+Scaling Factor: 0.46461431
+
+Platform | Original Streams/Units | Original Amount (EUR) | Adjusted Streams/Units | Adjusted Amount (EUR)
+------------------------------------------------------------------------------------------------------------------------
+YouTube Audio Content ID | 905572 | 905.314292 | 420742 | 420.62
+YouTube Art Tracks | 366796 | 460.795783 | 170419 | 214.09
+TikTok | 315422057 | 294.780812 | 146549602 | 136.96
+Spotify | 114318 | 91.003506 | 53114 | 42.28
+Apple Music | 10258 | 38.615729 | 4766 | 17.94
+META | 2956675 | 30.621663 | 1373714 | 14.23
+Tencent | 19499 | 8.856881 | 9060 | 4.12
+Audible Magic Fingerprinting | 2 | 1.189851 | 1 | 0.55
+Tidal | 36 | 0.214171 | 17 | 0.10
+Amazon Prime | 61 | 0.098763 | 28 | 0.05
+Soundcloud | 28 | 0.049297 | 13 | 0.02
+NetEase Cloud Music | 57 | 0.041594 | 26 | 0.02
+Pandora | 4 | 0.013288 | 2 | 0.01
+SnapChat | 1 | 0.005489 | 0 | 0.00
+Qobuz | 1 | 0.003470 | 0 | 0.00
+Deezer | 1 | 0.000637 | 0 | 0.00
+------------------------------------------------------------------------------------------------------------------------
+MONTH TOTAL | 319795366 | 1831.605226 | 148581504 | 850.99 EUR
+
+========================================================================================================================
+GRAND TOTAL ADJUSTED AMOUNT: 6054.52 EUR

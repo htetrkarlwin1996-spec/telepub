@@ -147,6 +147,56 @@ class IreneHistoricalFinanceMigrationTest extends TestCase
         }
     }
 
+    public function test_it_imports_irene_platform_streams_without_changing_financial_totals(): void
+    {
+        $user = User::factory()->create(['email' => 'irenezinmarmyint20224@gmail.com']);
+        $artist = Artist::create(['user_id' => $user->id, 'artist_name' => 'Irene Zin Mar Myint']);
+        (require database_path('migrations/2026_09_21_060000_import_irene_approved_catalog.php'))->up();
+        (require database_path('migrations/2026_09_21_070000_import_irene_approved_royalties_and_withdrawals.php'))->up();
+        (require database_path('migrations/2026_09_30_030000_allocate_irene_january_to_may_royalties_to_tracks.php'))->up();
+
+        $grossBefore = (float) DB::table('royalties')->where('artist_id', $artist->id)->sum('amount');
+        $earningsBefore = (float) $artist->fresh()->total_earnings;
+        $balanceBefore = (float) $artist->fresh()->available_balance;
+        $monthTotalsBefore = DB::table('royalties')->where('artist_id', $artist->id)
+            ->selectRaw('month, SUM(amount) as total')->groupBy('month')->pluck('total', 'month');
+
+        $migration = require database_path('migrations/2026_09_30_040000_import_irene_platform_streams_january_to_may.php');
+        $migration->up();
+        $countAfterFirstRun = DB::table('royalties')->where('artist_id', $artist->id)->count();
+        $migration->up();
+
+        $this->assertSame($countAfterFirstRun, DB::table('royalties')->where('artist_id', $artist->id)->count());
+        $this->assertEqualsWithDelta($grossBefore, (float) DB::table('royalties')->where('artist_id', $artist->id)->sum('amount'), 0.00000001);
+        $this->assertEquals($earningsBefore, (float) $artist->fresh()->total_earnings);
+        $this->assertEquals($balanceBefore, (float) $artist->fresh()->available_balance);
+
+        $expectedStreams = [1 => 125993806, 2 => 197178208, 3 => 212967199, 4 => 243736291, 5 => 148581504];
+        foreach ($expectedStreams as $month => $streams) {
+            $this->assertSame($streams, (int) DB::table('royalties')->where('artist_id', $artist->id)->where('month', $month)->sum('streams'));
+            $this->assertEqualsWithDelta(
+                (float) $monthTotalsBefore[$month],
+                (float) DB::table('royalties')->where('artist_id', $artist->id)->where('month', $month)->sum('amount'),
+                0.00000001,
+            );
+        }
+
+        $platformStreams = function (int $month, string $slug) use ($artist): int {
+            return (int) DB::table('royalties')
+                ->join('music_stores', 'music_stores.id', '=', 'royalties.store_id')
+                ->where('royalties.artist_id', $artist->id)
+                ->where('royalties.month', $month)
+                ->where('music_stores.slug', $slug)
+                ->sum('royalties.streams');
+        };
+
+        $this->assertSame(846888, $platformStreams(1, 'youtube-audio-content-id'));
+        $this->assertSame(121534530, $platformStreams(1, 'tiktok'));
+        $this->assertSame(420742, $platformStreams(5, 'youtube-audio-content-id'));
+        $this->assertSame(1, $platformStreams(4, 'amazon-ads'));
+        $this->assertSame(0, DB::table('royalties')->where('artist_id', $artist->id)->whereNull('song_id')->count());
+    }
+
     public function test_completed_historical_withdrawals_leave_no_available_balance_on_dashboard(): void
     {
         $user = User::factory()->create([
