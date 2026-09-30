@@ -110,6 +110,43 @@ class IreneHistoricalFinanceMigrationTest extends TestCase
         $this->assertEquals(0, $artist->fresh()->available_balance);
     }
 
+    public function test_it_replaces_irene_unassigned_royalties_with_track_allocations_without_adding_earnings(): void
+    {
+        $user = User::factory()->create(['email' => 'irenezinmarmyint20224@gmail.com']);
+        $artist = Artist::create(['user_id' => $user->id, 'artist_name' => 'Irene Zin Mar Myint']);
+        (require database_path('migrations/2026_09_21_060000_import_irene_approved_catalog.php'))->up();
+        (require database_path('migrations/2026_09_21_070000_import_irene_approved_royalties_and_withdrawals.php'))->up();
+
+        $grossBefore = (float) DB::table('royalties')->where('artist_id', $artist->id)->sum('amount');
+        $streamsBefore = (int) DB::table('royalties')->where('artist_id', $artist->id)->sum('streams');
+        $earningsBefore = (float) $artist->fresh()->total_earnings;
+        $balanceBefore = (float) $artist->fresh()->available_balance;
+        $monthTotalsBefore = DB::table('royalties')->where('artist_id', $artist->id)
+            ->selectRaw('month, SUM(amount) as total')->groupBy('month')->pluck('total', 'month');
+
+        $migration = require database_path('migrations/2026_09_30_030000_allocate_irene_january_to_may_royalties_to_tracks.php');
+        $migration->up();
+        $countAfterFirstRun = DB::table('royalties')->where('artist_id', $artist->id)->count();
+        $migration->up();
+
+        $this->assertSame($countAfterFirstRun, DB::table('royalties')->where('artist_id', $artist->id)->count());
+        $this->assertSame(0, DB::table('royalties')->where('artist_id', $artist->id)->whereNull('song_id')->count());
+        $this->assertSame(0, DB::table('royalties')->where('artist_id', $artist->id)->whereNull('album_id')->count());
+        $this->assertGreaterThan(300, $countAfterFirstRun);
+        $this->assertEqualsWithDelta($grossBefore, (float) DB::table('royalties')->where('artist_id', $artist->id)->sum('amount'), 0.00000001);
+        $this->assertSame($streamsBefore, (int) DB::table('royalties')->where('artist_id', $artist->id)->sum('streams'));
+        $this->assertEquals($earningsBefore, (float) $artist->fresh()->total_earnings);
+        $this->assertEquals($balanceBefore, (float) $artist->fresh()->available_balance);
+
+        foreach ($monthTotalsBefore as $month => $total) {
+            $this->assertEqualsWithDelta(
+                (float) $total,
+                (float) DB::table('royalties')->where('artist_id', $artist->id)->where('month', $month)->sum('amount'),
+                0.00000001,
+            );
+        }
+    }
+
     public function test_completed_historical_withdrawals_leave_no_available_balance_on_dashboard(): void
     {
         $user = User::factory()->create([
