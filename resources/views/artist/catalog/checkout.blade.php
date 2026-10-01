@@ -20,7 +20,7 @@
                         </select>
                     </div>
 
-                    <form x-show="method" x-cloak method="POST" action="{{ route('artist.catalog.pay', $album) }}" class="border-2 border-black bg-white p-6 shadow-[5px_5px_0_#000]">
+                    <form x-show="method" x-cloak method="POST" action="{{ route('artist.catalog.pay', $album) }}" data-payment-form class="border-2 border-black bg-white p-6 shadow-[5px_5px_0_#000]">
                         @csrf
                         <input type="hidden" name="method" :value="method">
                         <p class="text-xs font-extrabold uppercase text-black/50">{{ $pricing['is_first'] ? 'First release price' : ucfirst($album->release_type).' release price' }}</p>
@@ -52,20 +52,18 @@
     </div>
 
     @if($qrImage)
-        <div id="mmqr-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-labelledby="mmqr-title">
+        <div id="mmqr-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-labelledby="mmqr-title">
             <div class="relative w-full max-w-md bg-white border-2 border-black shadow-[8px_8px_0_#FFE500] p-6 text-center">
-                <form method="POST" action="{{ route('artist.release-payments.cancel', $qrPayment) }}" data-cancel-mmqr>
-                    @csrf
-                    <button type="submit" class="absolute right-3 top-3 flex h-9 w-9 items-center justify-center border-2 border-black bg-white font-black" aria-label="Cancel transaction and close MMQR popup">×</button>
-                </form>
+                <button type="button" data-close-mmqr class="absolute right-3 top-3 flex h-9 w-9 items-center justify-center border-2 border-black bg-white font-black" aria-label="Close MMQR popup">×</button>
                 <h2 id="mmqr-title" class="text-2xl font-black">Scan MMQR</h2>
                 <p class="mt-2 text-sm font-bold text-black/60">Pay MMK {{ number_format($qrPayment->amount, 0) }} with a supported wallet</p>
                 <img src="{{ $qrImage }}" alt="MyanMyanPay MMQR" class="mx-auto mt-4 w-full max-w-[320px]">
                 <p class="mt-3 break-all text-xs font-bold">{{ $qrPayment->reference }}</p>
                 <p class="mt-3 text-sm font-bold text-amber-700">Payment status: {{ strtoupper($qrPayment->status) }}</p>
-                <form method="POST" action="{{ route('artist.release-payments.cancel', $qrPayment) }}" data-cancel-mmqr class="mt-5">
+                <button type="button" data-close-mmqr class="mt-5 w-full bg-white border-2 border-black px-4 py-3 font-black uppercase">Close</button>
+                <form method="POST" action="{{ route('artist.release-payments.cancel', $qrPayment) }}" data-cancel-mmqr class="mt-3">
                     @csrf
-                    <button type="submit" class="w-full bg-red-100 border-2 border-black px-4 py-3 font-black uppercase">Cancel Transaction & Close</button>
+                    <button type="submit" class="w-full bg-red-100 border-2 border-black px-4 py-3 font-black uppercase">Cancel Transaction</button>
                 </form>
             </div>
         </div>
@@ -73,21 +71,34 @@
         <script>
             document.addEventListener('DOMContentLoaded', () => {
                 const modal = document.getElementById('mmqr-modal');
-                const open = () => modal?.classList.remove('hidden');
-                const cancelForm = document.querySelector('[data-cancel-mmqr]');
-                const cancel = () => {
-                    if (!cancelForm || cancelForm.dataset.submitting === 'true') return;
-                    cancelForm.dataset.submitting = 'true';
-                    cancelForm.submit();
+                const storageKey = @js('dismissed-mmqr-album-'.$album->id);
+                const open = () => {
+                    localStorage.removeItem(storageKey);
+                    modal?.classList.remove('hidden');
+                    modal?.classList.add('flex');
+                };
+                const close = () => {
+                    localStorage.setItem(storageKey, '1');
+                    modal?.classList.add('hidden');
+                    modal?.classList.remove('flex');
                 };
 
                 document.querySelectorAll('[data-open-mmqr]').forEach((button) => button.addEventListener('click', open));
+                document.querySelectorAll('[data-close-mmqr]').forEach((button) => button.addEventListener('click', close));
+                document.querySelectorAll('[data-cancel-mmqr]').forEach((form) => form.addEventListener('submit', () => {
+                    localStorage.setItem(storageKey, '1');
+                }));
+                document.querySelector('[data-payment-form]')?.addEventListener('submit', () => {
+                    const method = document.getElementById('payment-method')?.value;
+                    if (method === 'myanmyanpay') localStorage.removeItem(storageKey);
+                });
                 modal?.addEventListener('click', (event) => {
-                    if (event.target === modal) cancel();
+                    if (event.target === modal) close();
                 });
                 document.addEventListener('keydown', (event) => {
-                    if (event.key === 'Escape' && !modal?.classList.contains('hidden')) cancel();
+                    if (event.key === 'Escape' && !modal?.classList.contains('hidden')) close();
                 });
+                if (!localStorage.getItem(storageKey)) open();
             });
         </script>
     @endif

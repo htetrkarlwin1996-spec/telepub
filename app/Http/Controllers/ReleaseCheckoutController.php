@@ -97,34 +97,19 @@ class ReleaseCheckoutController extends Controller
                 throw new RuntimeException('MyanMyanPay returned cancellation status '.($gatewayStatus ?: 'UNKNOWN').'.');
             }
 
-            DB::transaction(function () use ($payment, $response, $gatewayStatus) {
-                $payment = ReleasePayment::lockForUpdate()->findOrFail($payment->id);
-
-                if ($payment->status !== 'pending') {
-                    return;
-                }
-
-                $payment->update([
-                    'status' => $gatewayStatus === 'EXPIRED' ? 'expired' : 'cancelled',
-                    'qr_data' => null,
-                    'checkout_url' => null,
-                    'gateway_response' => $response,
-                ]);
-
-                $hasActivePayment = ReleasePayment::where('album_id', $payment->album_id)
-                    ->whereKeyNot($payment->id)
-                    ->whereIn('status', ['pending', 'paid'])
-                    ->exists();
-
-                if (! $hasActivePayment) {
-                    $payment->album()->update(['payment_status' => 'unpaid']);
-                }
-            });
+            $this->cancelLocally($payment, $response, $gatewayStatus === 'EXPIRED' ? 'expired' : 'cancelled');
 
             return redirect()->route('artist.catalog.checkout', $payment->album)
                 ->with('success', 'MMQR transaction cancelled. You can choose another payment method.');
         } catch (\Throwable $e) {
             report($e);
+
+            if (str_contains($e->getMessage(), '404') && str_contains(strtolower($e->getMessage()), 'order not found')) {
+                $this->cancelLocally($payment, ['error' => $e->getMessage()], 'cancelled');
+
+                return redirect()->route('artist.catalog.checkout', $payment->album)
+                    ->with('success', 'The MMQR order no longer exists at MyanMyanPay. Its local pending record was cleared.');
+            }
 
             return redirect()->route('artist.catalog.checkout', $payment->album)
                 ->withErrors(['payment' => 'Transaction could not be cancelled: '.$e->getMessage()]);
@@ -217,6 +202,33 @@ class ReleaseCheckoutController extends Controller
                 return;
             } $payment->update(['status' => 'paid', 'paid_at' => now()]);
             $submission->finalize($payment->album);
+        });
+    }
+
+    private function cancelLocally(ReleasePayment $payment, array $gatewayResponse, string $status): void
+    {
+        DB::transaction(function () use ($payment, $gatewayResponse, $status) {
+            $payment = ReleasePayment::lockForUpdate()->findOrFail($payment->id);
+
+            if ($payment->status !== 'pending') {
+                return;
+            }
+
+            $payment->update([
+                'status' => $status,
+                'qr_data' => null,
+                'checkout_url' => null,
+                'gateway_response' => $gatewayResponse,
+            ]);
+
+            $hasActivePayment = ReleasePayment::where('album_id', $payment->album_id)
+                ->whereKeyNot($payment->id)
+                ->whereIn('status', ['pending', 'paid'])
+                ->exists();
+
+            if (! $hasActivePayment) {
+                $payment->album()->update(['payment_status' => 'unpaid']);
+            }
         });
     }
 

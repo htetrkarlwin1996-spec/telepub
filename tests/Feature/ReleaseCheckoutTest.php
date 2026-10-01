@@ -90,11 +90,12 @@ class ReleaseCheckoutTest extends TestCase
             ->get(route('artist.catalog.checkout', $album))
             ->assertOk()
             ->assertSee('id="mmqr-modal"', false)
+            ->assertSee('hidden items-center', false)
             ->assertSee('Scan MMQR')
             ->assertSee('MMQR Payment Pending')
             ->assertSee('Select payment method')
             ->assertSee('x-show="method"', false)
-            ->assertSeeText('Cancel Transaction & Close')
+            ->assertSeeText('Cancel Transaction')
             ->assertSee('REL-MYA-POPUP');
     }
 
@@ -145,5 +146,49 @@ class ReleaseCheckoutTest extends TestCase
             ->assertOk()
             ->assertDontSee('id="mmqr-modal"', false)
             ->assertDontSee('MMQR Payment Pending');
+    }
+
+    public function test_missing_myanmyanpay_order_clears_the_local_pending_transaction(): void
+    {
+        $user = User::factory()->create(['role' => 'artist']);
+        $artist = Artist::create(['user_id' => $user->id, 'artist_name' => 'Missing QR Artist']);
+        $album = Album::create([
+            'artist_id' => $artist->id,
+            'title' => 'Missing QR Single',
+            'release_type' => 'single',
+            'status' => 'draft',
+            'payment_status' => 'pending',
+        ]);
+        $payment = ReleasePayment::create([
+            'album_id' => $album->id,
+            'user_id' => $user->id,
+            'provider' => 'myanmyanpay',
+            'amount' => 8955,
+            'currency' => 'MMK',
+            'reference' => 'REL-MYA-MISSING',
+            'qr_data' => 'missing-emvco-mmqr-payload',
+        ]);
+
+        $this->app->instance(MyanMyanPayService::class, new class extends MyanMyanPayService
+        {
+            public function configured(): bool
+            {
+                return true;
+            }
+
+            public function cancel(array $payload): array
+            {
+                throw new \Exception('404 Not Found: {"success":false,"message":"Order Not Found"}');
+            }
+        });
+
+        $this->actingAs($user)
+            ->post(route('artist.release-payments.cancel', $payment))
+            ->assertRedirect(route('artist.catalog.checkout', $album))
+            ->assertSessionHas('success');
+
+        $this->assertSame('cancelled', $payment->fresh()->status);
+        $this->assertNull($payment->fresh()->qr_data);
+        $this->assertSame('unpaid', $album->fresh()->payment_status);
     }
 }
