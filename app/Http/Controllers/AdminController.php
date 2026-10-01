@@ -21,6 +21,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class AdminController extends Controller
 {
@@ -343,25 +344,53 @@ class AdminController extends Controller
     {
         $validated = $request->validate([
             'artist_id' => 'required|exists:artists,id',
-            'amount' => 'required|numeric|min:0',
-            'fee' => 'required|numeric|min:0',
+            'amount' => 'required|numeric|min:0.01',
+            'fee' => 'required|numeric|min:0|lte:amount',
             'currency' => 'required|string|size:3',
             'period_start' => 'nullable|date',
             'period_end' => 'nullable|date',
+            'payment_method' => 'nullable|string|max:100',
+            'payment_reference' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
         ]);
 
-        $validated['total'] = $validated['amount'] - $validated['fee'];
-        $validated['invoice_number'] = 'INV-'.strtoupper(uniqid());
-        $validated['processed_by'] = auth()->id();
-        $validated['status'] = 'paid';
-        $validated['paid_at'] = now();
+        DB::transaction(function () use ($validated) {
+            $artist = Artist::lockForUpdate()->findOrFail($validated['artist_id']);
+            if ((float) $validated['amount'] > (float) $artist->available_balance) {
+                throw ValidationException::withMessages(['amount' => 'Payout amount exceeds the artist available balance.']);
+            }
 
-        Payout::create($validated);
+            $total = round((float) $validated['amount'] - (float) $validated['fee'], 2);
+            $paymentMethod = $validated['payment_method'] ?? 'admin_payout';
+            $withdrawal = Withdrawal::create([
+                'artist_id' => $artist->id,
+                'amount' => $validated['amount'],
+                'fee' => $validated['fee'],
+                'total' => $total,
+                'currency' => $validated['currency'],
+                'status' => 'completed',
+                'payment_method' => $paymentMethod,
+                'payment_details' => $validated['payment_reference'] ?? null,
+                'notes' => $validated['notes'] ?? null,
+                'admin_notes' => 'Payout created directly by admin.',
+                'requested_at' => now(),
+                'processed_at' => now(),
+                'processed_by' => auth()->id(),
+            ]);
 
-        // Deduct from artist balance
-        $artist = Artist::find($validated['artist_id']);
-        $artist->decrement('available_balance', $validated['amount']);
+            Payout::create([
+                ...$validated,
+                'withdrawal_id' => $withdrawal->id,
+                'total' => $total,
+                'invoice_number' => 'INV-'.strtoupper(uniqid()),
+                'processed_by' => auth()->id(),
+                'status' => 'paid',
+                'paid_at' => now(),
+                'payment_method' => $paymentMethod,
+            ]);
+
+            $artist->decrement('available_balance', $validated['amount']);
+        });
 
         return redirect()->route('admin.payouts')->with('success', 'Payout processed successfully.');
     }

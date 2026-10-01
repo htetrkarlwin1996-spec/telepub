@@ -8,7 +8,7 @@
     <div class="py-8 px-6 sm:px-8 lg:px-10">
         <div class="max-w-7xl mx-auto">
             @if(session('success'))
-            <div class="bg-emerald-400 border-2 border-black text-black font-bold px-4 py-3 mb-6 text-sm">{{ session('success') }}</div>
+            <div role="alert" class="bg-emerald-400 border-2 border-black text-black font-bold px-4 py-3 mb-6 text-sm">{{ session('success') }}</div>
             @endif
 
             <div class="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
@@ -47,7 +47,7 @@
                                         @elseif($w->status == 'processing') bg-purple-200 text-black
                                         @elseif($w->status == 'completed') bg-emerald-400 text-black
                                         @else bg-red-200 text-black
-                                        @endif">{{ ucfirst($w->status) }}</span>
+                                        @endif">{{ $w->status === 'completed' ? 'Success' : ucfirst($w->status) }}</span>
                                 </td>
                                 <td class="py-3 px-2 text-xs font-semibold text-black/50">{{ $w->requested_at->format('Y-m-d') }}</td>
                                 <td class="py-3 px-2 text-xs font-semibold text-black/50">{{ $w->processed_at ? $w->processed_at->format('Y-m-d') : '-' }}</td>

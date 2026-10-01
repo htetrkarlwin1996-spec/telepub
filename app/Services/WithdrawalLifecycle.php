@@ -32,7 +32,8 @@ class WithdrawalLifecycle
                 'processed_by' => $adminId, 'admin_notes' => $note,
             ]);
             Payout::create([
-                'artist_id' => $locked->artist_id, 'invoice_number' => 'PAY-'.strtoupper(uniqid()),
+                'artist_id' => $locked->artist_id, 'withdrawal_id' => $locked->id,
+                'invoice_number' => 'PAY-'.strtoupper(uniqid()),
                 'amount' => $locked->amount, 'fee' => $locked->fee, 'total' => $locked->total,
                 'currency' => $locked->currency, 'status' => 'paid', 'paid_at' => now(),
                 'payment_method' => $locked->payment_method, 'processed_by' => $adminId,

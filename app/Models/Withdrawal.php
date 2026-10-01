@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class Withdrawal extends Model
 {
@@ -12,7 +12,7 @@ class Withdrawal extends Model
     protected $fillable = [
         'artist_id', 'amount', 'fee', 'total', 'currency', 'status',
         'payment_method', 'payment_details', 'notes', 'admin_notes',
-        'requested_at', 'processed_at', 'processed_by'
+        'requested_at', 'processed_at', 'processed_by',
     ];
 
     protected $casts = [
@@ -29,9 +29,14 @@ class Withdrawal extends Model
     {
         return $this->belongsTo(User::class, 'processed_by');
     }
+
+    public function payout()
+    {
+        return $this->hasOne(Payout::class);
+    }
+
     public function setCurrencyAttribute(mixed $value): void
     {
         $this->attributes['currency'] = 'USD';
     }
-
 }
