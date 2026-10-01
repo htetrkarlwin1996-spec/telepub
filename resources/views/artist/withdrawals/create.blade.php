@@ -22,7 +22,7 @@
                     <div class="grid grid-cols-1 gap-4">
                         <div>
                             <x-input-label for="amount" :value="'Withdrawal Amount ('.display_currency().')'" />
-                            <x-text-input id="amount" class="block mt-1 w-full" type="number" step="0.01" min="{{ $minimumWithdrawalAmount }}" max="{{ $artist->available_balance }}" name="amount" required placeholder="Enter amount to withdraw" />
+                            <x-text-input id="amount" class="block mt-1 w-full" type="number" step="0.01" min="{{ $minimumWithdrawalAmount }}" max="{{ $artist->available_balance }}" name="amount" :value="old('amount')" required placeholder="Enter amount to withdraw" />
                             <p class="text-xs font-bold text-black/50 mt-1">Min: {{ money($minimumWithdrawalAmount) }} | Max: {{ money($artist->available_balance) }}</p>
                             <x-input-error :messages="$errors->get('amount')" class="mt-2" />
                         </div>
@@ -34,10 +34,10 @@
                                 <option value="wave_pay" @selected(old('payment_method') === 'wave_pay')>Wave Pay</option>
                                 <option value="thai_bank_transfer" @selected(old('payment_method') === 'thai_bank_transfer')>Thai Bank Transfer</option>
                                 <option value="wire_transfer" @selected(old('payment_method') === 'wire_transfer')>Wire Transfer</option>
-                                <option value="paypal">PayPal</option>
-                                <option value="bank_transfer">Bank Transfer</option>
-                                <option value="wise">Wise</option>
-                                <option value="payoneer">Payoneer</option>
+                                <option value="paypal" @selected(old('payment_method') === 'paypal')>PayPal</option>
+                                <option value="bank_transfer" @selected(old('payment_method') === 'bank_transfer')>Bank Transfer</option>
+                                <option value="wise" @selected(old('payment_method') === 'wise')>Wise</option>
+                                <option value="payoneer" @selected(old('payment_method') === 'payoneer')>Payoneer</option>
                             </select>
                             <x-input-error :messages="$errors->get('payment_method')" class="mt-2" />
                         </div>

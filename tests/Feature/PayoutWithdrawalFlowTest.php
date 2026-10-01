@@ -60,6 +60,18 @@ class PayoutWithdrawalFlowTest extends TestCase
             $this->post(route('artist.withdrawals.store'), [
                 'amount' => 20,
                 'payment_method' => $method,
+                'account_name' => '',
+                'phone' => '',
+                'bank_name' => '',
+                'account_number' => '',
+                'branch' => '',
+                'beneficiary_name' => '',
+                'swift_bic' => '',
+                'bank_address' => '',
+                'beneficiary_address' => '',
+                'bank_country' => '',
+                'routing_number' => '',
+                'payment_details' => '',
                 ...$details,
             ])->assertRedirect(route('artist.withdrawals'))->assertSessionHasNoErrors();
 
