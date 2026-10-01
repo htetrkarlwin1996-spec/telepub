@@ -238,11 +238,11 @@ class ReleaseCheckoutController extends Controller
     {
         abort_unless($payment->user_id === $request->user()->id && $payment->provider === 'myanmyanpay', 403);
 
-        if ($payment->status === 'pending' && $mmpay->configured()) {
+        if (in_array($payment->status, ['pending', 'expired', 'failed'], true) && $mmpay->configured()) {
             try {
                 Cache::lock('mmqr-status-'.$payment->id, 10)->block(2, function () use ($payment, $mmpay, $submission) {
                     $fresh = $payment->fresh();
-                    if ($fresh->status !== 'pending') {
+                    if (! in_array($fresh->status, ['pending', 'expired', 'failed'], true)) {
                         return;
                     }
                     $response = $mmpay->get(['orderId' => $fresh->reference]);
@@ -255,11 +255,18 @@ class ReleaseCheckoutController extends Controller
 
         $payment->refresh();
 
-        return response()->json([
+        $result = [
             'status' => $payment->status,
             'completed' => $payment->status === 'paid',
             'redirect_url' => $payment->status === 'paid' ? route('artist.catalog.show', $payment->album) : null,
-        ]);
+        ];
+        if (! $request->expectsJson()) {
+            return $payment->status === 'paid'
+                ? redirect()->route('artist.catalog.show', $payment->album)->with('success', 'MMQR payment confirmed and release submitted.')
+                : redirect()->route('artist.catalog.checkout', $payment->album)->with('success', 'MMQR status checked: '.strtoupper($payment->status).'.');
+        }
+
+        return response()->json($result);
     }
 
     private function applyMyanStatus(ReleasePayment $payment, array $response, ReleaseSubmission $submission, bool $strict = false): void

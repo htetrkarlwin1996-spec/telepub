@@ -103,6 +103,7 @@ class ReleaseCheckoutTest extends TestCase
             ->assertSeeText('Cancel Transaction')
             ->assertSeeText('Download QR')
             ->assertSeeText('Payment powered by MyanMyanPay.')
+            ->assertSeeText('Check Status')
             ->assertSee('data-mmqr-timer', false)
             ->assertSee('mmqr-logo.svg', false)
             ->assertSee('REL-MYA-POPUP');
