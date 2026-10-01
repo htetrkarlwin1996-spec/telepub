@@ -8,7 +8,7 @@
             <div class="bg-brand-500 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6 mb-6">
                 <div class="text-xs font-extrabold uppercase tracking-wider text-black/60">Available Balance</div>
                 <div class="text-3xl font-black text-black mt-1">{{ money($artist->available_balance) }}</div>
-                <div class="text-xs font-extrabold text-black/60 mt-2">Minimum withdrawal: {{ money(10) }}</div>
+                <div class="text-xs font-extrabold text-black/60 mt-2">Minimum withdrawal: {{ money($minimumWithdrawalAmount) }}</div>
             </div>
 
             <div class="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-6">
@@ -17,8 +17,8 @@
                     <div class="grid grid-cols-1 gap-4">
                         <div>
                             <x-input-label for="amount" :value="'Withdrawal Amount ('.display_currency().')'" />
-                            <x-text-input id="amount" class="block mt-1 w-full" type="number" step="0.01" min="10" max="{{ $artist->available_balance }}" name="amount" required placeholder="Enter amount to withdraw" />
-                            <p class="text-xs font-bold text-black/50 mt-1">Min: {{ money(10) }} | Max: {{ money($artist->available_balance) }}</p>
+                            <x-text-input id="amount" class="block mt-1 w-full" type="number" step="0.01" min="{{ $minimumWithdrawalAmount }}" max="{{ $artist->available_balance }}" name="amount" required placeholder="Enter amount to withdraw" />
+                            <p class="text-xs font-bold text-black/50 mt-1">Min: {{ money($minimumWithdrawalAmount) }} | Max: {{ money($artist->available_balance) }}</p>
                             <x-input-error :messages="$errors->get('amount')" class="mt-2" />
                         </div>
                         <div>

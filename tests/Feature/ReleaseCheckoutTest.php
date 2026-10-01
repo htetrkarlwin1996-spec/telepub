@@ -8,9 +8,11 @@ use App\Models\MusicStore;
 use App\Models\ReleasePayment;
 use App\Models\Song;
 use App\Models\User;
+use App\Notifications\ReleaseSubmitted;
 use App\Services\MyanMyanPayService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -20,6 +22,7 @@ class ReleaseCheckoutTest extends TestCase
 
     public function test_store_selection_goes_to_checkout_and_offline_approval_submits_release(): void
     {
+        Notification::fake();
         $admin = User::factory()->create(['role' => 'admin']);
         $user = User::factory()->create(['role' => 'artist']);
         $artist = Artist::create(['user_id' => $user->id, 'artist_name' => 'Checkout Artist']);
@@ -44,6 +47,7 @@ class ReleaseCheckoutTest extends TestCase
         $this->assertSame('submitted', $album->fresh()->status);
         $this->assertSame('submitted', $song->fresh()->status);
         $this->assertDatabaseHas('distributions', ['album_id' => $album->id, 'song_id' => $song->id, 'store_id' => $store->id, 'status' => 'submitted']);
+        Notification::assertSentTo($admin, ReleaseSubmitted::class);
     }
 
     public function test_audio_upload_accepts_chunks_and_reassembles_the_original_file(): void
@@ -96,7 +100,42 @@ class ReleaseCheckoutTest extends TestCase
             ->assertSee('Select payment method')
             ->assertSee('x-show="method"', false)
             ->assertSeeText('Cancel Transaction')
+            ->assertSeeText('Download QR')
+            ->assertSeeText('Payment powered by MyanMyanPay.')
+            ->assertSee('data-mmqr-timer', false)
+            ->assertSee('mmqr-logo.svg', false)
             ->assertSee('REL-MYA-POPUP');
+    }
+
+    public function test_active_myanmyanpay_order_is_reused_instead_of_creating_another_order(): void
+    {
+        $user = User::factory()->create(['role' => 'artist']);
+        $artist = Artist::create(['user_id' => $user->id, 'artist_name' => 'Cached QR Artist']);
+        $album = Album::create(['artist_id' => $artist->id, 'title' => 'Cached QR Single', 'release_type' => 'single', 'status' => 'draft']);
+        $payment = ReleasePayment::create([
+            'album_id' => $album->id, 'user_id' => $user->id, 'provider' => 'myanmyanpay',
+            'amount' => 8955, 'currency' => 'MMK', 'reference' => 'REL-MYA-CACHED',
+            'qr_data' => 'cached-emvco-mmqr-payload', 'expires_at' => now()->addMinutes(15),
+        ]);
+        $this->app->instance(MyanMyanPayService::class, new class extends MyanMyanPayService
+        {
+            public function configured(): bool
+            {
+                return true;
+            }
+
+            public function pay(array $payload): array
+            {
+                throw new \RuntimeException('A new gateway order must not be requested.');
+            }
+        });
+
+        $this->actingAs($user)->post(route('artist.catalog.pay', $album), ['method' => 'myanmyanpay'])
+            ->assertRedirect(route('artist.catalog.checkout', $album))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseCount('release_payments', 1);
+        $this->assertSame('REL-MYA-CACHED', $payment->fresh()->reference);
     }
 
     public function test_artist_can_cancel_a_pending_myanmyanpay_transaction(): void

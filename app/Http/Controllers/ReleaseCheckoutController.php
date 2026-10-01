@@ -10,6 +10,7 @@ use App\Services\ReleaseSubmission;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\SvgWriter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -20,11 +21,14 @@ class ReleaseCheckoutController extends Controller
     public function show(Album $album, ReleasePricing $pricing)
     {
         $this->authorizeAlbum($album);
+        $this->expireStaleMmqr($album);
         $payments = $album->hasMany(ReleasePayment::class)->latest()->get();
-        $qrPayment = $payments->first(fn ($payment) => $payment->provider === 'myanmyanpay' && $payment->status === 'pending' && filled($payment->qr_data));
+        $qrPayment = $payments->first(fn ($payment) => $payment->provider === 'myanmyanpay' && $payment->status === 'pending' && filled($payment->qr_data)
+            && ($payment->expires_at ?? $payment->created_at->copy()->addMinutes(15))->isFuture());
         $qrImage = $qrPayment ? (new SvgWriter)->write(new QrCode($qrPayment->qr_data, size: 320))->getDataUri() : null;
+        $qrExpiresAt = $qrPayment ? ($qrPayment->expires_at ?? $qrPayment->created_at->copy()->addMinutes(15)) : null;
 
-        return view('artist.catalog.checkout', compact('album', 'payments', 'qrPayment', 'qrImage') + ['pricing' => $pricing->for($album)]);
+        return view('artist.catalog.checkout', compact('album', 'payments', 'qrPayment', 'qrImage', 'qrExpiresAt') + ['pricing' => $pricing->for($album)]);
     }
 
     public function pay(Request $request, Album $album, ReleasePricing $pricing, MyanMyanPayService $mmpay)
@@ -39,6 +43,9 @@ class ReleaseCheckoutController extends Controller
         $amount = match ($method) {
             'offline' => $prices['thb'], 'myanmyanpay' => $prices['mmk'], default => $prices['usd']
         };
+        if ($method === 'myanmyanpay') {
+            return Cache::lock('mmqr-payment-album-'.$album->id, 30)->block(10, fn () => $this->myanmyanpay($request, $album, (float) $amount, $mmpay));
+        }
         $reference = 'REL-'.strtoupper(substr($method, 0, 3)).'-'.now()->format('YmdHis').'-'.Str::upper(Str::random(6));
         $payment = ReleasePayment::create(['album_id' => $album->id, 'user_id' => $request->user()->id, 'provider' => $method, 'amount' => $amount, 'currency' => $currency, 'reference' => $reference]);
         $album->update(['payment_status' => 'pending']);
@@ -53,20 +60,49 @@ class ReleaseCheckoutController extends Controller
             if ($method === 'paypal') {
                 return $this->paypal($payment, $album);
             }
-            abort_unless($mmpay->configured(), 503, 'MyanMyanPay is not configured.');
+            throw new RuntimeException('Unsupported payment method.');
+        } catch (\Throwable $e) {
+            report($e);
+            $payment->update(['status' => 'failed', 'gateway_response' => ['error' => $e->getMessage()]]);
+
+            return back()->withErrors(['payment' => 'Payment could not be started: '.$e->getMessage()]);
+        }
+    }
+
+    private function myanmyanpay(Request $request, Album $album, float $amount, MyanMyanPayService $mmpay)
+    {
+        $this->expireStaleMmqr($album);
+        $existing = ReleasePayment::where('album_id', $album->id)
+            ->where('user_id', $request->user()->id)->where('provider', 'myanmyanpay')
+            ->where('status', 'pending')->whereNotNull('qr_data')
+            ->where(fn ($query) => $query->where('expires_at', '>', now())
+                ->orWhere(fn ($legacy) => $legacy->whereNull('expires_at')->where('created_at', '>', now()->subMinutes(15))))
+            ->latest()->first();
+        if ($existing) {
+            return redirect()->route('artist.catalog.checkout', $album)
+                ->with('success', 'Your existing MMQR order is still active and has been reopened.');
+        }
+
+        abort_unless($mmpay->configured(), 503, 'MyanMyanPay is not configured.');
+        $reference = 'REL-MYA-'.now()->format('YmdHis').'-'.Str::upper(Str::random(6));
+        $payment = ReleasePayment::create([
+            'album_id' => $album->id, 'user_id' => $request->user()->id,
+            'provider' => 'myanmyanpay', 'amount' => $amount, 'currency' => 'MMK',
+            'reference' => $reference, 'expires_at' => now()->addMinutes(15),
+        ]);
+        $album->update(['payment_status' => 'pending']);
+
+        try {
             $response = $mmpay->pay(['orderId' => $reference, 'amount' => (int) $amount, 'currency' => 'MMK', 'callbackUrl' => route('webhooks.myanmyanpay'), 'customMessage' => 'TeleMusic release: '.$album->title, 'items' => [['name' => $album->title, 'amount' => (int) $amount, 'quantity' => 1]]]);
             $qr = data_get($response, 'qr') ?? data_get($response, 'data.qr') ?? data_get($response, 'qrCode') ?? data_get($response, 'data.qrCode');
             $url = data_get($response, 'paymentUrl') ?? data_get($response, 'data.paymentUrl') ?? data_get($response, 'url');
             $gatewayStatus = strtoupper((string) (data_get($response, 'status') ?? data_get($response, 'data.status') ?? 'PENDING'));
-
             if (in_array($gatewayStatus, ['FAILED', 'CANCELLED', 'CANCELED', 'EXPIRED'], true)) {
                 throw new RuntimeException('MyanMyanPay returned payment status '.$gatewayStatus.'.');
             }
-
             if (! is_string($qr) || trim($qr) === '') {
                 throw new RuntimeException('MyanMyanPay did not return an MMQR payment code.');
             }
-
             $payment->update(['qr_data' => $qr, 'checkout_url' => $url, 'gateway_response' => $response]);
 
             return redirect()->route('artist.catalog.checkout', $album)->with('success', 'MMQR payment request created. Scan the QR code in the popup.');
@@ -75,6 +111,18 @@ class ReleaseCheckoutController extends Controller
             $payment->update(['status' => 'failed', 'gateway_response' => ['error' => $e->getMessage()]]);
 
             return back()->withErrors(['payment' => 'Payment could not be started: '.$e->getMessage()]);
+        }
+    }
+
+    private function expireStaleMmqr(Album $album): void
+    {
+        $expired = ReleasePayment::where('album_id', $album->id)->where('provider', 'myanmyanpay')->where('status', 'pending')
+            ->where(fn ($query) => $query->where('expires_at', '<=', now())
+                ->orWhere(fn ($legacy) => $legacy->whereNull('expires_at')->where('created_at', '<=', now()->subMinutes(15))))
+            ->update(['status' => 'expired', 'qr_data' => null, 'checkout_url' => null]);
+
+        if ($expired && ! ReleasePayment::where('album_id', $album->id)->whereIn('status', ['pending', 'paid'])->exists()) {
+            $album->update(['payment_status' => 'unpaid']);
         }
     }
 
@@ -217,6 +265,7 @@ class ReleaseCheckoutController extends Controller
             $payment->update([
                 'status' => $status,
                 'qr_data' => null,
+                'expires_at' => null,
                 'checkout_url' => null,
                 'gateway_response' => $gatewayResponse,
             ]);

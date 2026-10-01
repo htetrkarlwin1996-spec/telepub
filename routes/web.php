@@ -5,6 +5,7 @@ use App\Http\Controllers\AdminCatalogController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminMaintenanceController;
 use App\Http\Controllers\AdminMasterAccountController;
+use App\Http\Controllers\AdminNotificationController;
 use App\Http\Controllers\AdminSettingsController;
 use App\Http\Controllers\AlbumController;
 use App\Http\Controllers\AnalyticsController;
@@ -136,6 +137,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/maintenance/enable', [AdminMaintenanceController::class, 'enable'])->name('maintenance.enable');
         Route::post('/maintenance/disable', [AdminMaintenanceController::class, 'disable'])->name('maintenance.disable');
         Route::get('/settings', [AdminSettingsController::class, 'index'])->name('settings');
+        Route::get('/notifications', [AdminNotificationController::class, 'index'])->name('notifications.index');
+        Route::post('/notifications/{notification}/read', [AdminNotificationController::class, 'read'])->name('notifications.read');
         Route::put('/settings/currency', [AdminSettingsController::class, 'updateCurrency'])->name('settings.currency');
         Route::put('/settings/release-pricing', [AdminSettingsController::class, 'updateReleasePricing'])->name('settings.release-pricing');
         Route::put('/settings/withdrawal-fee', [AdminSettingsController::class, 'updateWithdrawalFee'])->name('settings.withdrawal-fee');

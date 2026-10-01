@@ -41,6 +41,11 @@
                         <x-text-input id="withdrawal_fee_percentage" name="withdrawal_fee_percentage" type="number" step="0.01" min="0" max="100" value="{{ old('withdrawal_fee_percentage', $withdrawalFeePercentage) }}" class="mt-1 block w-full" required />
                         <x-input-error :messages="$errors->get('withdrawal_fee_percentage')" class="mt-2" />
                     </div>
+                    <div class="w-full sm:max-w-xs">
+                        <x-input-label for="minimum_withdrawal_amount" :value="'Minimum Withdrawal ('.display_currency().')'" />
+                        <x-text-input id="minimum_withdrawal_amount" name="minimum_withdrawal_amount" type="number" step="0.01" min="0" value="{{ old('minimum_withdrawal_amount', $minimumWithdrawalAmount) }}" class="mt-1 block w-full" required />
+                        <x-input-error :messages="$errors->get('minimum_withdrawal_amount')" class="mt-2" />
+                    </div>
                     <button class="px-6 py-3 bg-brand-500 border-2 border-black font-black uppercase shadow-[3px_3px_0_#000]">Save Withdrawal Fee</button>
                 </form>
             </section>

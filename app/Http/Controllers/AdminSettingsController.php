@@ -23,6 +23,7 @@ class AdminSettingsController extends Controller
             'maintenanceEndsAt' => $maintenanceMode->endsAt(),
             'releasePricing' => $releasePricing->settings(),
             'withdrawalFeePercentage' => $withdrawalFee->percentage(),
+            'minimumWithdrawalAmount' => $withdrawalFee->minimumAmount(),
             'pendingOfflinePayments' => ReleasePayment::with(['album.artist', 'user'])->where('provider', 'offline')->where('status', 'pending')->latest()->get(),
         ]);
     }
@@ -31,14 +32,19 @@ class AdminSettingsController extends Controller
     {
         $validated = $request->validate([
             'withdrawal_fee_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
+            'minimum_withdrawal_amount' => ['required', 'numeric', 'min:0', 'max:999999999'],
         ]);
 
         AppSetting::updateOrCreate(
             ['key' => 'withdrawal_fee_percentage'],
             ['value' => (string) $validated['withdrawal_fee_percentage']],
         );
+        AppSetting::updateOrCreate(
+            ['key' => 'minimum_withdrawal_amount'],
+            ['value' => (string) $validated['minimum_withdrawal_amount']],
+        );
 
-        return back()->with('success', 'Withdrawal processing fee updated.');
+        return back()->with('success', 'Withdrawal fee and minimum amount updated.');
     }
 
     public function updateReleasePricing(Request $request): RedirectResponse

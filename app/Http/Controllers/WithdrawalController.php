@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Withdrawal;
+use App\Services\AdminNotifier;
 use App\Services\WithdrawalFee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,16 +24,17 @@ class WithdrawalController extends Controller
         $artist = current_artist();
 
         $withdrawalFeePercentage = $withdrawalFee->percentage();
+        $minimumWithdrawalAmount = $withdrawalFee->minimumAmount();
 
-        return view('artist.withdrawals.create', compact('artist', 'withdrawalFeePercentage'));
+        return view('artist.withdrawals.create', compact('artist', 'withdrawalFeePercentage', 'minimumWithdrawalAmount'));
     }
 
-    public function store(Request $request, WithdrawalFee $withdrawalFee)
+    public function store(Request $request, WithdrawalFee $withdrawalFee, AdminNotifier $notifier)
     {
         $artist = current_artist();
 
         $validated = $request->validate([
-            'amount' => 'required|numeric|min:10|max:'.$artist->available_balance,
+            'amount' => 'required|numeric|min:'.$withdrawalFee->minimumAmount().'|max:'.$artist->available_balance,
             'payment_method' => ['required', Rule::in(['kbz_pay', 'wave_pay', 'thai_bank_transfer', 'wire_transfer', 'paypal', 'bank_transfer', 'wise', 'payoneer'])],
             'account_name' => 'required_if:payment_method,kbz_pay,wave_pay,thai_bank_transfer|string|max:150',
             'phone' => 'required_if:payment_method,kbz_pay,wave_pay|string|max:30',
@@ -61,10 +63,10 @@ class WithdrawalController extends Controller
 
         $amounts = $withdrawalFee->calculate((float) $validated['amount']);
 
-        DB::transaction(function () use ($artist, $validated, $amounts, $details) {
+        $withdrawal = DB::transaction(function () use ($artist, $validated, $amounts, $details) {
             $lockedArtist = $artist->newQuery()->lockForUpdate()->findOrFail($artist->id);
             abort_if((float) $validated['amount'] > (float) $lockedArtist->available_balance, 422, 'Insufficient balance.');
-            Withdrawal::create([
+            $withdrawal = Withdrawal::create([
                 'artist_id' => $lockedArtist->id, 'amount' => $validated['amount'],
                 'fee' => $amounts['fee'], 'total' => $amounts['net'], 'currency' => 'USD',
                 'status' => 'pending', 'payment_method' => $validated['payment_method'],
@@ -73,7 +75,10 @@ class WithdrawalController extends Controller
             ]);
             $lockedArtist->decrement('available_balance', $validated['amount']);
             $lockedArtist->increment('pending_balance', $validated['amount']);
+
+            return $withdrawal;
         });
+        $notifier->withdrawalRequested($withdrawal);
 
         return redirect()->route('artist.withdrawals')->with('success', 'Withdrawal request submitted for review.');
     }

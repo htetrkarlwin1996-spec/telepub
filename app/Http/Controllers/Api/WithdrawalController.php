@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Withdrawal;
+use App\Services\AdminNotifier;
 use App\Services\WithdrawalFee;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -40,7 +41,7 @@ class WithdrawalController extends Controller
     /**
      * Request a new withdrawal.
      */
-    public function store(Request $request, WithdrawalFee $withdrawalFee): JsonResponse
+    public function store(Request $request, WithdrawalFee $withdrawalFee, AdminNotifier $notifier): JsonResponse
     {
         $artist = $request->user()->artist;
 
@@ -49,7 +50,7 @@ class WithdrawalController extends Controller
         }
 
         $validated = $request->validate([
-            'amount' => 'required|numeric|min:1',
+            'amount' => 'required|numeric|min:'.$withdrawalFee->minimumAmount(),
             'payment_method' => 'required|string|in:paypal,bank_transfer,kbz_pay,wave_pay',
             'payment_details' => 'nullable|string|max:500',
             'notes' => 'nullable|string|max:1000',
@@ -82,6 +83,7 @@ class WithdrawalController extends Controller
 
             return $withdrawal;
         });
+        $notifier->withdrawalRequested($withdrawal);
 
         return response()->json([
             'data' => $withdrawal,

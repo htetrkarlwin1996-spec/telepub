@@ -25,4 +25,13 @@ class WithdrawalFee
             'net' => round($amount - $fee, 2),
         ];
     }
+
+    public function minimumAmount(): float
+    {
+        if (! Schema::hasTable('app_settings')) {
+            return 10.0;
+        }
+
+        return max(0, (float) (AppSetting::where('key', 'minimum_withdrawal_amount')->value('value') ?? 10));
+    }
 }

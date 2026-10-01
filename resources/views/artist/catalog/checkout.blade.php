@@ -55,11 +55,15 @@
         <div id="mmqr-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-labelledby="mmqr-title">
             <div class="relative w-full max-w-md bg-white border-2 border-black shadow-[8px_8px_0_#FFE500] p-6 text-center">
                 <button type="button" data-close-mmqr class="absolute right-3 top-3 flex h-9 w-9 items-center justify-center border-2 border-black bg-white font-black" aria-label="Close MMQR popup">×</button>
+                <img src="{{ asset('images/mmqr-logo.svg') }}" alt="MyanmarPay MMQR" class="mx-auto h-16 w-auto">
                 <h2 id="mmqr-title" class="text-2xl font-black">Scan MMQR</h2>
                 <p class="mt-2 text-sm font-bold text-black/60">Pay MMK {{ number_format($qrPayment->amount, 0) }} with a supported wallet</p>
+                <div class="mt-3 inline-flex border-2 border-black bg-amber-100 px-4 py-2 font-black">Expires in&nbsp;<span data-mmqr-timer data-expires="{{ $qrExpiresAt->toIso8601String() }}">15:00</span></div>
                 <img src="{{ $qrImage }}" alt="MyanMyanPay MMQR" class="mx-auto mt-4 w-full max-w-[320px]">
+                <a href="{{ $qrImage }}" download="MMQR-{{ $qrPayment->reference }}.svg" class="mt-3 inline-flex border-2 border-black bg-brand-500 px-4 py-2 text-xs font-black uppercase">Download QR</a>
                 <p class="mt-3 break-all text-xs font-bold">{{ $qrPayment->reference }}</p>
                 <p class="mt-3 text-sm font-bold text-amber-700">Payment status: {{ strtoupper($qrPayment->status) }}</p>
+                <p class="mt-3 text-xs font-bold text-black/60">Payment powered by MyanMyanPay.</p>
                 <button type="button" data-close-mmqr class="mt-5 w-full bg-white border-2 border-black px-4 py-3 font-black uppercase">Close</button>
                 <form method="POST" action="{{ route('artist.release-payments.cancel', $qrPayment) }}" data-cancel-mmqr class="mt-3">
                     @csrf
@@ -99,6 +103,18 @@
                     if (event.key === 'Escape' && !modal?.classList.contains('hidden')) close();
                 });
                 if (!localStorage.getItem(storageKey)) open();
+
+                const timer = document.querySelector('[data-mmqr-timer]');
+                if (timer) {
+                    const expiresAt = new Date(timer.dataset.expires).getTime();
+                    const tick = () => {
+                        const seconds = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+                        timer.textContent = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+                        if (seconds <= 0) window.location.reload();
+                    };
+                    tick();
+                    setInterval(tick, 1000);
+                }
             });
         </script>
     @endif

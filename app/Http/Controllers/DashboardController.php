@@ -9,10 +9,11 @@ use App\Models\Royalty;
 use App\Models\RoyaltyAllocation;
 use App\Models\Song;
 use App\Models\Withdrawal;
+use App\Services\WithdrawalFee;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(WithdrawalFee $withdrawalFee)
     {
         $user = auth()->user();
 
@@ -60,11 +61,12 @@ class DashboardController extends Controller
         $totalRoyalties = $balanceBreakdown->sum();
         $distributions = Distribution::where('artist_id', $artist->id)->with('store', 'song')->latest()->take(5)->get();
         $pendingWithdrawals = Withdrawal::where('artist_id', $artist->id)->where('status', 'pending')->sum('amount');
+        $minimumWithdrawalAmount = $withdrawalFee->minimumAmount();
 
         return view('artist.dashboard', compact(
             'artist', 'albums', 'songs', 'totalSongs', 'totalAlbums',
             'grossRoyalties', 'totalRoyalties', 'totalStreams', 'recentRoyalties',
-            'distributions', 'pendingWithdrawals', 'balanceBreakdown'
+            'distributions', 'pendingWithdrawals', 'balanceBreakdown', 'minimumWithdrawalAmount'
         ));
     }
 }

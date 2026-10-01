@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Album;
 use App\Models\Artist;
+use App\Services\AdminNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -32,9 +33,9 @@ class ReleaseController extends Controller
             'data' => $releases->items(),
             'meta' => [
                 'current_page' => $releases->currentPage(),
-                'last_page'    => $releases->lastPage(),
-                'per_page'     => $releases->perPage(),
-                'total'        => $releases->total(),
+                'last_page' => $releases->lastPage(),
+                'per_page' => $releases->perPage(),
+                'total' => $releases->total(),
             ],
         ]);
     }
@@ -59,9 +60,9 @@ class ReleaseController extends Controller
             'data' => $releases->items(),
             'meta' => [
                 'current_page' => $releases->currentPage(),
-                'last_page'    => $releases->lastPage(),
-                'per_page'     => $releases->perPage(),
-                'total'        => $releases->total(),
+                'last_page' => $releases->lastPage(),
+                'per_page' => $releases->perPage(),
+                'total' => $releases->total(),
             ],
         ]);
     }
@@ -78,29 +79,29 @@ class ReleaseController extends Controller
         }
 
         $validated = $request->validate([
-            'title'                  => 'required|string|max:255',
-            'release_type'           => 'required|in:single,ep,album',
-            'genre'                  => 'nullable|string|max:255',
-            'label'                  => 'nullable|string|max:255',
-            'copyright_holder'       => 'nullable|string|max:255',
+            'title' => 'required|string|max:255',
+            'release_type' => 'required|in:single,ep,album',
+            'genre' => 'nullable|string|max:255',
+            'label' => 'nullable|string|max:255',
+            'copyright_holder' => 'nullable|string|max:255',
             'phonogram_right_holder' => 'nullable|string|max:255',
-            'request_new_isrc'       => 'boolean',
-            'collaborators'          => 'nullable|array',
-            'collaborators.*.id'     => 'required|exists:artists,id',
+            'request_new_isrc' => 'boolean',
+            'collaborators' => 'nullable|array',
+            'collaborators.*.id' => 'required|exists:artists,id',
             'collaborators.*.share_percentage' => 'required|numeric|min:1|max:99',
         ]);
 
         $album = DB::transaction(function () use ($artist, $validated) {
             $album = $artist->albums()->create([
-                'title'                  => $validated['title'],
-                'slug'                   => Str::slug($validated['title']).'-'.Str::random(5),
-                'release_type'           => $validated['release_type'],
-                'genre'                  => $validated['genre'] ?? $artist->genre,
-                'label'                  => $validated['label'] ?? null,
-                'copyright_holder'       => $validated['copyright_holder'] ?? $artist->artist_name,
+                'title' => $validated['title'],
+                'slug' => Str::slug($validated['title']).'-'.Str::random(5),
+                'release_type' => $validated['release_type'],
+                'genre' => $validated['genre'] ?? $artist->genre,
+                'label' => $validated['label'] ?? null,
+                'copyright_holder' => $validated['copyright_holder'] ?? $artist->artist_name,
                 'phonogram_right_holder' => $validated['phonogram_right_holder'] ?? $artist->artist_name,
-                'request_new_isrc'       => $validated['request_new_isrc'] ?? false,
-                'status'                 => 'draft',
+                'request_new_isrc' => $validated['request_new_isrc'] ?? false,
+                'status' => 'draft',
             ]);
 
             // Sync collaborators
@@ -109,7 +110,7 @@ class ReleaseController extends Controller
                 foreach ($validated['collaborators'] as $collab) {
                     $syncData[$collab['id']] = [
                         'share_percentage' => $collab['share_percentage'],
-                        'role'             => 'collaborator',
+                        'role' => 'collaborator',
                     ];
                 }
                 $album->collaboratingArtists()->sync($syncData);
@@ -119,7 +120,7 @@ class ReleaseController extends Controller
         });
 
         return response()->json([
-            'data'    => $album->load('artist', 'collaboratingArtists'),
+            'data' => $album->load('artist', 'collaboratingArtists'),
             'message' => 'Release created.',
         ], 201);
     }
@@ -148,16 +149,16 @@ class ReleaseController extends Controller
         }
 
         $validated = $request->validate([
-            'title'                  => 'sometimes|string|max:255',
-            'release_type'           => 'sometimes|in:single,ep,album',
-            'genre'                  => 'nullable|string|max:255',
-            'label'                  => 'nullable|string|max:255',
-            'cover_art'              => 'nullable|string',
-            'copyright_holder'       => 'nullable|string|max:255',
+            'title' => 'sometimes|string|max:255',
+            'release_type' => 'sometimes|in:single,ep,album',
+            'genre' => 'nullable|string|max:255',
+            'label' => 'nullable|string|max:255',
+            'cover_art' => 'nullable|string',
+            'copyright_holder' => 'nullable|string|max:255',
             'phonogram_right_holder' => 'nullable|string|max:255',
-            'request_new_isrc'       => 'boolean',
-            'collaborators'          => 'nullable|array',
-            'collaborators.*.id'     => 'required|exists:artists,id',
+            'request_new_isrc' => 'boolean',
+            'collaborators' => 'nullable|array',
+            'collaborators.*.id' => 'required|exists:artists,id',
             'collaborators.*.share_percentage' => 'required|numeric|min:1|max:99',
         ]);
 
@@ -169,7 +170,7 @@ class ReleaseController extends Controller
                 foreach ($validated['collaborators'] as $collab) {
                     $syncData[$collab['id']] = [
                         'share_percentage' => $collab['share_percentage'],
-                        'role'             => 'collaborator',
+                        'role' => 'collaborator',
                     ];
                 }
                 $album->collaboratingArtists()->sync($syncData);
@@ -177,7 +178,7 @@ class ReleaseController extends Controller
         });
 
         return response()->json([
-            'data'    => $album->fresh()->load('artist', 'collaboratingArtists', 'songs'),
+            'data' => $album->fresh()->load('artist', 'collaboratingArtists', 'songs'),
             'message' => 'Release updated.',
         ]);
     }
@@ -203,7 +204,7 @@ class ReleaseController extends Controller
     /**
      * Submit release for approval.
      */
-    public function submit(Album $album): JsonResponse
+    public function submit(Album $album, AdminNotifier $notifier): JsonResponse
     {
         $this->authorizeAccess($album);
 
@@ -222,11 +223,12 @@ class ReleaseController extends Controller
 
         $album->update([
             'status' => 'submitted',
-            'notes'  => request('notes'),
+            'notes' => request('notes'),
         ]);
+        $notifier->releaseSubmitted($album->fresh());
 
         return response()->json([
-            'data'    => $album->fresh()->load('artist', 'songs', 'stores'),
+            'data' => $album->fresh()->load('artist', 'songs', 'stores'),
             'message' => 'Release submitted for approval.',
         ]);
     }
@@ -239,15 +241,15 @@ class ReleaseController extends Controller
         $this->authorizeAccess($album);
 
         $validated = $request->validate([
-            'price'                => 'nullable|numeric|min:0',
-            'release_date'         => 'nullable|date',
+            'price' => 'nullable|numeric|min:0',
+            'release_date' => 'nullable|date',
             'physical_release_date' => 'nullable|date|after_or_equal:release_date',
         ]);
 
         $album->update($validated);
 
         return response()->json([
-            'data'    => $album->fresh(),
+            'data' => $album->fresh(),
             'message' => 'Pricing updated.',
         ]);
     }
@@ -260,7 +262,7 @@ class ReleaseController extends Controller
         $this->authorizeAccess($album);
 
         $validated = $request->validate([
-            'store_ids'   => 'required|array',
+            'store_ids' => 'required|array',
             'store_ids.*' => 'exists:music_stores,id',
         ]);
 
@@ -277,12 +279,12 @@ class ReleaseController extends Controller
                 foreach ($songs as $song) {
                     $album->distributions()->firstOrCreate(
                         [
-                            'song_id'  => $song->id,
+                            'song_id' => $song->id,
                             'store_id' => $storeId,
                         ],
                         [
                             'artist_id' => $album->artist_id,
-                            'status'    => 'pending',
+                            'status' => 'pending',
                         ]
                     );
                 }
@@ -290,7 +292,7 @@ class ReleaseController extends Controller
         });
 
         return response()->json([
-            'data'    => $album->fresh()->load('distributions.store', 'stores'),
+            'data' => $album->fresh()->load('distributions.store', 'stores'),
             'message' => 'Stores selected.',
         ]);
     }
@@ -312,8 +314,8 @@ class ReleaseController extends Controller
             abort(403, 'Unauthorized.');
         }
 
-        $isOwner   = $album->artist_id === $artist->id;
-        $isCollab  = $album->collaboratingArtists()
+        $isOwner = $album->artist_id === $artist->id;
+        $isCollab = $album->collaboratingArtists()
             ->where('artist_id', $artist->id)
             ->exists();
 

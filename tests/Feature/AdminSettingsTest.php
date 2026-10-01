@@ -5,8 +5,10 @@ namespace Tests\Feature;
 use App\Models\AppSetting;
 use App\Models\Artist;
 use App\Models\User;
+use App\Notifications\NewWithdrawalRequest;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class AdminSettingsTest extends TestCase
@@ -50,11 +52,12 @@ class AdminSettingsTest extends TestCase
 
         $this->actingAs($artist)->get(route('admin.settings'))->assertForbidden();
         $this->put(route('admin.settings.currency'), ['display_currency' => 'EUR'])->assertForbidden();
-        $this->put(route('admin.settings.withdrawal-fee'), ['withdrawal_fee_percentage' => 5])->assertForbidden();
+        $this->put(route('admin.settings.withdrawal-fee'), ['withdrawal_fee_percentage' => 5, 'minimum_withdrawal_amount' => 25])->assertForbidden();
     }
 
     public function test_admin_controls_the_fee_used_by_new_withdrawals(): void
     {
+        Notification::fake();
         $admin = User::factory()->create(['role' => 'admin']);
         $artistUser = User::factory()->create(['role' => 'artist']);
         $artist = Artist::create([
@@ -63,8 +66,14 @@ class AdminSettingsTest extends TestCase
 
         $this->actingAs($admin)->put(route('admin.settings.withdrawal-fee'), [
             'withdrawal_fee_percentage' => 5,
+            'minimum_withdrawal_amount' => 25,
         ])->assertRedirect();
         $this->assertDatabaseHas('app_settings', ['key' => 'withdrawal_fee_percentage', 'value' => '5']);
+        $this->assertDatabaseHas('app_settings', ['key' => 'minimum_withdrawal_amount', 'value' => '25']);
+
+        $this->actingAs($artistUser)->post(route('artist.withdrawals.store'), [
+            'amount' => 20, 'payment_method' => 'paypal', 'payment_details' => 'fee@example.com',
+        ])->assertSessionHasErrors('amount');
 
         $this->actingAs($artistUser)->post(route('artist.withdrawals.store'), [
             'amount' => 40, 'payment_method' => 'paypal', 'payment_details' => 'fee@example.com',
@@ -84,5 +93,6 @@ class AdminSettingsTest extends TestCase
         $this->assertSame(100.0, (float) $artist->fresh()->available_balance);
         $this->assertSame(0.0, (float) $artist->fresh()->pending_balance);
         $this->assertSame('rejected', $withdrawal->fresh()->status);
+        Notification::assertSentTo($admin, NewWithdrawalRequest::class);
     }
 }
