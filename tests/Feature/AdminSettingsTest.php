@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AppSetting;
 use App\Models\Artist;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -49,5 +50,39 @@ class AdminSettingsTest extends TestCase
 
         $this->actingAs($artist)->get(route('admin.settings'))->assertForbidden();
         $this->put(route('admin.settings.currency'), ['display_currency' => 'EUR'])->assertForbidden();
+        $this->put(route('admin.settings.withdrawal-fee'), ['withdrawal_fee_percentage' => 5])->assertForbidden();
+    }
+
+    public function test_admin_controls_the_fee_used_by_new_withdrawals(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $artistUser = User::factory()->create(['role' => 'artist']);
+        $artist = Artist::create([
+            'user_id' => $artistUser->id, 'artist_name' => 'Fee Artist', 'available_balance' => 100,
+        ]);
+
+        $this->actingAs($admin)->put(route('admin.settings.withdrawal-fee'), [
+            'withdrawal_fee_percentage' => 5,
+        ])->assertRedirect();
+        $this->assertDatabaseHas('app_settings', ['key' => 'withdrawal_fee_percentage', 'value' => '5']);
+
+        $this->actingAs($artistUser)->post(route('artist.withdrawals.store'), [
+            'amount' => 40, 'payment_method' => 'paypal', 'payment_details' => 'fee@example.com',
+        ])->assertRedirect(route('artist.withdrawals'));
+
+        $this->assertDatabaseHas('withdrawals', [
+            'artist_id' => $artist->id, 'amount' => 40, 'fee' => 2, 'total' => 38, 'status' => 'pending',
+        ]);
+        $this->assertSame(60.0, (float) $artist->fresh()->available_balance);
+        $this->assertSame(40.0, (float) $artist->fresh()->pending_balance);
+        $this->assertSame('5', AppSetting::where('key', 'withdrawal_fee_percentage')->value('value'));
+
+        $withdrawal = $artist->withdrawals()->firstOrFail();
+        $this->actingAs($admin)->post(route('admin.withdrawals.reject', $withdrawal), [
+            'admin_notes' => 'Test rejection',
+        ])->assertRedirect(route('admin.withdrawals'));
+        $this->assertSame(100.0, (float) $artist->fresh()->available_balance);
+        $this->assertSame(0.0, (float) $artist->fresh()->pending_balance);
+        $this->assertSame('rejected', $withdrawal->fresh()->status);
     }
 }

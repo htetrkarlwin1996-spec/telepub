@@ -13,6 +13,7 @@ use App\Models\Song;
 use App\Models\User;
 use App\Models\Withdrawal;
 use App\Services\RoyaltyService;
+use App\Services\WithdrawalLifecycle;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -263,12 +264,9 @@ class AdminController extends Controller
         ]);
     }
 
-    public function approveWithdrawal(Withdrawal $withdrawal): JsonResponse
+    public function approveWithdrawal(Withdrawal $withdrawal, WithdrawalLifecycle $lifecycle): JsonResponse
     {
-        $withdrawal->update([
-            'status' => 'approved',
-            'processed_at' => now(),
-        ]);
+        $withdrawal = $lifecycle->approve($withdrawal, request()->user()->id);
 
         return response()->json([
             'data' => $withdrawal->fresh()->load('artist'),
@@ -276,12 +274,9 @@ class AdminController extends Controller
         ]);
     }
 
-    public function completeWithdrawal(Withdrawal $withdrawal): JsonResponse
+    public function completeWithdrawal(Withdrawal $withdrawal, WithdrawalLifecycle $lifecycle): JsonResponse
     {
-        $withdrawal->update([
-            'status' => 'completed',
-            'processed_at' => now(),
-        ]);
+        $withdrawal = $lifecycle->complete($withdrawal, request()->user()->id);
 
         return response()->json([
             'data' => $withdrawal->fresh()->load('artist'),
@@ -289,16 +284,13 @@ class AdminController extends Controller
         ]);
     }
 
-    public function rejectWithdrawal(Request $request, Withdrawal $withdrawal): JsonResponse
+    public function rejectWithdrawal(Request $request, Withdrawal $withdrawal, WithdrawalLifecycle $lifecycle): JsonResponse
     {
         $validated = $request->validate([
             'admin_notes' => 'nullable|string|max:1000',
         ]);
 
-        $withdrawal->update([
-            'status' => 'rejected',
-            'admin_notes' => $validated['admin_notes'] ?? 'Rejected by admin.',
-        ]);
+        $withdrawal = $lifecycle->reject($withdrawal, $request->user()->id, $validated['admin_notes'] ?? 'Rejected by admin.');
 
         return response()->json([
             'data' => $withdrawal->fresh()->load('artist'),

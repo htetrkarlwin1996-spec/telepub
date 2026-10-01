@@ -29,6 +29,22 @@
                 </form>
             </section>
 
+            <section class="bg-white border-2 border-black shadow-[4px_4px_0_#000]">
+                <div class="p-6 border-b-2 border-black">
+                    <h3 class="text-xl font-black">Withdrawal Processing Fee</h3>
+                    <p class="mt-2 text-sm font-bold text-black/60">Applied to every new Web and API withdrawal. Set 0 to disable the fee.</p>
+                </div>
+                <form method="POST" action="{{ route('admin.settings.withdrawal-fee') }}" class="p-6 flex flex-col sm:flex-row items-end gap-4">
+                    @csrf @method('PUT')
+                    <div class="w-full sm:max-w-xs">
+                        <x-input-label for="withdrawal_fee_percentage" value="Processing Fee (%)" />
+                        <x-text-input id="withdrawal_fee_percentage" name="withdrawal_fee_percentage" type="number" step="0.01" min="0" max="100" value="{{ old('withdrawal_fee_percentage', $withdrawalFeePercentage) }}" class="mt-1 block w-full" required />
+                        <x-input-error :messages="$errors->get('withdrawal_fee_percentage')" class="mt-2" />
+                    </div>
+                    <button class="px-6 py-3 bg-brand-500 border-2 border-black font-black uppercase shadow-[3px_3px_0_#000]">Save Withdrawal Fee</button>
+                </form>
+            </section>
+
             <section class="border-2 border-black {{ $maintenanceActive ? 'bg-amber-200' : 'bg-white' }} shadow-[4px_4px_0_#000]">
                 <div class="p-6 border-b-2 border-black">
                     <div class="flex flex-wrap items-center gap-3">

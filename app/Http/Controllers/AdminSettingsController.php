@@ -6,6 +6,7 @@ use App\Models\AppSetting;
 use App\Models\ReleasePayment;
 use App\Services\MaintenanceMode;
 use App\Services\ReleasePricing;
+use App\Services\WithdrawalFee;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -13,7 +14,7 @@ use Illuminate\View\View;
 
 class AdminSettingsController extends Controller
 {
-    public function index(MaintenanceMode $maintenanceMode, ReleasePricing $releasePricing): View
+    public function index(MaintenanceMode $maintenanceMode, ReleasePricing $releasePricing, WithdrawalFee $withdrawalFee): View
     {
         return view('admin.settings.index', [
             'displayCurrency' => display_currency(),
@@ -21,8 +22,23 @@ class AdminSettingsController extends Controller
             'maintenanceRemaining' => $maintenanceMode->remainingSeconds(),
             'maintenanceEndsAt' => $maintenanceMode->endsAt(),
             'releasePricing' => $releasePricing->settings(),
+            'withdrawalFeePercentage' => $withdrawalFee->percentage(),
             'pendingOfflinePayments' => ReleasePayment::with(['album.artist', 'user'])->where('provider', 'offline')->where('status', 'pending')->latest()->get(),
         ]);
+    }
+
+    public function updateWithdrawalFee(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'withdrawal_fee_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
+        ]);
+
+        AppSetting::updateOrCreate(
+            ['key' => 'withdrawal_fee_percentage'],
+            ['value' => (string) $validated['withdrawal_fee_percentage']],
+        );
+
+        return back()->with('success', 'Withdrawal processing fee updated.');
     }
 
     public function updateReleasePricing(Request $request): RedirectResponse

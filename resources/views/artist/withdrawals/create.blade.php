@@ -69,7 +69,7 @@
                     <div class="bg-brand-500/20 border-2 border-black p-4 mt-4">
                         <h4 class="font-extrabold text-black mb-2">Summary</h4>
                         <div class="flex justify-between text-sm font-bold text-black/70"><span>Withdrawal Amount:</span><span id="summary-amount">{{ money(0) }}</span></div>
-                        <div class="flex justify-between text-sm font-bold text-black/70"><span>Processing Fee (2%):</span><span id="summary-fee">{{ money(0) }}</span></div>
+                        <div class="flex justify-between text-sm font-bold text-black/70"><span>Processing Fee ({{ number_format($withdrawalFeePercentage, 2) }}%):</span><span id="summary-fee">{{ money(0) }}</span></div>
                         <div class="flex justify-between text-sm font-black text-black border-t-2 border-black pt-1 mt-1"><span>You'll Receive:</span><span id="summary-total">{{ money(0) }}</span></div>
                     </div>
 
@@ -104,7 +104,7 @@
         updatePaymentFields();
         document.getElementById('amount').addEventListener('input', function() {
             let amount = parseFloat(this.value) || 0;
-            let fee = amount * 0.02;
+            let fee = amount * (@json($withdrawalFeePercentage) / 100);
             let total = amount - fee;
             const currency = @json(display_currency());
             document.getElementById('summary-amount').textContent = currency + ' ' + amount.toFixed(2);

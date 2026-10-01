@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Models\Withdrawal;
 use App\Services\RoyaltyCsvImportService;
 use App\Services\RoyaltyService;
+use App\Services\WithdrawalLifecycle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -404,55 +405,23 @@ class AdminController extends Controller
         return view('admin.withdrawals.index', compact('withdrawals'));
     }
 
-    public function approveWithdrawal(Withdrawal $withdrawal)
+    public function approveWithdrawal(Withdrawal $withdrawal, WithdrawalLifecycle $lifecycle)
     {
-        $withdrawal->update([
-            'status' => 'approved',
-            'admin_notes' => request('admin_notes'),
-            'processed_by' => auth()->id(),
-        ]);
+        $lifecycle->approve($withdrawal, auth()->id(), request('admin_notes'));
 
         return redirect()->route('admin.withdrawals')->with('success', 'Withdrawal approved.');
     }
 
-    public function completeWithdrawal(Withdrawal $withdrawal)
+    public function completeWithdrawal(Withdrawal $withdrawal, WithdrawalLifecycle $lifecycle)
     {
-        $withdrawal->update([
-            'status' => 'completed',
-            'processed_at' => now(),
-            'processed_by' => auth()->id(),
-            'admin_notes' => request('admin_notes'),
-        ]);
-
-        // Create payout record
-        Payout::create([
-            'artist_id' => $withdrawal->artist_id,
-            'invoice_number' => 'PAY-'.strtoupper(uniqid()),
-            'amount' => $withdrawal->amount,
-            'fee' => $withdrawal->fee,
-            'total' => $withdrawal->total,
-            'currency' => $withdrawal->currency,
-            'status' => 'paid',
-            'paid_at' => now(),
-            'payment_method' => $withdrawal->payment_method,
-            'processed_by' => auth()->id(),
-        ]);
+        $lifecycle->complete($withdrawal, auth()->id(), request('admin_notes'));
 
         return redirect()->route('admin.withdrawals')->with('success', 'Withdrawal completed and payout processed.');
     }
 
-    public function rejectWithdrawal(Request $request, Withdrawal $withdrawal)
+    public function rejectWithdrawal(Request $request, Withdrawal $withdrawal, WithdrawalLifecycle $lifecycle)
     {
-        $withdrawal->update([
-            'status' => 'rejected',
-            'admin_notes' => $request->admin_notes,
-            'processed_by' => auth()->id(),
-            'processed_at' => now(),
-        ]);
-
-        // Return funds to artist
-        $artist = Artist::find($withdrawal->artist_id);
-        $artist->increment('available_balance', $withdrawal->total);
+        $lifecycle->reject($withdrawal, auth()->id(), $request->admin_notes);
 
         return redirect()->route('admin.withdrawals')->with('success', 'Withdrawal rejected. Funds returned to artist.');
     }

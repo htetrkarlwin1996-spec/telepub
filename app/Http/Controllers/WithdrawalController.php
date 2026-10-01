@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Withdrawal;
+use App\Services\WithdrawalFee;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class WithdrawalController extends Controller
@@ -16,14 +18,16 @@ class WithdrawalController extends Controller
         return view('artist.withdrawals.index', compact('withdrawals'));
     }
 
-    public function create()
+    public function create(WithdrawalFee $withdrawalFee)
     {
         $artist = current_artist();
 
-        return view('artist.withdrawals.create', compact('artist'));
+        $withdrawalFeePercentage = $withdrawalFee->percentage();
+
+        return view('artist.withdrawals.create', compact('artist', 'withdrawalFeePercentage'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, WithdrawalFee $withdrawalFee)
     {
         $artist = current_artist();
 
@@ -55,26 +59,21 @@ class WithdrawalController extends Controller
             ? json_encode(array_intersect_key($validated, array_flip($fields)))
             : ($validated['payment_details'] ?? null);
 
-        // Calculate fee (e.g., 2% processing fee)
-        $fee = $validated['amount'] * 0.02;
-        $total = $validated['amount'] - $fee;
+        $amounts = $withdrawalFee->calculate((float) $validated['amount']);
 
-        Withdrawal::create([
-            'artist_id' => $artist->id,
-            'amount' => $validated['amount'],
-            'fee' => $fee,
-            'total' => $total,
-            'currency' => 'USD',
-            'status' => 'pending',
-            'payment_method' => $validated['payment_method'],
-            'payment_details' => $details,
-            'notes' => $validated['notes'] ?? null,
-            'requested_at' => now(),
-        ]);
-
-        // Move funds from available to pending
-        $artist->decrement('available_balance', $validated['amount']);
-        $artist->increment('pending_balance', $validated['amount']);
+        DB::transaction(function () use ($artist, $validated, $amounts, $details) {
+            $lockedArtist = $artist->newQuery()->lockForUpdate()->findOrFail($artist->id);
+            abort_if((float) $validated['amount'] > (float) $lockedArtist->available_balance, 422, 'Insufficient balance.');
+            Withdrawal::create([
+                'artist_id' => $lockedArtist->id, 'amount' => $validated['amount'],
+                'fee' => $amounts['fee'], 'total' => $amounts['net'], 'currency' => 'USD',
+                'status' => 'pending', 'payment_method' => $validated['payment_method'],
+                'payment_details' => $details, 'notes' => $validated['notes'] ?? null,
+                'requested_at' => now(),
+            ]);
+            $lockedArtist->decrement('available_balance', $validated['amount']);
+            $lockedArtist->increment('pending_balance', $validated['amount']);
+        });
 
         return redirect()->route('artist.withdrawals')->with('success', 'Withdrawal request submitted for review.');
     }
