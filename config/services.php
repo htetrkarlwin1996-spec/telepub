@@ -58,6 +58,7 @@ return [
         'publishable_key' => env('MYANMYANPAY_PUBLISHABLE_KEY'),
         'secret_key' => env('MYANMYANPAY_SECRET_KEY'),
         'api_base_url' => env('MYANMYANPAY_API_BASE_URL', 'https://ezapi.myanmyanpay.com'),
+        'callback_url' => env('MYANMYANPAY_CALLBACK_URL'),
         'sandbox' => env('MYANMYANPAY_SANDBOX', true),
     ],
 

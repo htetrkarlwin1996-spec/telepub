@@ -140,6 +140,72 @@ class ReleaseCheckoutTest extends TestCase
         $this->assertSame('REL-MYA-CACHED', $payment->fresh()->reference);
     }
 
+    public function test_myanmyanpay_status_poll_marks_a_successful_payment_paid(): void
+    {
+        Notification::fake();
+        User::factory()->create(['role' => 'admin']);
+        $user = User::factory()->create(['role' => 'artist']);
+        $artist = Artist::create(['user_id' => $user->id, 'artist_name' => 'Polling Artist']);
+        $album = Album::create(['artist_id' => $artist->id, 'title' => 'Paid QR Single', 'release_type' => 'single', 'status' => 'draft']);
+        $payment = ReleasePayment::create([
+            'album_id' => $album->id, 'user_id' => $user->id, 'provider' => 'myanmyanpay',
+            'amount' => 8955, 'currency' => 'MMK', 'reference' => 'REL-MYA-PAID',
+            'qr_data' => 'paid-emvco-mmqr-payload', 'expires_at' => now()->addMinutes(15),
+        ]);
+        $this->app->instance(MyanMyanPayService::class, new class extends MyanMyanPayService
+        {
+            public function configured(): bool
+            {
+                return true;
+            }
+
+            public function get(array $payload): array
+            {
+                return [
+                    'orderId' => $payload['orderId'], 'status' => 'SUCCESS', 'condition' => 'TOUCHED',
+                    'amount' => 8955, 'currency' => 'MMK', 'transactionRefId' => 'MMQR-PAID-1',
+                ];
+            }
+        });
+
+        $this->actingAs($user)->getJson(route('artist.release-payments.status', $payment))
+            ->assertOk()->assertJson(['status' => 'paid', 'completed' => true]);
+
+        $this->assertSame('paid', $payment->fresh()->status);
+        $this->assertNotNull($payment->fresh()->paid_at);
+        $this->assertSame('paid', $album->fresh()->payment_status);
+        $this->assertSame('submitted', $album->fresh()->status);
+    }
+
+    public function test_myanmyanpay_webhook_accepts_documented_success_conditions(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['role' => 'artist']);
+        $artist = Artist::create(['user_id' => $user->id, 'artist_name' => 'Webhook Artist']);
+        $album = Album::create(['artist_id' => $artist->id, 'title' => 'Webhook Single', 'release_type' => 'single', 'status' => 'draft']);
+        $payment = ReleasePayment::create([
+            'album_id' => $album->id, 'user_id' => $user->id, 'provider' => 'myanmyanpay',
+            'amount' => 8955, 'currency' => 'MMK', 'reference' => 'REL-MYA-WEBHOOK',
+            'qr_data' => 'webhook-emvco-mmqr-payload', 'expires_at' => now()->addMinutes(15),
+        ]);
+        $this->app->instance(MyanMyanPayService::class, new class extends MyanMyanPayService
+        {
+            public function verify(string $payload, string $nonce, string $signature): bool
+            {
+                return true;
+            }
+        });
+
+        $this->postJson(route('webhooks.myanmyanpay'), [
+            'orderId' => $payment->reference, 'status' => 'SUCCESS', 'condition' => 'PRISTINE',
+            'amount' => 8955, 'currency' => 'MMK', 'transactionRefId' => 'MMQR-WEBHOOK-1',
+        ], ['X-Mmpay-Nonce' => 'nonce', 'X-Mmpay-Signature' => 'signature'])
+            ->assertOk()->assertJson(['received' => true]);
+
+        $this->assertSame('paid', $payment->fresh()->status);
+        $this->assertSame('submitted', $album->fresh()->status);
+    }
+
     public function test_artist_can_cancel_a_pending_myanmyanpay_transaction(): void
     {
         $user = User::factory()->create(['role' => 'artist']);

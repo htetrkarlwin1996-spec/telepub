@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -94,7 +95,7 @@ class ReleaseCheckoutController extends Controller
         $album->update(['payment_status' => 'pending']);
 
         try {
-            $response = $mmpay->pay(['orderId' => $reference, 'amount' => (int) $amount, 'currency' => 'MMK', 'callbackUrl' => route('webhooks.myanmyanpay'), 'customMessage' => 'TeleMusic release: '.$album->title, 'items' => [['name' => $album->title, 'amount' => (int) $amount, 'quantity' => 1]]]);
+            $response = $mmpay->pay(['orderId' => $reference, 'amount' => (int) $amount, 'currency' => 'MMK', 'callbackUrl' => config('services.myanmyanpay.callback_url') ?: route('webhooks.myanmyanpay'), 'customMessage' => 'TeleMusic release: '.$album->title, 'items' => [['name' => $album->title, 'amount' => (int) $amount, 'quantity' => 1]]]);
             $qr = data_get($response, 'qr') ?? data_get($response, 'data.qr') ?? data_get($response, 'qrCode') ?? data_get($response, 'data.qrCode');
             $url = data_get($response, 'paymentUrl') ?? data_get($response, 'data.paymentUrl') ?? data_get($response, 'url');
             $gatewayStatus = strtoupper((string) (data_get($response, 'status') ?? data_get($response, 'data.status') ?? 'PENDING'));
@@ -226,15 +227,65 @@ class ReleaseCheckoutController extends Controller
     {
         abort_unless($mmpay->verify($request->getContent(), $request->header('X-Mmpay-Nonce', ''), $request->header('X-Mmpay-Signature', '')), 400);
         $data = $request->json()->all();
-        if (in_array(strtoupper($data['status'] ?? ''), ['SUCCESS', 'COMPLETED', 'PAID'], true)) {
-            $payment = ReleasePayment::where('reference', $data['orderId'] ?? '')->firstOrFail();
-            abort_unless(strtoupper((string) ($data['currency'] ?? 'MMK')) === 'MMK', 400);
-            abort_unless((int) $payment->amount === (int) ($data['amount'] ?? 0), 400);
-            abort_unless(! isset($data['condition']) || strtoupper((string) $data['condition']) === 'TOUCHED', 400);
-            $this->markPaid($payment, $submission);
-        }
+        $payment = ReleasePayment::where('reference', data_get($data, 'orderId', data_get($data, 'data.orderId', '')))->firstOrFail();
+        $this->applyMyanStatus($payment, $data, $submission, true);
+        Log::info('MyanMyanPay webhook processed.', ['payment_id' => $payment->id, 'status' => $payment->fresh()->status]);
 
         return response()->json(['received' => true]);
+    }
+
+    public function status(Request $request, ReleasePayment $payment, MyanMyanPayService $mmpay, ReleaseSubmission $submission)
+    {
+        abort_unless($payment->user_id === $request->user()->id && $payment->provider === 'myanmyanpay', 403);
+
+        if ($payment->status === 'pending' && $mmpay->configured()) {
+            try {
+                Cache::lock('mmqr-status-'.$payment->id, 10)->block(2, function () use ($payment, $mmpay, $submission) {
+                    $fresh = $payment->fresh();
+                    if ($fresh->status !== 'pending') {
+                        return;
+                    }
+                    $response = $mmpay->get(['orderId' => $fresh->reference]);
+                    $this->applyMyanStatus($fresh, $response, $submission);
+                });
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
+        }
+
+        $payment->refresh();
+
+        return response()->json([
+            'status' => $payment->status,
+            'completed' => $payment->status === 'paid',
+            'redirect_url' => $payment->status === 'paid' ? route('artist.catalog.show', $payment->album) : null,
+        ]);
+    }
+
+    private function applyMyanStatus(ReleasePayment $payment, array $response, ReleaseSubmission $submission, bool $strict = false): void
+    {
+        $status = strtoupper((string) (data_get($response, 'status') ?? data_get($response, 'data.status') ?? ''));
+        $orderId = (string) (data_get($response, 'orderId') ?? data_get($response, 'data.orderId') ?? '');
+        $amount = data_get($response, 'amount') ?? data_get($response, 'data.amount');
+        $currency = strtoupper((string) (data_get($response, 'currency') ?? data_get($response, 'data.currency') ?? 'MMK'));
+
+        if ($strict || in_array($status, ['SUCCESS', 'COMPLETED', 'PAID'], true)) {
+            abort_unless($orderId === $payment->reference, 400, 'MyanMyanPay order mismatch.');
+            abort_unless($currency === 'MMK', 400, 'MyanMyanPay currency mismatch.');
+            abort_unless($amount !== null && (int) $payment->amount === (int) $amount, 400, 'MyanMyanPay amount mismatch.');
+        }
+
+        $payment->update(['gateway_response' => $response]);
+        if (in_array($status, ['SUCCESS', 'COMPLETED', 'PAID'], true)) {
+            $this->markPaid($payment, $submission);
+        } elseif (in_array($status, ['FAILED', 'CANCELLED', 'CANCELED', 'EXPIRED'], true)) {
+            $mappedStatus = match ($status) {
+                'CANCELLED', 'CANCELED' => 'cancelled',
+                'EXPIRED' => 'expired',
+                default => 'failed',
+            };
+            $this->cancelLocally($payment, $response, $mappedStatus);
+        }
     }
 
     public function approve(ReleasePayment $payment, ReleaseSubmission $submission)

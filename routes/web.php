@@ -80,6 +80,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/artist/catalog/{album}/checkout', [ReleaseCheckoutController::class, 'show'])->name('artist.catalog.checkout');
         Route::post('/artist/catalog/{album}/checkout', [ReleaseCheckoutController::class, 'pay'])->middleware('artist.manage')->name('artist.catalog.pay');
         Route::post('/artist/release-payments/{payment}/cancel', [ReleaseCheckoutController::class, 'cancel'])->middleware('artist.manage')->name('artist.release-payments.cancel');
+        Route::get('/artist/release-payments/{payment}/status', [ReleaseCheckoutController::class, 'status'])->middleware('throttle:30,1')->name('artist.release-payments.status');
         Route::get('/payments/paypal/{payment}/return', [ReleaseCheckoutController::class, 'paypalReturn'])->name('payments.paypal.return');
 
         // AJAX audio file upload (with progress tracking)

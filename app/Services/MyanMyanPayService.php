@@ -22,6 +22,11 @@ class MyanMyanPayService
         return $this->client()->cancel($payload);
     }
 
+    public function get(array $payload): array
+    {
+        return $this->client()->get($payload);
+    }
+
     public function verify(string $payload, string $nonce, string $signature): bool
     {
         return $this->client()->verifyCb($payload, $nonce, $signature);

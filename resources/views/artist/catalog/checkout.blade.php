@@ -62,7 +62,8 @@
                 <img src="{{ $qrImage }}" alt="MyanMyanPay MMQR" class="mx-auto mt-4 w-full max-w-[320px]">
                 <a href="{{ $qrImage }}" download="MMQR-{{ $qrPayment->reference }}.svg" class="mt-3 inline-flex border-2 border-black bg-brand-500 px-4 py-2 text-xs font-black uppercase">Download QR</a>
                 <p class="mt-3 break-all text-xs font-bold">{{ $qrPayment->reference }}</p>
-                <p class="mt-3 text-sm font-bold text-amber-700">Payment status: {{ strtoupper($qrPayment->status) }}</p>
+                <p class="mt-3 text-sm font-bold text-amber-700">Payment status: <span data-mmqr-status>{{ strtoupper($qrPayment->status) }}</span></p>
+                <p class="mt-1 text-xs font-bold text-black/50">Payment confirmation is checked automatically.</p>
                 <p class="mt-3 text-xs font-bold text-black/60">Payment powered by MyanMyanPay.</p>
                 <button type="button" data-close-mmqr class="mt-5 w-full bg-white border-2 border-black px-4 py-3 font-black uppercase">Close</button>
                 <form method="POST" action="{{ route('artist.release-payments.cancel', $qrPayment) }}" data-cancel-mmqr class="mt-3">
@@ -106,6 +107,31 @@
                     tick();
                     setInterval(tick, 1000);
                 }
+
+                const statusUrl = @js(route('artist.release-payments.status', $qrPayment));
+                const statusLabel = document.querySelector('[data-mmqr-status]');
+                let checking = false;
+                const checkStatus = async () => {
+                    if (checking) return;
+                    checking = true;
+                    try {
+                        const response = await fetch(statusUrl, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+                        if (!response.ok) return;
+                        const result = await response.json();
+                        if (statusLabel) statusLabel.textContent = result.status.toUpperCase();
+                        if (result.completed) {
+                            if (timer) timer.textContent = 'PAID';
+                            modal?.classList.add('hidden');
+                            window.location.href = result.redirect_url;
+                        } else if (['failed', 'cancelled', 'expired'].includes(result.status)) {
+                            window.location.reload();
+                        }
+                    } finally {
+                        checking = false;
+                    }
+                };
+                checkStatus();
+                setInterval(checkStatus, 3000);
             });
         </script>
     @endif
