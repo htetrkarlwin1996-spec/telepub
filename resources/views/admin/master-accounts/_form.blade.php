@@ -1,0 +1,14 @@
+@if($errors->any())<div class="mb-5 border-2 border-black bg-red-100 p-4 font-bold">{{ $errors->first() }}</div>@endif
+<div class="grid gap-5 md:grid-cols-2">
+    <div><x-input-label for="name" value="Master Account Name *"/><x-text-input id="name" name="name" value="{{ old('name', $masterAccount->name ?? '') }}" class="mt-1 block w-full" required/></div>
+    <div><x-input-label for="owner_name" value="Owner Name *"/><x-text-input id="owner_name" name="owner_name" value="{{ old('owner_name', $masterAccount->owner->name ?? '') }}" class="mt-1 block w-full" required/></div>
+    <div><x-input-label for="owner_email" value="Owner Login Email *"/><x-text-input id="owner_email" name="owner_email" type="email" value="{{ old('owner_email', $masterAccount->owner->email ?? '') }}" class="mt-1 block w-full" required/></div>
+    <div><x-input-label for="password" value="{{ isset($masterAccount) ? 'New Password (optional)' : 'Password *' }}"/><x-text-input id="password" name="password" type="password" class="mt-1 block w-full" :required="!isset($masterAccount)"/></div>
+    <div><x-input-label for="email" value="Business Email"/><x-text-input id="email" name="email" type="email" value="{{ old('email', $masterAccount->email ?? '') }}" class="mt-1 block w-full"/></div>
+    <div><x-input-label for="phone" value="Phone"/><x-text-input id="phone" name="phone" value="{{ old('phone', $masterAccount->phone ?? '') }}" class="mt-1 block w-full"/></div>
+    <div><x-input-label for="country" value="Country"/><x-text-input id="country" name="country" value="{{ old('country', $masterAccount->country ?? '') }}" class="mt-1 block w-full"/></div>
+    <div><x-input-label for="platform_fee_percentage" value="TeleMusic Fee (%) *"/><x-text-input id="platform_fee_percentage" name="platform_fee_percentage" type="number" step="0.01" min="0" max="100" value="{{ old('platform_fee_percentage', $masterAccount->platform_fee_percentage ?? 15) }}" class="mt-1 block w-full" required/></div>
+    <div><x-input-label for="default_management_fee_percentage" value="Default Master Fee (%) *"/><x-text-input id="default_management_fee_percentage" name="default_management_fee_percentage" type="number" step="0.01" min="0" max="100" value="{{ old('default_management_fee_percentage', $masterAccount->default_management_fee_percentage ?? 0) }}" class="mt-1 block w-full" required/></div>
+    <div><x-input-label for="maximum_management_fee_percentage" value="Maximum Master Fee (%) *"/><x-text-input id="maximum_management_fee_percentage" name="maximum_management_fee_percentage" type="number" step="0.01" min="0" max="100" value="{{ old('maximum_management_fee_percentage', $masterAccount->maximum_management_fee_percentage ?? 30) }}" class="mt-1 block w-full" required/></div>
+</div>
+<div class="mt-6 flex justify-end"><button class="border-2 border-black bg-brand-500 px-5 py-3 font-black uppercase">Save Master Account</button></div>

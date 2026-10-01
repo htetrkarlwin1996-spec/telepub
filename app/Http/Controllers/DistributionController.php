@@ -3,16 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Album;
-use App\Models\Song;
-use App\Models\MusicStore;
 use App\Models\Distribution;
+use App\Models\MusicStore;
+use App\Models\Song;
 use Illuminate\Http\Request;
 
 class DistributionController extends Controller
 {
     public function index()
     {
-        $artist = auth()->user()->artist;
+        $artist = current_artist();
         $distributions = Distribution::where('artist_id', $artist->id)
             ->with(['song', 'store', 'album'])
             ->latest()
@@ -23,7 +23,7 @@ class DistributionController extends Controller
 
     public function create()
     {
-        $artist = auth()->user()->artist;
+        $artist = current_artist();
         $songs = Song::where('artist_id', $artist->id)->where('status', 'approved')->get();
         $albums = Album::where('artist_id', $artist->id)->where('status', 'approved')->get();
         $stores = MusicStore::where('is_active', true)->get();
@@ -33,7 +33,7 @@ class DistributionController extends Controller
 
     public function store(Request $request)
     {
-        $artist = auth()->user()->artist;
+        $artist = current_artist();
 
         $validated = $request->validate([
             'song_id' => 'required|exists:songs,id',
@@ -60,10 +60,11 @@ class DistributionController extends Controller
 
     public function show(Distribution $distribution)
     {
-        $artist = auth()->user()->artist;
+        $artist = current_artist();
         if ($distribution->artist_id !== $artist->id) {
             abort(403);
         }
+
         return view('artist.distributions.show', compact('distribution'));
     }
 }

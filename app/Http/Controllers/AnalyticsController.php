@@ -10,50 +10,46 @@ class AnalyticsController extends Controller
 {
     public function index(Request $request)
     {
-        $artist = auth()->user()->artist;
+        $artist = current_artist();
         $filters = $request->validate([
             'store_id' => ['nullable', 'integer', 'exists:music_stores,id'],
             'year' => ['nullable', 'integer', 'min:2020', 'max:'.(date('Y') + 1)],
             'month' => ['nullable', 'integer', 'min:1', 'max:12'],
         ]);
 
-        $baseQuery = Royalty::where('artist_id', $artist->id)
-            ->when($filters['store_id'] ?? null, fn ($query, $id) => $query->where('store_id', $id))
-            ->when($filters['year'] ?? null, fn ($query, $year) => $query->where('year', $year))
-            ->when($filters['month'] ?? null, fn ($query, $month) => $query->where('month', $month));
+        $baseQuery = Royalty::query()
+            ->join('royalty_allocations', 'royalties.id', '=', 'royalty_allocations.royalty_id')
+            ->where('royalty_allocations.beneficiary_type', 'artist')
+            ->where('royalty_allocations.beneficiary_id', $artist->id)
+            ->when($filters['store_id'] ?? null, fn ($query, $id) => $query->where('royalties.store_id', $id))
+            ->when($filters['year'] ?? null, fn ($query, $year) => $query->where('royalties.year', $year))
+            ->when($filters['month'] ?? null, fn ($query, $month) => $query->where('royalties.month', $month));
 
         $monthlyData = (clone $baseQuery)
-            ->selectRaw('month, year, SUM(streams) as total_streams, SUM(amount) as total_revenue')
-            ->groupBy('year', 'month')
-            ->orderByDesc('year')
-            ->orderByDesc('month')
-            ->get()
-            ->each(fn ($row) => $row->total_revenue = $artist->getArtistShareAttribute((float) $row->total_revenue));
+            ->selectRaw('royalties.month, royalties.year, SUM(royalties.streams) as total_streams, SUM(royalty_allocations.allocated_amount) as total_revenue')
+            ->groupBy('royalties.year', 'royalties.month')
+            ->orderByDesc('royalties.year')->orderByDesc('royalties.month')->get();
 
         $storeData = (clone $baseQuery)
-            ->selectRaw('store_id, SUM(streams) as total_streams, SUM(amount) as total_revenue')
+            ->selectRaw('royalties.store_id, SUM(royalties.streams) as total_streams, SUM(royalty_allocations.allocated_amount) as total_revenue')
             ->with('store')
-            ->groupBy('store_id')
-            ->orderByDesc('total_revenue')
-            ->get()
-            ->each(fn ($row) => $row->total_revenue = $artist->getArtistShareAttribute((float) $row->total_revenue));
+            ->groupBy('royalties.store_id')->orderByDesc('total_revenue')->get();
 
         $songPerformance = (clone $baseQuery)
-            ->whereNotNull('song_id')
-            ->selectRaw('song_id, SUM(streams) as total_streams, SUM(amount) as total_revenue')
+            ->whereNotNull('royalties.song_id')
+            ->selectRaw('royalties.song_id, SUM(royalties.streams) as total_streams, SUM(royalty_allocations.allocated_amount) as total_revenue')
             ->with('song')
-            ->groupBy('song_id')
+            ->groupBy('royalties.song_id')
             ->orderByDesc('total_streams')
-            ->take(10)
-            ->get()
-            ->each(fn ($row) => $row->total_revenue = $artist->getArtistShareAttribute((float) $row->total_revenue));
+            ->take(10)->get();
 
-        $totalStreams = (int) (clone $baseQuery)->sum('streams');
-        $totalRevenue = $artist->getArtistShareAttribute((float) (clone $baseQuery)->sum('amount'));
-        $totalEntries = (int) (clone $baseQuery)->count();
-        $stores = MusicStore::whereHas('royalties', fn ($query) => $query->where('artist_id', $artist->id))
-            ->orderBy('name')->get();
-        $years = Royalty::where('artist_id', $artist->id)->distinct()->orderByDesc('year')->pluck('year');
+        $totalStreams = (int) (clone $baseQuery)->sum('royalties.streams');
+        $totalRevenue = (float) (clone $baseQuery)->sum('royalty_allocations.allocated_amount');
+        $totalEntries = (int) (clone $baseQuery)->count('royalties.id');
+        $stores = MusicStore::whereIn('id', (clone $baseQuery)->distinct()->pluck('royalties.store_id'))->orderBy('name')->get();
+        $years = Royalty::query()->join('royalty_allocations', 'royalties.id', '=', 'royalty_allocations.royalty_id')
+            ->where('royalty_allocations.beneficiary_type', 'artist')->where('royalty_allocations.beneficiary_id', $artist->id)
+            ->distinct()->orderByDesc('royalties.year')->pluck('royalties.year');
 
         return view('artist.analytics.index', compact(
             'monthlyData', 'storeData', 'songPerformance', 'totalStreams',

@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Services\RoyaltyAllocationService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 class Royalty extends Model
 {
@@ -22,6 +24,15 @@ class Royalty extends Model
     ];
 
     protected $appends = ['royalty_type_label'];
+
+    protected static function booted(): void
+    {
+        static::created(function (Royalty $royalty) {
+            if (Schema::hasTable('royalty_allocations')) {
+                app(RoyaltyAllocationService::class)->allocate($royalty);
+            }
+        });
+    }
 
     public function getRoyaltyTypeLabelAttribute(): string
     {
@@ -52,9 +63,27 @@ class Royalty extends Model
     {
         return $this->belongsTo(User::class, 'entered_by');
     }
+
+    public function allocations()
+    {
+        return $this->hasMany(RoyaltyAllocation::class);
+    }
+
+    public function amountForArtist(Artist $artist): float
+    {
+        if (array_key_exists('artist_amount', $this->attributes)) {
+            return (float) $this->attributes['artist_amount'];
+        }
+
+        $allocation = $this->relationLoaded('allocations')
+            ? $this->allocations->first(fn ($item) => $item->beneficiary_type === 'artist' && (int) $item->beneficiary_id === $artist->id)
+            : $this->allocations()->where('beneficiary_type', 'artist')->where('beneficiary_id', $artist->id)->first();
+
+        return (float) ($allocation?->allocated_amount ?? 0);
+    }
+
     public function setCurrencyAttribute(mixed $value): void
     {
         $this->attributes['currency'] = 'USD';
     }
-
 }

@@ -234,6 +234,6 @@ class ReleaseCheckoutController extends Controller
 
     private function authorizeAlbum(Album $album): void
     {
-        abort_unless($album->artist_id === auth()->user()->artist->id, 403);
+        abort_unless($album->artist_id === current_artist()?->id, 403);
     }
 }

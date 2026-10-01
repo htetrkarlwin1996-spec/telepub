@@ -38,8 +38,8 @@
                         </div>
                         <div>
                             <x-input-label for="revenue_share_percentage" value="Revenue Share (%)" />
-                            <x-text-input id="revenue_share_percentage" class="block mt-1 w-full" type="number" step="0.01" min="0" max="100" name="revenue_share_percentage" value="70.00" />
-                            <p class="text-[10px] font-bold text-black/40 mt-1">% of revenue paid to artist. TeleMusic Fee = {{ 100 - 70 }}%.</p>
+                            <x-text-input id="revenue_share_percentage" class="block mt-1 w-full" type="number" step="0.01" min="0" max="100" name="revenue_share_percentage" value="85.00" />
+                            <p class="text-[10px] font-bold text-black/40 mt-1">% of revenue paid to artist. Default TeleMusic Fee = 15%.</p>
                         </div>
                         <div class="md:col-span-2">
                             <x-input-label for="bio" value="Bio" />

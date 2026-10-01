@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Royalty;
+use App\Models\RoyaltyAllocation;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -10,17 +11,18 @@ class ArtistResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $balanceBreakdown = $this->royalties()
-            ->selectRaw('royalty_type, COALESCE(SUM(amount), 0) as gross_amount')
-            ->groupBy('royalty_type')
-            ->pluck('gross_amount', 'royalty_type');
+        $balanceBreakdown = RoyaltyAllocation::query()
+            ->join('royalties', 'royalty_allocations.royalty_id', '=', 'royalties.id')
+            ->where('royalty_allocations.beneficiary_type', 'artist')
+            ->where('royalty_allocations.beneficiary_id', $this->id)
+            ->selectRaw('royalties.royalty_type, COALESCE(SUM(royalty_allocations.allocated_amount), 0) as amount')
+            ->groupBy('royalties.royalty_type')->pluck('amount', 'royalties.royalty_type');
 
         $balances = collect(Royalty::TYPES)->mapWithKeys(function ($label, $type) use ($balanceBreakdown) {
-            $gross = (float) ($balanceBreakdown[$type] ?? 0);
-
-            return [$type => round($this->getArtistShareAttribute($gross), 2)];
+            return [$type => round((float) ($balanceBreakdown[$type] ?? 0), 2)];
         });
-        $grossAmount = (float) $balanceBreakdown->sum();
+        $grossAmount = (float) RoyaltyAllocation::where('beneficiary_type', 'artist')
+            ->where('beneficiary_id', $this->id)->sum('gross_amount');
         $artistShareAmount = round($balances->sum(), 2);
 
         return [
@@ -55,7 +57,7 @@ class ArtistResource extends JsonResource
                 'revenue_share_percentage' => (float) $this->revenue_share_percentage,
                 'artist_share_amount' => $artistShareAmount,
                 'telemusic_fee_percentage' => (float) $this->tele_music_fee_percentage,
-                'telemusic_fee_amount' => round($this->getTeleMusicFeeAttribute($grossAmount), 2),
+                'telemusic_fee_amount' => round(max(0, $grossAmount - $artistShareAmount), 2),
                 'currency' => 'USD',
             ],
             'pending_balance' => (float) $this->pending_balance,

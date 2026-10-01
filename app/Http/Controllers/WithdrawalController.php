@@ -10,7 +10,7 @@ class WithdrawalController extends Controller
 {
     public function index()
     {
-        $artist = auth()->user()->artist;
+        $artist = current_artist();
         $withdrawals = Withdrawal::where('artist_id', $artist->id)->latest()->paginate(20);
 
         return view('artist.withdrawals.index', compact('withdrawals'));
@@ -18,14 +18,14 @@ class WithdrawalController extends Controller
 
     public function create()
     {
-        $artist = auth()->user()->artist;
+        $artist = current_artist();
 
         return view('artist.withdrawals.create', compact('artist'));
     }
 
     public function store(Request $request)
     {
-        $artist = auth()->user()->artist;
+        $artist = current_artist();
 
         $validated = $request->validate([
             'amount' => 'required|numeric|min:10|max:'.$artist->available_balance,

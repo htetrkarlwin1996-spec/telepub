@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -58,7 +59,7 @@ return new class extends Migration
 
                     // Royalties are stored gross; artist-facing reports apply the 85% share.
                     $grossAmount = number_format($netAmount / 0.85, 10, '.', '');
-                    DB::table('royalties')->insert([
+                    $royaltyId = DB::table('royalties')->insertGetId([
                         'artist_id' => $artist->id,
                         'store_id' => $stores[$slug],
                         'royalty_type' => 'royalties',
@@ -71,6 +72,25 @@ return new class extends Migration
                         'created_at' => $reportingDate.' 00:00:00',
                         'updated_at' => now(),
                     ]);
+
+                    if (Schema::hasTable('royalty_allocations')) {
+                        DB::table('royalty_allocations')->insert([
+                            [
+                                'royalty_id' => $royaltyId, 'split_version_id' => null,
+                                'beneficiary_type' => 'platform', 'beneficiary_id' => null,
+                                'share_type' => 'platform_fee', 'percentage' => 15,
+                                'gross_amount' => $grossAmount, 'allocated_amount' => round((float) $grossAmount * 0.15, 10),
+                                'currency' => 'USD', 'created_at' => now(), 'updated_at' => now(),
+                            ],
+                            [
+                                'royalty_id' => $royaltyId, 'split_version_id' => null,
+                                'beneficiary_type' => 'artist', 'beneficiary_id' => $artist->id,
+                                'share_type' => 'primary_artist', 'percentage' => 85,
+                                'gross_amount' => $grossAmount, 'allocated_amount' => $netAmount,
+                                'currency' => 'USD', 'created_at' => now(), 'updated_at' => now(),
+                            ],
+                        ]);
+                    }
 
                     $balanceDelta += $netAmount;
                     $earningsDelta += $netAmount;

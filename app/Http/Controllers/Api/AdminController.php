@@ -8,6 +8,7 @@ use App\Models\Artist;
 use App\Models\MusicStore;
 use App\Models\Payout;
 use App\Models\Royalty;
+use App\Models\RoyaltyAllocation;
 use App\Models\Song;
 use App\Models\User;
 use App\Models\Withdrawal;
@@ -22,24 +23,22 @@ class AdminController extends Controller
 
     public function dashboard(): JsonResponse
     {
-        $royalties = Royalty::with('artist')->get();
-        $totalRoyalties = (float) $royalties->sum('amount');
-        $totalArtistShares = (float) $royalties->sum(
-            fn (Royalty $royalty) => $royalty->artist?->getArtistShareAttribute($royalty->amount) ?? $royalty->amount
-        );
+        $totalRoyalties = (float) Royalty::sum('amount');
+        $totalArtistShares = (float) RoyaltyAllocation::where('beneficiary_type', 'artist')->sum('allocated_amount');
+        $totalPlatformFees = (float) RoyaltyAllocation::where('beneficiary_type', 'platform')->sum('allocated_amount');
 
         $stats = [
-            'total_artists'   => Artist::count(),
-            'total_albums'    => Album::count(),
-            'total_songs'     => Song::count(),
+            'total_artists' => Artist::count(),
+            'total_albums' => Album::count(),
+            'total_songs' => Song::count(),
             'total_royalties' => $totalRoyalties,
             'total_artist_shares' => $totalArtistShares,
-            'total_telemusic_fees' => round($totalRoyalties - $totalArtistShares, 2),
+            'total_telemusic_fees' => round($totalPlatformFees, 2),
             'total_paid' => (float) Payout::where('status', 'paid')->sum('amount'),
-            'total_releases'  => Album::where('status', 'approved')->count(),
+            'total_releases' => Album::where('status', 'approved')->count(),
             'pending_releases' => Album::where('status', 'submitted')->count(),
             'pending_withdrawals' => (float) Withdrawal::where('status', 'pending')->sum('amount'),
-            'recent_artists'  => Artist::with('user')->latest()->take(5)->get(),
+            'recent_artists' => Artist::with('user')->latest()->take(5)->get(),
             'recent_releases' => Album::with('artist')->latest()->take(5)->get(),
             'recent_withdrawals' => Withdrawal::with('artist')->latest()->take(5)->get(),
         ];
@@ -59,9 +58,9 @@ class AdminController extends Controller
             'data' => $artists->items(),
             'meta' => [
                 'current_page' => $artists->currentPage(),
-                'last_page'    => $artists->lastPage(),
-                'per_page'     => $artists->perPage(),
-                'total'        => $artists->total(),
+                'last_page' => $artists->lastPage(),
+                'per_page' => $artists->perPage(),
+                'total' => $artists->total(),
             ],
         ]);
     }
@@ -69,32 +68,32 @@ class AdminController extends Controller
     public function storeArtist(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name'                  => 'required|string|max:255',
-            'email'                 => 'required|email|unique:users,email',
-            'password'              => 'required|string|min:8|confirmed',
-            'artist_name'           => 'required|string|max:255',
-            'genre'                 => 'nullable|string|max:255',
-            'country'               => 'nullable|string|max:100',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:8|confirmed',
+            'artist_name' => 'required|string|max:255',
+            'genre' => 'nullable|string|max:255',
+            'country' => 'nullable|string|max:100',
             'revenue_share_percentage' => 'nullable|numeric|min:0|max:100',
         ]);
 
         $user = User::create([
-            'name'     => $validated['name'],
-            'email'    => $validated['email'],
+            'name' => $validated['name'],
+            'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
-            'role'     => 'artist',
+            'role' => 'artist',
             'is_active' => true,
         ]);
 
         $artist = $user->artist()->create([
-            'artist_name'              => $validated['artist_name'],
-            'genre'                    => $validated['genre'] ?? null,
-            'country'                  => $validated['country'] ?? null,
-            'revenue_share_percentage' => $validated['revenue_share_percentage'] ?? 70,
+            'artist_name' => $validated['artist_name'],
+            'genre' => $validated['genre'] ?? null,
+            'country' => $validated['country'] ?? null,
+            'revenue_share_percentage' => $validated['revenue_share_percentage'] ?? 85,
         ]);
 
         return response()->json([
-            'data'    => $artist->load('user'),
+            'data' => $artist->load('user'),
             'message' => 'Artist created.',
         ], 201);
     }
@@ -102,18 +101,18 @@ class AdminController extends Controller
     public function updateArtist(Request $request, Artist $artist): JsonResponse
     {
         $validated = $request->validate([
-            'artist_name'              => 'sometimes|string|max:255',
-            'genre'                    => 'nullable|string|max:255',
-            'country'                  => 'nullable|string|max:100',
+            'artist_name' => 'sometimes|string|max:255',
+            'genre' => 'nullable|string|max:255',
+            'country' => 'nullable|string|max:100',
             'revenue_share_percentage' => 'nullable|numeric|min:0|max:100',
-            'bio'                      => 'nullable|string',
-            'avatar'                   => 'nullable|string',
+            'bio' => 'nullable|string',
+            'avatar' => 'nullable|string',
         ]);
 
         $artist->update($validated);
 
         return response()->json([
-            'data'    => $artist->fresh()->load('user'),
+            'data' => $artist->fresh()->load('user'),
             'message' => 'Artist updated.',
         ]);
     }
@@ -130,9 +129,9 @@ class AdminController extends Controller
             'data' => $albums->items(),
             'meta' => [
                 'current_page' => $albums->currentPage(),
-                'last_page'    => $albums->lastPage(),
-                'per_page'     => $albums->perPage(),
-                'total'        => $albums->total(),
+                'last_page' => $albums->lastPage(),
+                'per_page' => $albums->perPage(),
+                'total' => $albums->total(),
             ],
         ]);
     }
@@ -147,13 +146,13 @@ class AdminController extends Controller
     public function approveRelease(Request $request, Album $album): JsonResponse
     {
         $album->update([
-            'status'      => 'approved',
+            'status' => 'approved',
             'approved_at' => now(),
-            'notes'       => $request->input('notes', $album->notes),
+            'notes' => $request->input('notes', $album->notes),
         ]);
 
         return response()->json([
-            'data'    => $album->fresh()->load('artist'),
+            'data' => $album->fresh()->load('artist'),
             'message' => 'Release approved.',
         ]);
     }
@@ -165,13 +164,13 @@ class AdminController extends Controller
         ]);
 
         $album->update([
-            'status'           => 'rejected',
-            'rejected_at'      => now(),
+            'status' => 'rejected',
+            'rejected_at' => now(),
             'rejection_reason' => $validated['rejection_reason'],
         ]);
 
         return response()->json([
-            'data'    => $album->fresh()->load('artist'),
+            'data' => $album->fresh()->load('artist'),
             'message' => 'Release rejected.',
         ]);
     }
@@ -190,9 +189,9 @@ class AdminController extends Controller
             'data' => $royalties->items(),
             'meta' => [
                 'current_page' => $royalties->currentPage(),
-                'last_page'    => $royalties->lastPage(),
-                'per_page'     => $royalties->perPage(),
-                'total'        => $royalties->total(),
+                'last_page' => $royalties->lastPage(),
+                'per_page' => $royalties->perPage(),
+                'total' => $royalties->total(),
             ],
         ]);
     }
@@ -201,26 +200,26 @@ class AdminController extends Controller
     {
         $validated = $request->validate([
             'artist_id' => 'required|exists:artists,id',
-            'song_id'   => 'nullable|exists:songs,id',
-            'album_id'  => 'nullable|exists:albums,id',
-            'store_id'  => 'required|exists:music_stores,id',
-            'royalty_type' => 'required|in:' . implode(',', array_keys(Royalty::TYPES)),
-            'month'     => 'required|integer|min:1|max:12',
-            'year'      => 'required|integer|min:2020',
-            'amount'    => 'required|numeric|min:0',
-            'streams'   => 'nullable|integer|min:0',
-            'currency'  => 'nullable|string|size:3',
-            'notes'     => 'nullable|string|max:1000',
+            'song_id' => 'nullable|exists:songs,id',
+            'album_id' => 'nullable|exists:albums,id',
+            'store_id' => 'required|exists:music_stores,id',
+            'royalty_type' => 'required|in:'.implode(',', array_keys(Royalty::TYPES)),
+            'month' => 'required|integer|min:1|max:12',
+            'year' => 'required|integer|min:2020',
+            'amount' => 'required|numeric|min:0',
+            'streams' => 'nullable|integer|min:0',
+            'currency' => 'nullable|string|size:3',
+            'notes' => 'nullable|string|max:1000',
         ]);
 
         $royalty = $royaltyService->create([
             ...$validated,
             'entered_by' => request()->user()->id,
-            'currency'   => $validated['currency'] ?? 'USD',
+            'currency' => $validated['currency'] ?? 'USD',
         ]);
 
         return response()->json([
-            'data'    => $royalty->load('artist', 'store'),
+            'data' => $royalty->load('artist', 'store'),
             'message' => 'Royalty added.',
         ], 201);
     }
@@ -228,19 +227,19 @@ class AdminController extends Controller
     public function updateRoyalty(Request $request, Royalty $royalty, RoyaltyService $royaltyService): JsonResponse
     {
         $validated = $request->validate([
-            'amount'  => 'sometimes|numeric|min:0',
-            'royalty_type' => 'sometimes|in:' . implode(',', array_keys(Royalty::TYPES)),
+            'amount' => 'sometimes|numeric|min:0',
+            'royalty_type' => 'sometimes|in:'.implode(',', array_keys(Royalty::TYPES)),
             'artist_id' => 'sometimes|exists:artists,id',
             'streams' => 'nullable|integer|min:0',
-            'month'   => 'sometimes|integer|min:1|max:12',
-            'year'    => 'sometimes|integer|min:2020',
-            'notes'   => 'nullable|string|max:1000',
+            'month' => 'sometimes|integer|min:1|max:12',
+            'year' => 'sometimes|integer|min:2020',
+            'notes' => 'nullable|string|max:1000',
         ]);
 
         $royalty = $royaltyService->update($royalty, $validated);
 
         return response()->json([
-            'data'    => $royalty->fresh()->load('artist', 'store'),
+            'data' => $royalty->fresh()->load('artist', 'store'),
             'message' => 'Royalty updated.',
         ]);
     }
@@ -257,9 +256,9 @@ class AdminController extends Controller
             'data' => $withdrawals->items(),
             'meta' => [
                 'current_page' => $withdrawals->currentPage(),
-                'last_page'    => $withdrawals->lastPage(),
-                'per_page'     => $withdrawals->perPage(),
-                'total'        => $withdrawals->total(),
+                'last_page' => $withdrawals->lastPage(),
+                'per_page' => $withdrawals->perPage(),
+                'total' => $withdrawals->total(),
             ],
         ]);
     }
@@ -267,12 +266,12 @@ class AdminController extends Controller
     public function approveWithdrawal(Withdrawal $withdrawal): JsonResponse
     {
         $withdrawal->update([
-            'status'       => 'approved',
+            'status' => 'approved',
             'processed_at' => now(),
         ]);
 
         return response()->json([
-            'data'    => $withdrawal->fresh()->load('artist'),
+            'data' => $withdrawal->fresh()->load('artist'),
             'message' => 'Withdrawal approved.',
         ]);
     }
@@ -280,12 +279,12 @@ class AdminController extends Controller
     public function completeWithdrawal(Withdrawal $withdrawal): JsonResponse
     {
         $withdrawal->update([
-            'status'       => 'completed',
+            'status' => 'completed',
             'processed_at' => now(),
         ]);
 
         return response()->json([
-            'data'    => $withdrawal->fresh()->load('artist'),
+            'data' => $withdrawal->fresh()->load('artist'),
             'message' => 'Withdrawal completed.',
         ]);
     }
@@ -297,12 +296,12 @@ class AdminController extends Controller
         ]);
 
         $withdrawal->update([
-            'status'      => 'rejected',
+            'status' => 'rejected',
             'admin_notes' => $validated['admin_notes'] ?? 'Rejected by admin.',
         ]);
 
         return response()->json([
-            'data'    => $withdrawal->fresh()->load('artist'),
+            'data' => $withdrawal->fresh()->load('artist'),
             'message' => 'Withdrawal rejected.',
         ]);
     }
@@ -319,18 +318,18 @@ class AdminController extends Controller
     public function storeStore(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name'        => 'required|string|max:255',
-            'slug'        => 'required|string|max:255|unique:music_stores,slug',
-            'logo'        => 'nullable|string',
+            'name' => 'required|string|max:255',
+            'slug' => 'required|string|max:255|unique:music_stores,slug',
+            'logo' => 'nullable|string',
             'description' => 'nullable|string',
-            'url'         => 'nullable|url|max:500',
-            'is_active'   => 'boolean',
+            'url' => 'nullable|url|max:500',
+            'is_active' => 'boolean',
         ]);
 
         $store = MusicStore::create($validated);
 
         return response()->json([
-            'data'    => $store,
+            'data' => $store,
             'message' => 'Store created.',
         ], 201);
     }
@@ -338,18 +337,18 @@ class AdminController extends Controller
     public function updateStore(Request $request, MusicStore $store): JsonResponse
     {
         $validated = $request->validate([
-            'name'        => 'sometimes|string|max:255',
-            'slug'        => 'sometimes|string|max:255|unique:music_stores,slug,'.$store->id,
-            'logo'        => 'nullable|string',
+            'name' => 'sometimes|string|max:255',
+            'slug' => 'sometimes|string|max:255|unique:music_stores,slug,'.$store->id,
+            'logo' => 'nullable|string',
             'description' => 'nullable|string',
-            'url'         => 'nullable|url|max:500',
-            'is_active'   => 'boolean',
+            'url' => 'nullable|url|max:500',
+            'is_active' => 'boolean',
         ]);
 
         $store->update($validated);
 
         return response()->json([
-            'data'    => $store->fresh(),
+            'data' => $store->fresh(),
             'message' => 'Store updated.',
         ]);
     }

@@ -20,16 +20,20 @@ class RoyaltyController extends Controller
             return response()->json(['message' => 'Artist profile required.'], 404);
         }
 
-        $royalties = Royalty::where('artist_id', $artist->id)
+        $royalties = Royalty::query()
+            ->join('royalty_allocations', 'royalties.id', '=', 'royalty_allocations.royalty_id')
+            ->where('royalty_allocations.beneficiary_type', 'artist')
+            ->where('royalty_allocations.beneficiary_id', $artist->id)
+            ->select('royalties.*', 'royalty_allocations.allocated_amount as artist_amount')
             ->with('store', 'album', 'song')
-            ->orderBy('year', 'desc')
-            ->orderBy('month', 'desc')
-            ->orderBy('id', 'desc')
+            ->orderBy('royalties.year', 'desc')
+            ->orderBy('royalties.month', 'desc')
+            ->orderBy('royalties.id', 'desc')
             ->paginate($request->get('per_page', 20));
 
         $items = collect($royalties->items())->map(function (Royalty $royalty) use ($artist) {
             $data = $royalty->toArray();
-            $data['amount'] = $artist->getArtistShareAttribute((float) $royalty->amount);
+            $data['amount'] = $royalty->amountForArtist($artist);
             $data['earnings'] = $data['amount'];
 
             return $data;
@@ -59,35 +63,35 @@ class RoyaltyController extends Controller
 
         $year = $request->get('year', date('Y'));
 
-        $totals = Royalty::where('artist_id', $artist->id)
-            ->selectRaw('COALESCE(SUM(amount), 0) as total_amount')
-            ->selectRaw('COALESCE(SUM(streams), 0) as total_streams')
+        $baseQuery = Royalty::query()
+            ->join('royalty_allocations', 'royalties.id', '=', 'royalty_allocations.royalty_id')
+            ->where('royalty_allocations.beneficiary_type', 'artist')
+            ->where('royalty_allocations.beneficiary_id', $artist->id);
+        $totals = (clone $baseQuery)
+            ->selectRaw('COALESCE(SUM(royalty_allocations.allocated_amount), 0) as total_amount')
+            ->selectRaw('COALESCE(SUM(royalties.streams), 0) as total_streams')
             ->first();
 
-        $monthly = Royalty::where('artist_id', $artist->id)
-            ->where('year', $year)
-            ->selectRaw('month, COALESCE(SUM(amount), 0) as amount, COALESCE(SUM(streams), 0) as streams')
-            ->groupBy('month')
-            ->orderBy('month')
+        $monthly = (clone $baseQuery)
+            ->where('royalties.year', $year)
+            ->selectRaw('royalties.month, COALESCE(SUM(royalty_allocations.allocated_amount), 0) as amount, COALESCE(SUM(royalties.streams), 0) as streams')
+            ->groupBy('royalties.month')->orderBy('royalties.month')
             ->get();
 
-        $byStore = Royalty::where('artist_id', $artist->id)
-            ->where('year', $year)
-            ->selectRaw('store_id, COALESCE(SUM(amount), 0) as amount, COALESCE(SUM(streams), 0) as streams')
+        $byStore = (clone $baseQuery)
+            ->where('royalties.year', $year)
+            ->selectRaw('royalties.store_id, COALESCE(SUM(royalty_allocations.allocated_amount), 0) as amount, COALESCE(SUM(royalties.streams), 0) as streams')
             ->with('store')
-            ->groupBy('store_id')
+            ->groupBy('royalties.store_id')
             ->get();
 
-        $grossByType = Royalty::where('artist_id', $artist->id)
-            ->selectRaw('royalty_type, COALESCE(SUM(amount), 0) as amount')
-            ->groupBy('royalty_type')
-            ->pluck('amount', 'royalty_type');
+        $grossByType = (clone $baseQuery)
+            ->selectRaw('royalties.royalty_type, COALESCE(SUM(royalty_allocations.allocated_amount), 0) as amount')
+            ->groupBy('royalties.royalty_type')->pluck('amount', 'royalties.royalty_type');
         $balanceBreakdown = collect(Royalty::TYPES)->mapWithKeys(fn ($label, $type) => [
-            $type => round($artist->getArtistShareAttribute((float) ($grossByType[$type] ?? 0)), 2),
+            $type => round((float) ($grossByType[$type] ?? 0), 2),
         ]);
-        $monthly->each(fn ($row) => $row->amount = $artist->getArtistShareAttribute((float) $row->amount));
-        $byStore->each(fn ($row) => $row->amount = $artist->getArtistShareAttribute((float) $row->amount));
-        $totalEarnings = $artist->getArtistShareAttribute((float) $totals->total_amount);
+        $totalEarnings = (float) $totals->total_amount;
 
         return response()->json([
             'data' => [
@@ -112,18 +116,18 @@ class RoyaltyController extends Controller
     {
         $user = request()->user();
 
-        if (! $user->isAdmin() && $royalty->artist_id !== $user?->artist?->id) {
+        if (! $user->isAdmin() && ! $royalty->allocations()->where('beneficiary_type', 'artist')->where('beneficiary_id', $user?->artist?->id)->exists()) {
             abort(403, 'Unauthorized.');
         }
 
-        $royalty->load('store', 'album', 'song', 'artist');
+        $royalty->load('store', 'album', 'song', 'artist', 'allocations');
 
         if ($user->isAdmin()) {
             return response()->json(['data' => $royalty]);
         }
 
         $data = $royalty->toArray();
-        $data['amount'] = $user->artist->getArtistShareAttribute((float) $royalty->amount);
+        $data['amount'] = $royalty->amountForArtist($user->artist);
         $data['earnings'] = $data['amount'];
         unset($data['artist']);
 

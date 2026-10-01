@@ -23,13 +23,16 @@
                 <div class="bg-white border-2 border-black shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] p-6">
                     <label class="block font-extrabold text-sm uppercase mb-2">Collaborating Artists (Optional)</label>
                     <p class="text-xs font-bold text-black/50 mb-3">Add other artists who will share revenue on this release. Set each collaborator's share percentage of the net artist revenue.</p>
+                    @if($album->splitsAreLocked())
+                        <p class="mb-3 border-2 border-black bg-amber-100 p-3 text-xs font-black">LOCKED — use the change-request form on the release page. Admin approval is required.</p>
+                    @endif
                     
                     <div id="collaborators-container">
                         @if($album->relationLoaded('collaboratingArtists'))
                             @foreach($album->collaboratingArtists as $index => $collab)
                                 <div class="collaborator-row flex items-center gap-3 mb-3 p-3 bg-gray-50 border-2 border-black">
                                     <div class="flex-1">
-                                        <select name="collaborating_artists[]" class="w-full px-3 py-2 border-2 border-black font-bold text-sm focus:outline-none focus:ring-0 focus:border-brand-500">
+                                        <select name="collaborating_artists[]" @disabled($album->splitsAreLocked()) class="w-full px-3 py-2 border-2 border-black font-bold text-sm focus:outline-none focus:ring-0 focus:border-brand-500">
                                             <option value="">Select artist...</option>
                                             @foreach($artists as $artist)
                                                 <option value="{{ $artist->id }}" {{ $collab->id == $artist->id ? 'selected' : '' }}>
@@ -40,14 +43,14 @@
                                     </div>
                                     <div class="w-32">
                                         <div class="flex items-center gap-1">
-                                            <input type="number" name="collaborating_shares[]" value="{{ $collab->pivot->share_percentage }}"
+                                            <input type="number" name="collaborating_shares[]" value="{{ $collab->pivot->share_percentage }}" @disabled($album->splitsAreLocked())
                                                 min="0" max="100" step="0.01"
                                                 class="w-20 px-3 py-2 border-2 border-black font-bold text-sm text-center focus:outline-none focus:ring-0 focus:border-brand-500"
                                                 placeholder="%">
                                             <span class="font-extrabold text-xs">%</span>
                                         </div>
                                     </div>
-                                    <button type="button" onclick="this.closest('.collaborator-row').remove()"
+                                    <button type="button" onclick="this.closest('.collaborator-row').remove()" @disabled($album->splitsAreLocked())
                                         class="px-3 py-2 bg-red-100 border-2 border-black font-extrabold text-xs hover:bg-red-200 transition-all">
                                         ✕
                                     </button>
@@ -56,7 +59,7 @@
                         @endif
                     </div>
 
-                    <button type="button" onclick="addCollaborator()"
+                    <button type="button" onclick="addCollaborator()" @disabled($album->splitsAreLocked())
                         class="mt-2 px-4 py-2 bg-gray-100 border-2 border-black font-extrabold text-xs uppercase hover:bg-gray-200 transition-all">
                         + Add Collaborating Artist
                     </button>

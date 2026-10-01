@@ -9,8 +9,12 @@ class Artist extends Model
 {
     use HasFactory;
 
+    protected $attributes = [
+        'revenue_share_percentage' => 85,
+    ];
+
     protected $fillable = [
-        'user_id', 'artist_name', 'genre', 'bio', 'country',
+        'user_id', 'created_by_user_id', 'artist_name', 'genre', 'bio', 'country',
         'avatar', 'banner', 'payment_email', 'paypal_email',
         'bank_account_info',
         // Bank Transfer
@@ -30,6 +34,18 @@ class Artist extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function masterAccounts()
+    {
+        return $this->belongsToMany(MasterAccount::class, 'master_account_artist')
+            ->withPivot(['management_fee_percentage', 'access_level', 'status', 'created_by'])
+            ->withTimestamps();
+    }
+
+    public function activeMasterAccount(): ?MasterAccount
+    {
+        return $this->masterAccounts()->wherePivot('status', 'active')->first();
     }
 
     public function albums()

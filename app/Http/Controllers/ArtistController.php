@@ -47,6 +47,7 @@ class ArtistController extends Controller
         $artist = auth()->user()->artist;
         $genres = static::genres();
         $countries = static::countries();
+
         return view('artist.setup', compact('artist', 'genres', 'countries'));
     }
 
@@ -89,15 +90,16 @@ class ArtistController extends Controller
 
     public function profile()
     {
-        $artist = auth()->user()->artist;
+        $artist = current_artist();
         $genres = static::genres();
         $countries = static::countries();
+
         return view('artist.profile', compact('artist', 'genres', 'countries'));
     }
 
     public function updateProfile(Request $request)
     {
-        $artist = auth()->user()->artist;
+        $artist = current_artist();
 
         $validated = $request->validate([
             'artist_name' => 'required|string|max:255',

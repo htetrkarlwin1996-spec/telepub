@@ -140,7 +140,7 @@
                                 <div class="font-bold text-black">{{ $royalty->store->name ?? 'N/A' }}</div>
                                 <div class="text-xs font-semibold text-black/50">{{ $royalty->month }}/{{ $royalty->year }}</div>
                             </div>
-                            <span class="font-black text-black">+{{ money($artist->getArtistShareAttribute($royalty->amount)) }}</span>
+                            <span class="font-black text-black">+{{ money($royalty->amountForArtist($artist)) }}</span>
                         </div>
                         @empty
                         <p class="font-bold text-black/40 text-center py-4">No royalties recorded yet.</p>

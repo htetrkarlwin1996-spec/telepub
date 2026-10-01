@@ -11,8 +11,9 @@ class AlbumController extends Controller
 {
     public function index()
     {
-        $artist = auth()->user()->artist;
+        $artist = current_artist();
         $albums = Album::where('artist_id', $artist->id)->withCount('songs')->latest()->paginate(20);
+
         return view('artist.albums.index', compact('albums'));
     }
 
@@ -23,7 +24,7 @@ class AlbumController extends Controller
 
     public function store(Request $request)
     {
-        $artist = auth()->user()->artist;
+        $artist = current_artist();
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
@@ -39,7 +40,7 @@ class AlbumController extends Controller
         }
 
         $validated['artist_id'] = $artist->id;
-        $validated['slug'] = Str::slug($validated['title']) . '-' . Str::random(4);
+        $validated['slug'] = Str::slug($validated['title']).'-'.Str::random(4);
         $validated['status'] = 'draft';
 
         Album::create($validated);
@@ -49,16 +50,17 @@ class AlbumController extends Controller
 
     public function edit(Album $album)
     {
-        $artist = auth()->user()->artist;
+        $artist = current_artist();
         if ($album->artist_id !== $artist->id) {
             abort(403);
         }
+
         return view('artist.albums.edit', compact('album'));
     }
 
     public function update(Request $request, Album $album)
     {
-        $artist = auth()->user()->artist;
+        $artist = current_artist();
         if ($album->artist_id !== $artist->id) {
             abort(403);
         }
@@ -84,21 +86,23 @@ class AlbumController extends Controller
 
     public function show(Album $album)
     {
-        $artist = auth()->user()->artist;
+        $artist = current_artist();
         if ($album->artist_id !== $artist->id) {
             abort(403);
         }
         $songs = Song::where('album_id', $album->id)->orderBy('track_number')->get();
+
         return view('artist.albums.show', compact('album', 'songs'));
     }
 
     public function destroy(Album $album)
     {
-        $artist = auth()->user()->artist;
+        $artist = current_artist();
         if ($album->artist_id !== $artist->id) {
             abort(403);
         }
         $album->delete();
+
         return redirect()->route('artist.albums')->with('success', 'Album deleted.');
     }
 }

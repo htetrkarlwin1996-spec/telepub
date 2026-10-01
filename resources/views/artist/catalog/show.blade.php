@@ -12,6 +12,11 @@
                     {{ session('success') }}
                 </div>
             @endif
+            @if($errors->any())
+                <div class="mb-6 p-4 bg-red-100 border-2 border-black font-bold text-sm shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+                    @foreach($errors->all() as $error)<div>{{ $error }}</div>@endforeach
+                </div>
+            @endif
 
             <!-- Release Header -->
             <div class="bg-white border-2 border-black shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden mb-8">
@@ -57,8 +62,9 @@
                             <div>
                                 <span class="text-[10px] font-extrabold uppercase text-black/50">Price</span>
                                 <p class="font-extrabold">{{ money($album->price ?? 0) }}</p>
+                            </div>
                             <div class="col-span-2">
-                                <span class="text-[10px] font-extrabold uppercase text-black/50">Revenue Share</span>
+                                <span class="text-[10px] font-extrabold uppercase text-black/50">Revenue Share {{ $album->splitsAreLocked() ? '· LOCKED' : '' }}</span>
                                 <p class="font-extrabold">{{ $album->artist->artist_name }} (Primary): {{ $album->artist->revenue_share_percentage }}% Artist / {{ $album->artist->teleMusicFeePercentage }}% TeleMusic</p>
                                 @if($album->relationLoaded('collaboratingArtists') && $album->collaboratingArtists->count() > 0)
                                     @foreach($album->collaboratingArtists as $collab)
@@ -70,7 +76,7 @@
                             </div>
                         </div>
 
-                        @if($album->status === 'draft')
+                        @if($album->status === 'draft' && current_artist_can_manage())
                             <div class="mt-6 flex gap-3">
                                 <a href="{{ route('artist.catalog.step2', $album) }}" class="px-4 py-2 bg-brand-500 border-2 border-black font-extrabold text-xs uppercase hover:bg-brand-300 transition-all">
                                     Continue Setup
@@ -83,6 +89,39 @@
                     </div>
                 </div>
             </div>
+
+            @if($album->splitsAreLocked() && $album->artist_id === current_artist()?->id && current_artist_can_manage())
+                <div class="bg-amber-50 border-2 border-black shadow-[5px_5px_0_0_#000] p-6 mb-8">
+                    <h2 class="font-black text-lg uppercase">Request Revenue Split Change</h2>
+                    <p class="mt-1 mb-5 text-xs font-bold text-black/60">This split is locked. Submit the new collaborators and percentages for Admin review. Approved changes apply only to future royalties.</p>
+                    <form method="POST" action="{{ route('artist.catalog.split-change-request', $album) }}" class="space-y-4">
+                        @csrf
+                        <div id="split-request-rows" class="space-y-3">
+                            @foreach($album->collaboratingArtists as $collab)
+                                <div class="split-request-row grid grid-cols-[1fr_120px_auto] gap-3">
+                                    <select name="collaborating_artists[]" required class="border-2 border-black px-3 py-2 font-bold">
+                                        @foreach($artists as $artist)<option value="{{ $artist->id }}" @selected($artist->id === $collab->id)>{{ $artist->artist_name }}</option>@endforeach
+                                    </select>
+                                    <input type="number" name="collaborating_shares[]" value="{{ $collab->pivot->share_percentage }}" required min="0.01" max="100" step="0.01" class="border-2 border-black px-3 py-2 font-bold" placeholder="Share %">
+                                    <button type="button" onclick="this.closest('.split-request-row').remove()" class="border-2 border-black bg-red-100 px-3 font-black">×</button>
+                                </div>
+                            @endforeach
+                        </div>
+                        <button type="button" onclick="addSplitRequestRow()" class="border-2 border-black bg-white px-4 py-2 text-xs font-black uppercase">+ Add Collaborator</button>
+                        <textarea name="reason" required maxlength="2000" rows="3" class="w-full border-2 border-black px-3 py-2 font-bold" placeholder="Why should this split change?"></textarea>
+                        <button class="border-2 border-black bg-brand-500 px-5 py-3 text-xs font-black uppercase shadow-[3px_3px_0_#000]">Send to Admin</button>
+                    </form>
+                </div>
+                <script>
+                    function addSplitRequestRow() {
+                        const artists = @json($artists->map(fn ($artist) => ['id' => $artist->id, 'name' => $artist->artist_name]));
+                        const row = document.createElement('div');
+                        row.className = 'split-request-row grid grid-cols-[1fr_120px_auto] gap-3';
+                        row.innerHTML = `<select name="collaborating_artists[]" required class="border-2 border-black px-3 py-2 font-bold"><option value="">Select artist...</option>${artists.map(a => `<option value="${a.id}">${a.name}</option>`).join('')}</select><input type="number" name="collaborating_shares[]" required min="0.01" max="100" step="0.01" class="border-2 border-black px-3 py-2 font-bold" placeholder="Share %"><button type="button" onclick="this.closest('.split-request-row').remove()" class="border-2 border-black bg-red-100 px-3 font-black">×</button>`;
+                        document.getElementById('split-request-rows').appendChild(row);
+                    }
+                </script>
+            @endif
 
             <!-- Track List -->
             <div class="bg-white border-2 border-black shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden mb-8">

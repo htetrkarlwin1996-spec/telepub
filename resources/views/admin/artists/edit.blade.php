@@ -52,8 +52,8 @@
                         </div>
                         <div>
                             <x-input-label for="revenue_share_percentage" value="Artist Revenue Share (%)" />
-                            <x-text-input id="revenue_share_percentage" class="block mt-1 w-full" type="number" step="0.01" min="0" max="100" name="revenue_share_percentage" value="{{ $artist->revenue_share_percentage ?? 70.00 }}" />
-                            <p class="text-[10px] font-bold text-black/40 mt-1">% of total revenue paid to artist. TeleMusic Fee = {{ 100 - ($artist->revenue_share_percentage ?? 70) }}%.</p>
+                            <x-text-input id="revenue_share_percentage" class="block mt-1 w-full" type="number" step="0.01" min="0" max="100" name="revenue_share_percentage" value="{{ $artist->revenue_share_percentage ?? 85.00 }}" />
+                            <p class="text-[10px] font-bold text-black/40 mt-1">% of total revenue paid to artist. TeleMusic Fee = {{ 100 - ($artist->revenue_share_percentage ?? 85) }}%.</p>
                         </div>
                         <div class="md:col-span-2">
                             <x-input-label for="bio" value="Bio" />

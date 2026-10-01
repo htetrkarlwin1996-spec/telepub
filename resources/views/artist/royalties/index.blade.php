@@ -165,7 +165,7 @@
                         <tbody>
                             @forelse($royalties as $royalty)
                             @php
-                                $itemArtistShare = $artist->getArtistShareAttribute($royalty->amount);
+                                $itemArtistShare = $royalty->amountForArtist($artist);
                                 $hasCollaborators = $royalty->relationLoaded('album') && $royalty->album && $royalty->album->relationLoaded('collaboratingArtists') && $royalty->album->collaboratingArtists->count() > 0;
                             @endphp
                             <tr class="border-b border-black/10 hover:bg-brand-500/10 transition-colors">

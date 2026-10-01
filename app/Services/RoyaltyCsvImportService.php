@@ -12,6 +12,8 @@ use RuntimeException;
 
 class RoyaltyCsvImportService
 {
+    public function __construct(private readonly RoyaltyAllocationService $allocations) {}
+
     public function import(UploadedFile $file, array $defaults, User $admin): array
     {
         $hash = hash_file('sha256', $file->getRealPath());
@@ -46,7 +48,6 @@ class RoyaltyCsvImportService
             $alreadyImported = 0;
             $errors = [];
             $inserts = [];
-            $artistShares = [];
             $now = now();
 
             foreach ($rows as $index => $values) {
@@ -108,8 +109,6 @@ class RoyaltyCsvImportService
                     'created_at' => $now,
                     'updated_at' => $now,
                 ];
-                $artistShares[$song->artist_id] = ($artistShares[$song->artist_id] ?? 0)
-                    + $song->artist->getArtistShareAttribute($amount);
                 $count++;
             }
 
@@ -119,13 +118,11 @@ class RoyaltyCsvImportService
             foreach (array_chunk($inserts, 1000) as $chunk) {
                 DB::table('royalties')->insert($chunk);
             }
-            foreach ($artistShares as $artistId => $share) {
-                DB::table('artists')->where('id', $artistId)->update([
-                    'total_earnings' => DB::raw('total_earnings + '.(float) $share),
-                    'available_balance' => DB::raw('available_balance + '.(float) $share),
-                    'updated_at' => $now,
-                ]);
-            }
+            $import->royalties()->whereDoesntHave('allocations')->orderBy('id')->chunkById(250, function ($royalties) {
+                foreach ($royalties as $royalty) {
+                    $this->allocations->allocate($royalty);
+                }
+            });
             $import->update(['row_count' => $import->royalties()->count()]);
 
             return [

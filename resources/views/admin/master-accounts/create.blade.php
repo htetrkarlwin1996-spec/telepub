@@ -1,0 +1,1 @@
+<x-app-layout><x-slot name="header"><h2 class="text-2xl font-black">Create Master Account</h2></x-slot><div class="px-6 py-8"><form method="POST" action="{{ route('admin.master-accounts.store') }}" class="mx-auto max-w-3xl border-2 border-black bg-white p-6 shadow-[5px_5px_0_#000]">@csrf @include('admin.master-accounts._form')</form></div></x-app-layout>

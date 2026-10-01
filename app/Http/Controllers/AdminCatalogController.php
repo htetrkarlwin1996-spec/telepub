@@ -8,11 +8,13 @@ use App\Models\Distribution;
 use App\Models\MusicStore;
 use App\Models\Song;
 use App\Services\ChunkedAudioUpload;
+use App\Services\RevenueSplitService;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class AdminCatalogController extends Controller
 {
@@ -68,10 +70,11 @@ class AdminCatalogController extends Controller
             'phonogram_right_holder' => 'required|string|max:255',
             // Collaborating artists
             'collaborating_artists' => 'nullable|array',
-            'collaborating_artists.*' => 'exists:artists,id|different:artist_id',
+            'collaborating_artists.*' => 'distinct|exists:artists,id',
             'collaborating_shares' => 'nullable|array',
-            'collaborating_shares.*' => 'numeric|min:0|max:100',
+            'collaborating_shares.*' => 'numeric|gt:0|max:100',
         ]);
+        $this->validateCollaboratorShares($validated);
 
         $coverPath = null;
         if ($request->hasFile('cover_art')) {
@@ -123,10 +126,12 @@ class AdminCatalogController extends Controller
             'phonogram_right_holder' => 'required|string|max:255',
             // Collaborating artists
             'collaborating_artists' => 'nullable|array',
-            'collaborating_artists.*' => 'exists:artists,id|different:artist_id',
+            'collaborating_artists.*' => 'distinct|exists:artists,id',
             'collaborating_shares' => 'nullable|array',
-            'collaborating_shares.*' => 'numeric|min:0|max:100',
+            'collaborating_shares.*' => 'numeric|gt:0|max:100',
         ]);
+        abort_if($album->splitsAreLocked(), 422, 'Revenue shares are locked. Use a Revenue Split change request.');
+        $this->validateCollaboratorShares($validated);
 
         if ($request->hasFile('cover_art')) {
             // Delete old cover art
@@ -349,7 +354,7 @@ class AdminCatalogController extends Controller
     /**
      * Store Step 4: Save store selections and submit release.
      */
-    public function storeStep4(Request $request, Album $album)
+    public function storeStep4(Request $request, Album $album, RevenueSplitService $splits)
     {
         $validated = $request->validate([
             'stores' => 'required|array|min:1',
@@ -380,6 +385,10 @@ class AdminCatalogController extends Controller
         $newStatus = $validated['status'] ?? 'submitted';
         $album->update(['status' => $newStatus]);
 
+        if (in_array($newStatus, ['submitted', 'approved'], true) && ! $album->splitsAreLocked()) {
+            $splits->lock($album, $request->user());
+        }
+
         if ($newStatus === 'approved') {
             $album->update(['approved_at' => now()]);
         }
@@ -405,6 +414,22 @@ class AdminCatalogController extends Controller
             ]);
 
             throw $exception;
+        }
+    }
+
+    private function validateCollaboratorShares(array $validated): void
+    {
+        $primaryArtistId = (int) $validated['artist_id'];
+        $artists = array_map('intval', $validated['collaborating_artists'] ?? []);
+        $shares = $validated['collaborating_shares'] ?? [];
+        if (in_array($primaryArtistId, $artists, true)) {
+            throw ValidationException::withMessages(['collaborating_artists' => 'The primary artist cannot also be a collaborator.']);
+        }
+        if (count($artists) !== count($shares)) {
+            throw ValidationException::withMessages(['collaborating_shares' => 'Every collaborator requires a share.']);
+        }
+        if (array_sum($shares) > 100) {
+            throw ValidationException::withMessages(['collaborating_shares' => 'Collaborator shares may not total more than 100%.']);
         }
     }
 }

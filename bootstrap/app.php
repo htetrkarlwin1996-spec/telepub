@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AdminMiddleware;
+use App\Http\Middleware\EnsureArtistCanManage;
 use App\Http\Middleware\EnsureHasArtist;
 use App\Http\Middleware\PublicMaintenanceMode;
 use Illuminate\Foundation\Application;
@@ -27,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => AdminMiddleware::class,
             'artist' => EnsureHasArtist::class,
+            'artist.manage' => EnsureArtistCanManage::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

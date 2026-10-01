@@ -6,17 +6,11 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class EnsureHasArtist
+class EnsureArtistCanManage
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (! current_artist()) {
-            if ($request->user()->isManager()) {
-                return redirect()->route('manager.dashboard');
-            }
-
-            return redirect()->route('artist.setup');
-        }
+        abort_unless(current_artist_can_manage(), 403, 'This artist account has report-only access.');
 
         return $next($request);
     }

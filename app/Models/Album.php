@@ -12,6 +12,7 @@ class Album extends Model
     protected $fillable = [
         'artist_id', 'title', 'slug', 'release_type', 'cover_art', 'genre', 'label',
         'release_date', 'physical_release_date', 'price', 'selected_store_ids', 'payment_status', 'upc_code', 'status',
+        'split_locked_at', 'split_locked_by',
         'copyright_holder', 'phonogram_right_holder', 'request_new_isrc',
         'approved_at', 'rejected_at', 'rejection_reason', 'notes',
     ];
@@ -24,6 +25,7 @@ class Album extends Model
         'request_new_isrc' => 'boolean',
         'approved_at' => 'datetime',
         'rejected_at' => 'datetime',
+        'split_locked_at' => 'datetime',
     ];
 
     public function artist()
@@ -86,6 +88,21 @@ class Album extends Model
     public function royalties()
     {
         return $this->hasMany(Royalty::class);
+    }
+
+    public function splitVersions()
+    {
+        return $this->hasMany(RevenueSplitVersion::class);
+    }
+
+    public function splitChangeRequests()
+    {
+        return $this->hasMany(RevenueSplitChangeRequest::class);
+    }
+
+    public function splitsAreLocked(): bool
+    {
+        return $this->split_locked_at !== null;
     }
 
     public function stores()

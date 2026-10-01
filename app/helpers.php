@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\AppSetting;
+use App\Models\Artist;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 
@@ -21,6 +22,44 @@ if (! function_exists('money')) {
     function money(mixed $amount, int $decimals = 2): string
     {
         return display_currency().' '.number_format((float) $amount, $decimals);
+    }
+}
+
+if (! function_exists('current_artist')) {
+    function current_artist(): ?Artist
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return null;
+        }
+
+        if ($user->isManager()) {
+            $account = $user->masterAccount;
+            $artistId = (int) session('managed_artist_id');
+
+            return $account?->artists()->wherePivot('status', 'active')->whereKey($artistId)->first()
+                ?? $account?->artists()->wherePivot('status', 'active')->first();
+        }
+
+        return $user->artist;
+    }
+}
+
+if (! function_exists('current_artist_can_manage')) {
+    function current_artist_can_manage(): bool
+    {
+        $user = auth()->user();
+        $artist = current_artist();
+        if (! $user || ! $artist) {
+            return false;
+        }
+        if ($user->isAdmin() || $user->isManager()) {
+            return true;
+        }
+
+        $managed = $artist->masterAccounts()->wherePivot('status', 'active')->first();
+
+        return ! $managed || $managed->pivot->access_level === 'full_access';
     }
 }
 

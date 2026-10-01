@@ -10,6 +10,7 @@ use App\Models\Invoice;
 use App\Models\MusicStore;
 use App\Models\Payout;
 use App\Models\Royalty;
+use App\Models\RoyaltyAllocation;
 use App\Models\Song;
 use App\Models\User;
 use App\Models\Withdrawal;
@@ -28,10 +29,8 @@ class AdminController extends Controller
         $totalAlbums = Album::count();
         $totalSongs = Song::count();
         $totalRoyalties = Royalty::sum('amount');
-        $totalArtistShares = Royalty::with('artist')->get()->sum(
-            fn (Royalty $royalty) => $royalty->artist?->getArtistShareAttribute($royalty->amount) ?? $royalty->amount
-        );
-        $totalTeleMusicFees = $totalRoyalties - $totalArtistShares;
+        $totalArtistShares = RoyaltyAllocation::where('beneficiary_type', 'artist')->sum('allocated_amount');
+        $totalTeleMusicFees = RoyaltyAllocation::where('beneficiary_type', 'platform')->sum('allocated_amount');
         $totalPayouts = Payout::where('status', 'paid')->sum('amount');
         $pendingWithdrawals = Withdrawal::where('status', 'pending')->sum('amount');
         $recentArtists = Artist::with('user')->withCount('albums')->latest()->take(5)->get();
@@ -69,6 +68,7 @@ class AdminController extends Controller
             'genre' => 'nullable|string|max:100',
             'bio' => 'nullable|string',
             'country' => 'nullable|string|max:100',
+            'revenue_share_percentage' => 'nullable|numeric|min:0|max:100',
         ]);
 
         $user = User::create([
@@ -84,7 +84,7 @@ class AdminController extends Controller
             'genre' => $validated['genre'],
             'bio' => $validated['bio'],
             'country' => $validated['country'],
-            'revenue_share_percentage' => $validated['revenue_share_percentage'] ?? 70.00,
+            'revenue_share_percentage' => $validated['revenue_share_percentage'] ?? 85.00,
         ]);
 
         return redirect()->route('admin.artists')->with('success', 'Artist created successfully.');

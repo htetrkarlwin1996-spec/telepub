@@ -6,6 +6,7 @@ use App\Models\Album;
 use App\Models\Analytics;
 use App\Models\Distribution;
 use App\Models\Royalty;
+use App\Models\RoyaltyAllocation;
 use App\Models\Song;
 use App\Models\Withdrawal;
 
@@ -23,8 +24,12 @@ class DashboardController extends Controller
             return app(AdminController::class)->dashboard();
         }
 
+        if ($user->isManager()) {
+            return redirect()->route('manager.dashboard');
+        }
+
         // Artist dashboard
-        $artist = $user->artist;
+        $artist = current_artist();
 
         if (! $artist) {
             return redirect()->route('artist.setup');
@@ -35,15 +40,23 @@ class DashboardController extends Controller
         $totalSongs = Song::where('artist_id', $artist->id)->count();
         $totalAlbums = Album::where('artist_id', $artist->id)->count();
         $totalStreams = Analytics::where('artist_id', $artist->id)->sum('streams');
-        $recentRoyalties = Royalty::where('artist_id', $artist->id)->with('store')->latest()->take(5)->get();
-        $grossByType = Royalty::where('artist_id', $artist->id)
-            ->selectRaw('royalty_type, COALESCE(SUM(amount), 0) as total')
-            ->groupBy('royalty_type')
-            ->pluck('total', 'royalty_type');
+        $recentRoyalties = Royalty::query()
+            ->join('royalty_allocations', 'royalties.id', '=', 'royalty_allocations.royalty_id')
+            ->where('royalty_allocations.beneficiary_type', 'artist')
+            ->where('royalty_allocations.beneficiary_id', $artist->id)
+            ->select('royalties.*', 'royalty_allocations.allocated_amount as artist_amount')
+            ->with('store')->latest('royalties.created_at')->take(5)->get();
+        $grossByType = RoyaltyAllocation::query()
+            ->join('royalties', 'royalty_allocations.royalty_id', '=', 'royalties.id')
+            ->where('royalty_allocations.beneficiary_type', 'artist')
+            ->where('royalty_allocations.beneficiary_id', $artist->id)
+            ->selectRaw('royalties.royalty_type, COALESCE(SUM(royalty_allocations.allocated_amount), 0) as total')
+            ->groupBy('royalties.royalty_type')->pluck('total', 'royalties.royalty_type');
         $balanceBreakdown = collect(Royalty::TYPES)->mapWithKeys(fn ($label, $type) => [
-            $type => $artist->getArtistShareAttribute((float) ($grossByType[$type] ?? 0)),
+            $type => (float) ($grossByType[$type] ?? 0),
         ]);
-        $grossRoyalties = $grossByType->sum();
+        $grossRoyalties = RoyaltyAllocation::where('beneficiary_type', 'artist')
+            ->where('beneficiary_id', $artist->id)->sum('gross_amount');
         $totalRoyalties = $balanceBreakdown->sum();
         $distributions = Distribution::where('artist_id', $artist->id)->with('store', 'song')->latest()->take(5)->get();
         $pendingWithdrawals = Withdrawal::where('artist_id', $artist->id)->where('status', 'pending')->sum('amount');

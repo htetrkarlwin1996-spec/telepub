@@ -6,7 +6,7 @@
         <div class="max-w-3xl mx-auto">
             @php
                 $artist = auth()->user()->artist;
-                $artistShare = $artist->getArtistShareAttribute($royalty->amount);
+                $artistShare = $royalty->amountForArtist($artist);
             @endphp
             <div class="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-6">
                 <dl class="space-y-4">

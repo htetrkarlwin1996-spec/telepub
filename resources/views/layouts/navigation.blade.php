@@ -24,6 +24,14 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/></svg>
             {{ __('Artists') }}
         </x-nav-link>
+        <x-nav-link :href="route('admin.master-accounts.index')" :active="request()->routeIs('admin.master-accounts*')">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 20h5v-2a4 4 0 00-4-4h-1M9 20H2v-2a4 4 0 014-4h3m6-4a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+            {{ __('Master Accounts') }}
+        </x-nav-link>
+        <x-nav-link :href="route('admin.revenue-splits.index')" :active="request()->routeIs('admin.revenue-splits*')">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 7h16M4 17h16M9 4v6m6 4v6"/></svg>
+            {{ __('Revenue Splits') }}
+        </x-nav-link>
         <x-nav-link :href="route('admin.releases')" :active="request()->routeIs('admin.releases*')">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
             {{ __('Releases') }}
@@ -64,6 +72,20 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10.3 2.7a1 1 0 011.4 0l1.6 1.6a1 1 0 001 .25l2.2-.6a1 1 0 011.22.7l.6 2.2a1 1 0 00.73.73l2.2.6a1 1 0 01.7 1.22l-.6 2.2a1 1 0 00.25 1l1.6 1.6a1 1 0 010 1.4l-1.6 1.6a1 1 0 00-.25 1l.6 2.2a1 1 0 01-.7 1.22l-2.2.6a1 1 0 00-.73.73l-.6 2.2a1 1 0 01-1.22.7l-2.2-.6a1 1 0 00-1 .25l-1.6 1.6a1 1 0 01-1.4 0l-1.6-1.6a1 1 0 00-1-.25l-2.2.6a1 1 0 01-1.22-.7l-.6-2.2a1 1 0 00-.73-.73l-2.2-.6a1 1 0 01-.7-1.22l.6-2.2a1 1 0 00-.25-1L.7 15.7a1 1 0 010-1.4l1.6-1.6a1 1 0 00.25-1l-.6-2.2a1 1 0 01.7-1.22l2.2-.6a1 1 0 00.73-.73l.6-2.2a1 1 0 011.22-.7l2.2.6a1 1 0 001-.25l1.6-1.6z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
             {{ __('Settings') }}
         </x-nav-link>
+        @elseif(Auth::user()->isManager())
+        <div class="mb-2"><span class="px-3 text-[11px] font-extrabold uppercase tracking-wider text-black/40">Master Account</span></div>
+        <x-nav-link :href="route('manager.dashboard')" :active="request()->routeIs('manager.*')">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>
+            {{ __('Roster Dashboard') }}
+        </x-nav-link>
+        @if(current_artist())
+        <div class="my-3 border-2 border-black bg-brand-500/20 p-3"><div class="text-[10px] font-black uppercase text-black/50">Managing Artist</div><div class="mt-1 font-black">{{ current_artist()->artist_name }}</div></div>
+        <x-nav-link :href="route('artist.catalog.index')" :active="request()->routeIs('artist.catalog*')">{{ __('Catalog') }}</x-nav-link>
+        <x-nav-link :href="route('artist.royalties')" :active="request()->routeIs('artist.royalties*')">{{ __('Royalties') }}</x-nav-link>
+        <x-nav-link :href="route('artist.withdrawals')" :active="request()->routeIs('artist.withdrawals*')">{{ __('Withdrawals') }}</x-nav-link>
+        <x-nav-link :href="route('artist.analytics')" :active="request()->routeIs('artist.analytics*')">{{ __('Analytics') }}</x-nav-link>
+        <x-nav-link :href="route('artist.profile')" :active="request()->routeIs('artist.profile*')">{{ __('Artist Profile') }}</x-nav-link>
+        @endif
         @else
         <!-- Artist Section -->
         <div class="mb-2">
@@ -88,10 +110,12 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 11H5m14 0l-4-4m4 4l-4 4"/></svg>
                     {{ __('All Releases') }}
                 </x-nav-link>
+                @if(current_artist_can_manage())
                 <x-nav-link :href="route('artist.catalog.create')" :active="request()->routeIs('artist.catalog.create')" class="!text-xs">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
                     {{ __('New Release') }}
                 </x-nav-link>
+                @endif
             </div>
         </div>
 
@@ -99,10 +123,12 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             {{ __('Royalties') }}
         </x-nav-link>
+        @if(current_artist_can_manage())
         <x-nav-link :href="route('artist.withdrawals')" :active="request()->routeIs('artist.withdrawals*')">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6h18v12H3zM7 12h.01M17 12h.01M12 12a2 2 0 100 4 2 2 0 000-4z"/></svg>
             {{ __('Withdrawals') }}
         </x-nav-link>
+        @endif
         <x-nav-link :href="route('artist.analytics')" :active="request()->routeIs('artist.analytics*')">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
             {{ __('Analytics') }}

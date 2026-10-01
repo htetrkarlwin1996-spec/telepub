@@ -12,6 +12,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class CatalogController extends Controller
 {
@@ -33,7 +34,7 @@ class CatalogController extends Controller
      */
     public function index()
     {
-        $artist = auth()->user()->artist;
+        $artist = current_artist();
         $albums = Album::where('artist_id', $artist->id)
             ->with('songs')
             ->latest()
@@ -47,7 +48,7 @@ class CatalogController extends Controller
      */
     public function collaborations()
     {
-        $artist = auth()->user()->artist;
+        $artist = current_artist();
         $albums = $artist->collaboratedAlbums()
             ->with('songs', 'artist')
             ->latest()
@@ -62,7 +63,7 @@ class CatalogController extends Controller
     public function create()
     {
         $genres = static::genres();
-        $artists = Artist::where('id', '!=', auth()->user()->artist->id)
+        $artists = Artist::where('id', '!=', current_artist()->id)
             ->orderBy('artist_name')
             ->get();
 
@@ -74,7 +75,7 @@ class CatalogController extends Controller
      */
     public function storeStep1(Request $request)
     {
-        $artist = auth()->user()->artist;
+        $artist = current_artist();
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
@@ -86,10 +87,11 @@ class CatalogController extends Controller
             'phonogram_right_holder' => 'required|string|max:255',
             // Collaborating artists
             'collaborating_artists' => 'nullable|array',
-            'collaborating_artists.*' => 'exists:artists,id|different:'.$artist->id,
+            'collaborating_artists.*' => 'distinct|exists:artists,id',
             'collaborating_shares' => 'nullable|array',
-            'collaborating_shares.*' => 'numeric|min:0|max:100',
+            'collaborating_shares.*' => 'numeric|gt:0|max:100',
         ]);
+        $this->validateCollaboratorShares($validated, $artist->id);
 
         // Validate image dimensions (3000x3000)
         $image = $request->file('cover_art');
@@ -137,7 +139,7 @@ class CatalogController extends Controller
     public function step2(Album $album)
     {
         // Ensure the album belongs to the authenticated artist
-        $this->authorizeAlbum($album);
+        $this->authorizeAlbum($album, true);
 
         $existingSongs = $album->songs()->orderBy('track_number')->get();
 
@@ -199,7 +201,7 @@ class CatalogController extends Controller
 
     public function storeStep2(Request $request, Album $album)
     {
-        $this->authorizeAlbum($album);
+        $this->authorizeAlbum($album, true);
 
         $validated = $request->validate([
             'tracks' => 'required|array|min:1',
@@ -297,7 +299,7 @@ class CatalogController extends Controller
      */
     public function step3(Album $album)
     {
-        $this->authorizeAlbum($album);
+        $this->authorizeAlbum($album, true);
 
         return view('artist.catalog.create-step-3', compact('album'));
     }
@@ -307,7 +309,7 @@ class CatalogController extends Controller
      */
     public function storeStep3(Request $request, Album $album)
     {
-        $this->authorizeAlbum($album);
+        $this->authorizeAlbum($album, true);
 
         $validated = $request->validate([
             'release_date' => 'required|date',
@@ -330,7 +332,7 @@ class CatalogController extends Controller
      */
     public function step4(Album $album)
     {
-        $this->authorizeAlbum($album);
+        $this->authorizeAlbum($album, true);
         $stores = MusicStore::where('is_active', true)->get();
 
         return view('artist.catalog.create-step-4', compact('album', 'stores'));
@@ -341,7 +343,7 @@ class CatalogController extends Controller
      */
     public function storeStep4(Request $request, Album $album)
     {
-        $this->authorizeAlbum($album);
+        $this->authorizeAlbum($album, true);
 
         $validated = $request->validate([
             'stores' => 'required|array|min:1',
@@ -361,8 +363,11 @@ class CatalogController extends Controller
     {
         $this->authorizeAlbum($album);
         $album->load('songs', 'distributions.store', 'collaboratingArtists');
+        $artists = $album->splitsAreLocked()
+            ? Artist::whereKeyNot($album->artist_id)->orderBy('artist_name')->get()
+            : collect();
 
-        return view('artist.catalog.show', compact('album'));
+        return view('artist.catalog.show', compact('album', 'artists'));
     }
 
     /**
@@ -370,7 +375,7 @@ class CatalogController extends Controller
      */
     public function edit(Album $album)
     {
-        $this->authorizeAlbum($album);
+        $this->authorizeAlbum($album, true);
         $genres = static::genres();
         $artists = Artist::where('id', '!=', $album->artist_id)
             ->orderBy('artist_name')
@@ -385,9 +390,9 @@ class CatalogController extends Controller
      */
     public function update(Request $request, Album $album)
     {
-        $this->authorizeAlbum($album);
+        $this->authorizeAlbum($album, true);
 
-        $artist = auth()->user()->artist;
+        $artist = current_artist();
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
@@ -401,10 +406,13 @@ class CatalogController extends Controller
             'price' => 'required|numeric|min:0|max:999.99',
             // Collaborating artists
             'collaborating_artists' => 'nullable|array',
-            'collaborating_artists.*' => 'exists:artists,id|different:'.$artist->id,
+            'collaborating_artists.*' => 'distinct|exists:artists,id',
             'collaborating_shares' => 'nullable|array',
-            'collaborating_shares.*' => 'numeric|min:0|max:100',
+            'collaborating_shares.*' => 'numeric|gt:0|max:100',
         ]);
+        if (! $album->splitsAreLocked()) {
+            $this->validateCollaboratorShares($validated, $artist->id);
+        }
 
         if ($request->hasFile('cover_art')) {
             $image = $request->file('cover_art');
@@ -423,8 +431,10 @@ class CatalogController extends Controller
         $album->update($validated);
 
         // Sync collaborating artists
-        $album->collaboratingArtists()->sync([]);
-        if (! empty($validated['collaborating_artists'])) {
+        if (! $album->splitsAreLocked()) {
+            $album->collaboratingArtists()->sync([]);
+        }
+        if (! $album->splitsAreLocked() && ! empty($validated['collaborating_artists'])) {
             $pivotData = [];
             foreach ($validated['collaborating_artists'] as $index => $collabArtistId) {
                 $pivotData[$collabArtistId] = [
@@ -444,7 +454,7 @@ class CatalogController extends Controller
      */
     public function destroy(Album $album)
     {
-        $this->authorizeAlbum($album);
+        $this->authorizeAlbum($album, true);
 
         // Delete cover art
         if ($album->cover_art) {
@@ -489,22 +499,41 @@ class CatalogController extends Controller
     /**
      * Ensure the album belongs to the authenticated artist.
      */
-    private function authorizeAlbum(Album $album): void
+    private function authorizeAlbum(Album $album, bool $write = false): void
     {
-        $artist = auth()->user()->artist;
+        $artist = current_artist();
 
         // Check if this artist is the primary owner
         if ($album->artist_id === $artist->id) {
             return;
         }
 
-        // Check if this artist is a collaborator on this album
+        if ($write) {
+            abort(403, 'Only the primary artist or their Master Account can modify this release.');
+        }
+
+        // Collaborators have read-only access to this album.
         $isCollaborator = $album->collaboratingArtists()
             ->where('artist_id', $artist->id)
             ->exists();
 
         if (! $isCollaborator) {
             abort(403, 'Unauthorized action.');
+        }
+    }
+
+    private function validateCollaboratorShares(array $validated, int $primaryArtistId): void
+    {
+        $artists = array_map('intval', $validated['collaborating_artists'] ?? []);
+        $shares = $validated['collaborating_shares'] ?? [];
+        if (in_array($primaryArtistId, $artists, true)) {
+            throw ValidationException::withMessages(['collaborating_artists' => 'The primary artist cannot also be a collaborator.']);
+        }
+        if (count($artists) !== count($shares)) {
+            throw ValidationException::withMessages(['collaborating_shares' => 'Every collaborator requires a share.']);
+        }
+        if (array_sum($shares) > 100) {
+            throw ValidationException::withMessages(['collaborating_shares' => 'Collaborator shares may not total more than 100%.']);
         }
     }
 }

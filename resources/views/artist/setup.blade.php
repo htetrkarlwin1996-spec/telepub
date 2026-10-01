@@ -157,11 +157,11 @@
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                                     <div>
                                         <span class="font-bold text-black/60">Your Share</span>
-                                        <div class="font-black text-lg text-emerald-700">{{ $artist->revenue_share_percentage ?? 70 }}%</div>
+                                        <div class="font-black text-lg text-emerald-700">{{ $artist->revenue_share_percentage ?? 85 }}%</div>
                                     </div>
                                     <div>
                                         <span class="font-bold text-black/60">TeleMusic Fee</span>
-                                        <div class="font-black text-lg text-black/50">{{ 100 - ($artist->revenue_share_percentage ?? 70) }}%</div>
+                                        <div class="font-black text-lg text-black/50">{{ 100 - ($artist->revenue_share_percentage ?? 85) }}%</div>
                                     </div>
                                     <div>
                                         <span class="font-bold text-black/60">Calculation</span>
