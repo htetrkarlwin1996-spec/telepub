@@ -8,6 +8,7 @@ use App\Models\MasterAccount;
 use App\Models\MusicStore;
 use App\Models\Royalty;
 use App\Models\User;
+use App\Models\Withdrawal;
 use App\Services\RevenueSplitService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -70,5 +71,40 @@ class MasterAccountRevenueSplitTest extends TestCase
         $master->artists()->attach($artist->id, ['access_level' => 'report_only', 'status' => 'active']);
 
         $this->actingAs($artistUser)->get(route('artist.catalog.create'))->assertForbidden();
+    }
+
+    public function test_clean_legacy_artist_balance_is_reconciled_from_allocations(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $artistUser = User::factory()->create(['role' => 'artist']);
+        $artist = Artist::create(['user_id' => $artistUser->id, 'artist_name' => 'Clean Legacy Artist']);
+        $store = MusicStore::create(['name' => 'Legacy Store', 'slug' => 'legacy-store']);
+        Royalty::create([
+            'artist_id' => $artist->id, 'store_id' => $store->id, 'month' => 9, 'year' => 2026,
+            'amount' => 118.05, 'currency' => 'USD', 'royalty_type' => 'royalties', 'entered_by' => $admin->id,
+        ]);
+        $artist->update(['total_earnings' => 85.14, 'available_balance' => 85.14]);
+
+        (require database_path('migrations/2026_10_01_010000_reconcile_clean_artist_balances.php'))->up();
+
+        $this->assertEqualsWithDelta(100.3425, (float) $artist->fresh()->total_earnings, 0.00001);
+        $this->assertEqualsWithDelta(100.3425, (float) $artist->fresh()->available_balance, 0.00001);
+    }
+
+    public function test_reconciliation_does_not_overwrite_an_artist_with_withdrawal_history(): void
+    {
+        $user = User::factory()->create(['role' => 'artist']);
+        $artist = Artist::create([
+            'user_id' => $user->id, 'artist_name' => 'History Artist',
+            'total_earnings' => 100, 'available_balance' => 75,
+        ]);
+        Withdrawal::create([
+            'artist_id' => $artist->id, 'amount' => 25, 'fee' => 0, 'total' => 25,
+            'status' => 'completed', 'currency' => 'USD', 'requested_at' => now(),
+        ]);
+
+        (require database_path('migrations/2026_10_01_010000_reconcile_clean_artist_balances.php'))->up();
+
+        $this->assertSame(75.0, (float) $artist->fresh()->available_balance);
     }
 }
