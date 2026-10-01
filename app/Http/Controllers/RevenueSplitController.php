@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Album;
 use App\Models\Artist;
 use App\Models\RevenueSplitChangeRequest;
+use App\Services\AdminNotifier;
 use App\Services\RevenueSplitService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +23,7 @@ class RevenueSplitController extends Controller
         return view('admin.revenue-splits.index', compact('releases', 'requests'));
     }
 
-    public function requestChange(Request $request, Album $album, RevenueSplitService $splits)
+    public function requestChange(Request $request, Album $album, RevenueSplitService $splits, AdminNotifier $notifier)
     {
         abort_unless($album->artist_id === current_artist()?->id, 403);
         abort_unless($album->splitsAreLocked(), 422, 'Revenue shares are not locked yet and may be edited on the release.');
@@ -34,6 +35,11 @@ class RevenueSplitController extends Controller
             'current_splits' => $splits->snapshot($album),
             'proposed_splits' => $this->proposedSnapshot($album, $validated, $splits),
             'reason' => $validated['reason'],
+        ]);
+        $notifier->activity('revenue_split_change_requested', 'Revenue split change requested', $album->artist->artist_name.' requested a collaborator share change for “'.$album->title.'”.', route('admin.revenue-splits.index'), [
+            'Artist' => $album->artist->artist_name,
+            'Release' => $album->title,
+            'Reason' => $validated['reason'],
         ]);
 
         return back()->with('success', 'Revenue split change request sent to Admin.');

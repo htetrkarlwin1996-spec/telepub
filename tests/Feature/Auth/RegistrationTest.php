@@ -4,6 +4,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\Otp;
 use App\Models\User;
+use App\Notifications\AdminActivityNotification;
 use App\Notifications\SendOtp;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -38,6 +39,7 @@ class RegistrationTest extends TestCase
         $user = User::where('email', 'test@example.com')->firstOrFail();
         Notification::assertSentTo($user, SendOtp::class);
         Notification::assertNotSentTo($user, VerifyEmail::class);
+        Notification::assertSentOnDemand(AdminActivityNotification::class);
 
         $otp = Otp::where('email', $user->email)->where('type', 'registration')->firstOrFail();
 

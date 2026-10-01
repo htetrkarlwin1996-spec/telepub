@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Album;
 use App\Models\User;
 use App\Models\Withdrawal;
+use App\Notifications\AdminActivityNotification;
 use App\Notifications\NewWithdrawalRequest;
 use App\Notifications\ReleaseSubmitted;
 use Illuminate\Support\Facades\Notification;
@@ -21,6 +22,11 @@ class AdminNotifier
         $this->send(new ReleaseSubmitted($album->loadMissing('artist')));
     }
 
+    public function activity(string $event, string $title, string $message, ?string $url = null, array $details = []): void
+    {
+        $this->send(new AdminActivityNotification($event, $title, $message, $url, $details));
+    }
+
     private function admins()
     {
         return User::where('role', 'admin')->where('is_active', true)->get();
@@ -30,6 +36,14 @@ class AdminNotifier
     {
         try {
             Notification::send($this->admins(), $notification);
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+
+        try {
+            if (filled(config('mail.admin_address'))) {
+                Notification::route('mail', config('mail.admin_address'))->notify($notification);
+            }
         } catch (\Throwable $exception) {
             report($exception);
         }

@@ -6,12 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Otp;
 use App\Models\User;
 use App\Notifications\SendOtp;
+use App\Services\AdminNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class RegisteredUserController extends Controller
@@ -21,7 +21,7 @@ class RegisteredUserController extends Controller
         return view('auth.register');
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, AdminNotifier $notifier): RedirectResponse
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -48,6 +48,11 @@ class RegisteredUserController extends Controller
         ]);
 
         $user->notify(new SendOtp($otp, 'registration'));
+        $notifier->activity('user_registered', 'New user registered', $user->name.' created a TeleMusic account.', route('admin.artists'), [
+            'Name' => $user->name,
+            'Email' => $user->email,
+            'Role' => ucfirst($user->role),
+        ]);
 
         session()->put('otp_email', $user->email);
         session()->put('otp_type', 'registration');

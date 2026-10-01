@@ -20,6 +20,7 @@ use App\Http\Controllers\ReleaseCheckoutController;
 use App\Http\Controllers\RevenueSplitController;
 use App\Http\Controllers\RoyaltyController;
 use App\Http\Controllers\SongController;
+use App\Http\Controllers\SupportMessageController;
 use App\Http\Controllers\WithdrawalController;
 use Illuminate\Support\Facades\Route;
 
@@ -40,6 +41,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::get('/support', [SupportMessageController::class, 'create'])->name('support.create');
+    Route::post('/support', [SupportMessageController::class, 'store'])->middleware('throttle:5,10')->name('support.store');
 
     // Artist Setup (no artist middleware — redirects here if no artist profile)
     Route::get('/artist/setup', [ArtistController::class, 'setup'])->name('artist.setup');

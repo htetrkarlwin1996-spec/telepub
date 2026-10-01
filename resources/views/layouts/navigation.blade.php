@@ -156,6 +156,12 @@
             </div>
         </div>
         <div class="mt-2 space-y-1">
+            @unless(Auth::user()->isAdmin())
+            <a href="{{ route('support.create') }}" class="flex items-center gap-2 px-3 py-2 text-sm font-bold text-black hover:bg-brand-500 border-2 border-transparent hover:border-black transition-all rounded-none">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 10h8m-8 4h5m8-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Contact Support
+            </a>
+            @endunless
             <a href="{{ route('profile.edit') }}" class="flex items-center gap-2 px-3 py-2 text-sm font-bold text-black hover:bg-brand-500 border-2 border-transparent hover:border-black transition-all rounded-none">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                 Profile

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Artist;
+use App\Services\AdminNotifier;
 use Illuminate\Http\Request;
 
 class ArtistController extends Controller
@@ -51,7 +52,7 @@ class ArtistController extends Controller
         return view('artist.setup', compact('artist', 'genres', 'countries'));
     }
 
-    public function updateSetup(Request $request)
+    public function updateSetup(Request $request, AdminNotifier $notifier)
     {
         $user = auth()->user();
         $artist = $user->artist;
@@ -84,6 +85,11 @@ class ArtistController extends Controller
         } else {
             $artist = Artist::create(array_merge($validated, ['user_id' => $user->id]));
         }
+        $notifier->activity('artist_profile_saved', 'Artist profile saved', $artist->artist_name.' saved their artist profile.', route('admin.artists.edit', $artist), [
+            'Artist' => $artist->artist_name,
+            'Account email' => $user->email,
+            'Country' => $artist->country ?: 'Not specified',
+        ]);
 
         return redirect()->route('dashboard')->with('success', 'Profile updated successfully.');
     }
@@ -97,7 +103,7 @@ class ArtistController extends Controller
         return view('artist.profile', compact('artist', 'genres', 'countries'));
     }
 
-    public function updateProfile(Request $request)
+    public function updateProfile(Request $request, AdminNotifier $notifier)
     {
         $artist = current_artist();
 
@@ -129,6 +135,10 @@ class ArtistController extends Controller
         }
 
         $artist->update($validated);
+        $notifier->activity('artist_profile_updated', 'Artist profile updated', $artist->artist_name.' updated their artist profile.', route('admin.artists.edit', $artist), [
+            'Artist' => $artist->artist_name,
+            'Account email' => $request->user()->email,
+        ]);
 
         return redirect()->route('artist.profile')->with('success', 'Profile updated successfully.');
     }

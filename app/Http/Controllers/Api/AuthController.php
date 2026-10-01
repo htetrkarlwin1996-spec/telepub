@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\AdminNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -15,28 +16,31 @@ class AuthController extends Controller
     /**
      * Register a new user.
      */
-    public function register(Request $request): JsonResponse
+    public function register(Request $request, AdminNotifier $notifier): JsonResponse
     {
         $validated = $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|string|email|max:255|unique:users',
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
-            'phone'    => 'nullable|string|max:20',
+            'phone' => 'nullable|string|max:20',
         ]);
 
         $user = User::create([
-            'name'     => $validated['name'],
-            'email'    => $validated['email'],
+            'name' => $validated['name'],
+            'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
-            'phone'    => $validated['phone'] ?? null,
-            'role'     => 'artist',
+            'phone' => $validated['phone'] ?? null,
+            'role' => 'artist',
         ]);
 
         $token = $user->createToken('api-token')->plainTextToken;
+        $notifier->activity('user_registered', 'New API user registered', $user->name.' created a TeleMusic account through the API.', route('admin.artists'), [
+            'Name' => $user->name, 'Email' => $user->email, 'Role' => ucfirst($user->role),
+        ]);
 
         return response()->json([
-            'data'    => $user->load('artist'),
-            'token'   => $token,
+            'data' => $user->load('artist'),
+            'token' => $token,
             'message' => 'Registration successful.',
         ], 201);
     }
@@ -47,7 +51,7 @@ class AuthController extends Controller
     public function login(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'email'    => 'required|string|email',
+            'email' => 'required|string|email',
             'password' => 'required|string',
         ]);
 
@@ -69,8 +73,8 @@ class AuthController extends Controller
         $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
-            'data'    => $user->load('artist'),
-            'token'   => $token,
+            'data' => $user->load('artist'),
+            'token' => $token,
             'message' => 'Login successful.',
         ]);
     }
@@ -98,21 +102,24 @@ class AuthController extends Controller
     /**
      * Update authenticated user profile.
      */
-    public function updateUser(Request $request): JsonResponse
+    public function updateUser(Request $request, AdminNotifier $notifier): JsonResponse
     {
         $user = $request->user();
 
         $validated = $request->validate([
-            'name'  => 'sometimes|string|max:255',
+            'name' => 'sometimes|string|max:255',
             'phone' => 'sometimes|string|max:20',
-            'bio'   => 'nullable|string',
+            'bio' => 'nullable|string',
             'avatar' => 'nullable|string',
         ]);
 
         $user->update($validated);
+        $notifier->activity('user_profile_updated', 'API user profile updated', $user->name.' updated their account profile.', route('admin.artists'), [
+            'Name' => $user->name, 'Email' => $user->email,
+        ]);
 
         return response()->json([
-            'data'    => $user->fresh()->load('artist'),
+            'data' => $user->fresh()->load('artist'),
             'message' => 'Profile updated.',
         ]);
     }
@@ -139,8 +146,8 @@ class AuthController extends Controller
     public function resetPassword(Request $request): JsonResponse
     {
         $request->validate([
-            'token'    => 'required',
-            'email'    => 'required|email',
+            'token' => 'required',
+            'email' => 'required|email',
             'password' => 'required|string|min:8|confirmed',
         ]);
 

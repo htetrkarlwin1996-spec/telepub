@@ -48,6 +48,7 @@ class ReleaseCheckoutTest extends TestCase
         $this->assertSame('submitted', $song->fresh()->status);
         $this->assertDatabaseHas('distributions', ['album_id' => $album->id, 'song_id' => $song->id, 'store_id' => $store->id, 'status' => 'submitted']);
         Notification::assertSentTo($admin, ReleaseSubmitted::class);
+        Notification::assertSentOnDemand(ReleaseSubmitted::class);
     }
 
     public function test_audio_upload_accepts_chunks_and_reassembles_the_original_file(): void
