@@ -14,9 +14,15 @@ class WithdrawalController extends Controller
     public function index()
     {
         $artist = current_artist();
-        $withdrawals = Withdrawal::where('artist_id', $artist->id)->latest()->paginate(20);
+        $withdrawals = Withdrawal::where('artist_id', $artist->id)
+            ->orderByDesc('requested_at')->orderByDesc('id')->paginate(20);
+        $pendingWithdrawalCount = Withdrawal::where('artist_id', $artist->id)->where('status', 'pending')->count();
+        $createdWithdrawalId = request()->integer('created') ?: (int) session('created_withdrawal_id');
+        $newWithdrawal = $createdWithdrawalId
+            ? Withdrawal::where('artist_id', $artist->id)->whereKey($createdWithdrawalId)->first()
+            : null;
 
-        return view('artist.withdrawals.index', compact('withdrawals'));
+        return view('artist.withdrawals.index', compact('withdrawals', 'pendingWithdrawalCount', 'newWithdrawal'));
     }
 
     public function create(WithdrawalFee $withdrawalFee)
@@ -80,6 +86,8 @@ class WithdrawalController extends Controller
         });
         $notifier->withdrawalRequested($withdrawal);
 
-        return redirect()->route('artist.withdrawals')->with('success', 'Withdrawal request submitted for review.');
+        return redirect()->route('artist.withdrawals')
+            ->with('success', 'Withdrawal request submitted for review.')
+            ->with('created_withdrawal_id', $withdrawal->id);
     }
 }

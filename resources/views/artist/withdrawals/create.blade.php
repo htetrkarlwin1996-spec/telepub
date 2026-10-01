@@ -4,6 +4,11 @@
     </x-slot>
     <div class="py-8 px-6 sm:px-8 lg:px-10">
         <div class="max-w-3xl mx-auto">
+            @if($errors->any())
+                <div role="alert" class="mb-6 border-2 border-black bg-red-100 px-4 py-3 text-sm font-bold">
+                    Withdrawal could not be submitted: {{ $errors->first() }}
+                </div>
+            @endif
             <!-- Balance Info -->
             <div class="bg-brand-500 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6 mb-6">
                 <div class="text-xs font-extrabold uppercase tracking-wider text-black/60">Available Balance</div>

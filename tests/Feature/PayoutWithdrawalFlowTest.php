@@ -18,11 +18,59 @@ class PayoutWithdrawalFlowTest extends TestCase
         $user = User::factory()->create(['role' => 'artist']);
         Artist::create(['user_id' => $user->id, 'artist_name' => 'Withdrawal Artist', 'available_balance' => 100]);
 
-        $this->actingAs($user)->followingRedirects()->post(route('artist.withdrawals.store'), [
+        $response = $this->actingAs($user)->followingRedirects()->post(route('artist.withdrawals.store'), [
             'amount' => 25,
             'payment_method' => 'paypal',
             'payment_details' => 'artist@example.com',
-        ])->assertOk()->assertSeeText('Withdrawal request submitted for review.');
+        ]);
+
+        $response->assertOk()
+            ->assertSeeText('Withdrawal request submitted for review.')
+            ->assertSeeText('New Withdrawal #1')
+            ->assertSeeText('PENDING');
+        $this->assertDatabaseHas('withdrawals', [
+            'artist_id' => $user->artist->id,
+            'amount' => 25,
+            'status' => 'pending',
+        ]);
+    }
+
+    public function test_every_artist_payment_method_creates_a_pending_withdrawal(): void
+    {
+        $user = User::factory()->create(['role' => 'artist']);
+        $artist = Artist::create(['user_id' => $user->id, 'artist_name' => 'Payment Method Artist', 'available_balance' => 500]);
+        $methods = [
+            'kbz_pay' => ['account_name' => 'Artist Name', 'phone' => '091111111'],
+            'wave_pay' => ['account_name' => 'Artist Name', 'phone' => '092222222'],
+            'thai_bank_transfer' => ['account_name' => 'Artist Name', 'bank_name' => 'Bangkok Bank', 'account_number' => '123456789'],
+            'wire_transfer' => [
+                'beneficiary_name' => 'Artist Name', 'bank_name' => 'International Bank',
+                'account_number' => 'IBAN123', 'swift_bic' => 'TESTBIC1',
+                'bank_address' => 'Bank Address', 'beneficiary_address' => 'Artist Address',
+                'bank_country' => 'Thailand',
+            ],
+            'paypal' => ['payment_details' => 'artist@example.com'],
+            'bank_transfer' => ['payment_details' => 'Account 123'],
+            'wise' => ['payment_details' => 'wise@example.com'],
+            'payoneer' => ['payment_details' => 'payoneer@example.com'],
+        ];
+
+        $this->actingAs($user);
+        foreach ($methods as $method => $details) {
+            $this->post(route('artist.withdrawals.store'), [
+                'amount' => 20,
+                'payment_method' => $method,
+                ...$details,
+            ])->assertRedirect(route('artist.withdrawals'))->assertSessionHasNoErrors();
+
+            $this->assertDatabaseHas('withdrawals', [
+                'artist_id' => $artist->id,
+                'payment_method' => $method,
+                'status' => 'pending',
+            ]);
+        }
+
+        $this->assertSame(count($methods), $artist->withdrawals()->where('status', 'pending')->count());
     }
 
     public function test_admin_payout_appears_as_a_successful_artist_withdrawal(): void
