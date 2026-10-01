@@ -78,6 +78,59 @@ class ReleaseCheckoutController extends Controller
         }
     }
 
+    public function cancel(Request $request, ReleasePayment $payment, MyanMyanPayService $mmpay)
+    {
+        abort_unless($payment->user_id === $request->user()->id, 403);
+        abort_unless($payment->provider === 'myanmyanpay', 422);
+
+        if ($payment->status !== 'pending') {
+            return redirect()->route('artist.catalog.checkout', $payment->album)
+                ->withErrors(['payment' => 'Only a pending MMQR transaction can be cancelled.']);
+        }
+
+        try {
+            abort_unless($mmpay->configured(), 503, 'MyanMyanPay is not configured.');
+            $response = $mmpay->cancel(['orderId' => $payment->reference]);
+            $gatewayStatus = strtoupper((string) (data_get($response, 'status') ?? data_get($response, 'data.status') ?? ''));
+
+            if (! in_array($gatewayStatus, ['CANCELLED', 'CANCELED', 'EXPIRED'], true)) {
+                throw new RuntimeException('MyanMyanPay returned cancellation status '.($gatewayStatus ?: 'UNKNOWN').'.');
+            }
+
+            DB::transaction(function () use ($payment, $response, $gatewayStatus) {
+                $payment = ReleasePayment::lockForUpdate()->findOrFail($payment->id);
+
+                if ($payment->status !== 'pending') {
+                    return;
+                }
+
+                $payment->update([
+                    'status' => $gatewayStatus === 'EXPIRED' ? 'expired' : 'cancelled',
+                    'qr_data' => null,
+                    'checkout_url' => null,
+                    'gateway_response' => $response,
+                ]);
+
+                $hasActivePayment = ReleasePayment::where('album_id', $payment->album_id)
+                    ->whereKeyNot($payment->id)
+                    ->whereIn('status', ['pending', 'paid'])
+                    ->exists();
+
+                if (! $hasActivePayment) {
+                    $payment->album()->update(['payment_status' => 'unpaid']);
+                }
+            });
+
+            return redirect()->route('artist.catalog.checkout', $payment->album)
+                ->with('success', 'MMQR transaction cancelled. You can choose another payment method.');
+        } catch (\Throwable $e) {
+            report($e);
+
+            return redirect()->route('artist.catalog.checkout', $payment->album)
+                ->withErrors(['payment' => 'Transaction could not be cancelled: '.$e->getMessage()]);
+        }
+    }
+
     private function stripe(ReleasePayment $payment, Album $album)
     {
         abort_unless(config('services.stripe.secret'), 503, 'Stripe is not configured.');

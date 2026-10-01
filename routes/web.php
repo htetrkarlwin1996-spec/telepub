@@ -64,6 +64,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/artist/catalog/{album}/step4', [CatalogController::class, 'storeStep4'])->name('artist.catalog.store-step4');
         Route::get('/artist/catalog/{album}/checkout', [ReleaseCheckoutController::class, 'show'])->name('artist.catalog.checkout');
         Route::post('/artist/catalog/{album}/checkout', [ReleaseCheckoutController::class, 'pay'])->name('artist.catalog.pay');
+        Route::post('/artist/release-payments/{payment}/cancel', [ReleaseCheckoutController::class, 'cancel'])->name('artist.release-payments.cancel');
         Route::get('/payments/paypal/{payment}/return', [ReleaseCheckoutController::class, 'paypalReturn'])->name('payments.paypal.return');
 
         // AJAX audio file upload (with progress tracking)

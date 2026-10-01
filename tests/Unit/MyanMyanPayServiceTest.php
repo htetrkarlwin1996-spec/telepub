@@ -22,6 +22,13 @@ class MyanMyanPayServiceTest extends TestCase
 
                 return ['qr' => 'test-qr'];
             }
+
+            public function cancel(array $params): array
+            {
+                $this->received = $params;
+
+                return ['status' => 'CANCELLED'];
+            }
         };
 
         $service = new class($sdk) extends MyanMyanPayService
@@ -38,5 +45,7 @@ class MyanMyanPayServiceTest extends TestCase
 
         $this->assertSame(['qr' => 'test-qr'], $service->pay($payload));
         $this->assertSame($payload, $sdk->received);
+        $this->assertSame(['status' => 'CANCELLED'], $service->cancel(['orderId' => 'release-1']));
+        $this->assertSame(['orderId' => 'release-1'], $sdk->received);
     }
 }

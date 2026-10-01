@@ -8,6 +8,7 @@ use App\Models\MusicStore;
 use App\Models\ReleasePayment;
 use App\Models\Song;
 use App\Models\User;
+use App\Services\MyanMyanPayService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -91,6 +92,58 @@ class ReleaseCheckoutTest extends TestCase
             ->assertSee('id="mmqr-modal"', false)
             ->assertSee('Scan MMQR')
             ->assertSee('MMQR Payment Pending')
+            ->assertSee('Select payment method')
+            ->assertSee('x-show="method"', false)
+            ->assertSeeText('Cancel Transaction & Close')
             ->assertSee('REL-MYA-POPUP');
+    }
+
+    public function test_artist_can_cancel_a_pending_myanmyanpay_transaction(): void
+    {
+        $user = User::factory()->create(['role' => 'artist']);
+        $artist = Artist::create(['user_id' => $user->id, 'artist_name' => 'Cancel QR Artist']);
+        $album = Album::create([
+            'artist_id' => $artist->id,
+            'title' => 'Cancel QR Single',
+            'release_type' => 'single',
+            'status' => 'draft',
+            'payment_status' => 'pending',
+        ]);
+        $payment = ReleasePayment::create([
+            'album_id' => $album->id,
+            'user_id' => $user->id,
+            'provider' => 'myanmyanpay',
+            'amount' => 8955,
+            'currency' => 'MMK',
+            'reference' => 'REL-MYA-CANCEL',
+            'qr_data' => 'test-emvco-mmqr-payload',
+        ]);
+
+        $this->app->instance(MyanMyanPayService::class, new class extends MyanMyanPayService
+        {
+            public function configured(): bool
+            {
+                return true;
+            }
+
+            public function cancel(array $payload): array
+            {
+                return ['orderId' => $payload['orderId'], 'status' => 'CANCELLED'];
+            }
+        });
+
+        $this->actingAs($user)
+            ->post(route('artist.release-payments.cancel', $payment))
+            ->assertRedirect(route('artist.catalog.checkout', $album))
+            ->assertSessionHas('success');
+
+        $this->assertSame('cancelled', $payment->fresh()->status);
+        $this->assertNull($payment->fresh()->qr_data);
+        $this->assertSame('unpaid', $album->fresh()->payment_status);
+
+        $this->get(route('artist.catalog.checkout', $album))
+            ->assertOk()
+            ->assertDontSee('id="mmqr-modal"', false)
+            ->assertDontSee('MMQR Payment Pending');
     }
 }
