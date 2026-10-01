@@ -80,7 +80,8 @@ class ReleaseCheckoutController extends Controller
             ->latest()->first();
         if ($existing) {
             return redirect()->route('artist.catalog.checkout', $album)
-                ->with('success', 'Your existing MMQR order is still active and has been reopened.');
+                ->with('success', 'Your existing MMQR order is still active and has been reopened.')
+                ->with('open_mmqr', true);
         }
 
         abort_unless($mmpay->configured(), 503, 'MyanMyanPay is not configured.');
@@ -105,7 +106,9 @@ class ReleaseCheckoutController extends Controller
             }
             $payment->update(['qr_data' => $qr, 'checkout_url' => $url, 'gateway_response' => $response]);
 
-            return redirect()->route('artist.catalog.checkout', $album)->with('success', 'MMQR payment request created. Scan the QR code in the popup.');
+            return redirect()->route('artist.catalog.checkout', $album)
+                ->with('success', 'MMQR payment request created. Scan the QR code in the popup.')
+                ->with('open_mmqr', true);
         } catch (\Throwable $e) {
             report($e);
             $payment->update(['status' => 'failed', 'gateway_response' => ['error' => $e->getMessage()]]);

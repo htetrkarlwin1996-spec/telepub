@@ -75,34 +75,25 @@
         <script>
             document.addEventListener('DOMContentLoaded', () => {
                 const modal = document.getElementById('mmqr-modal');
-                const storageKey = @js('dismissed-mmqr-album-'.$album->id);
+                const shouldOpen = @js((bool) session('open_mmqr', false));
                 const open = () => {
-                    localStorage.removeItem(storageKey);
                     modal?.classList.remove('hidden');
                     modal?.classList.add('flex');
                 };
                 const close = () => {
-                    localStorage.setItem(storageKey, '1');
                     modal?.classList.add('hidden');
                     modal?.classList.remove('flex');
                 };
 
                 document.querySelectorAll('[data-open-mmqr]').forEach((button) => button.addEventListener('click', open));
                 document.querySelectorAll('[data-close-mmqr]').forEach((button) => button.addEventListener('click', close));
-                document.querySelectorAll('[data-cancel-mmqr]').forEach((form) => form.addEventListener('submit', () => {
-                    localStorage.setItem(storageKey, '1');
-                }));
-                document.querySelector('[data-payment-form]')?.addEventListener('submit', () => {
-                    const method = document.getElementById('payment-method')?.value;
-                    if (method === 'myanmyanpay') localStorage.removeItem(storageKey);
-                });
                 modal?.addEventListener('click', (event) => {
                     if (event.target === modal) close();
                 });
                 document.addEventListener('keydown', (event) => {
                     if (event.key === 'Escape' && !modal?.classList.contains('hidden')) close();
                 });
-                if (!localStorage.getItem(storageKey)) open();
+                if (shouldOpen) open();
 
                 const timer = document.querySelector('[data-mmqr-timer]');
                 if (timer) {

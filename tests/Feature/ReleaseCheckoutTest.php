@@ -132,7 +132,8 @@ class ReleaseCheckoutTest extends TestCase
 
         $this->actingAs($user)->post(route('artist.catalog.pay', $album), ['method' => 'myanmyanpay'])
             ->assertRedirect(route('artist.catalog.checkout', $album))
-            ->assertSessionHas('success');
+            ->assertSessionHas('success')
+            ->assertSessionHas('open_mmqr', true);
 
         $this->assertDatabaseCount('release_payments', 1);
         $this->assertSame('REL-MYA-CACHED', $payment->fresh()->reference);
