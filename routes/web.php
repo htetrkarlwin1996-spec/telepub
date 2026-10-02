@@ -146,6 +146,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/settings/currency', [AdminSettingsController::class, 'updateCurrency'])->name('settings.currency');
         Route::put('/settings/release-pricing', [AdminSettingsController::class, 'updateReleasePricing'])->name('settings.release-pricing');
         Route::put('/settings/withdrawal-fee', [AdminSettingsController::class, 'updateWithdrawalFee'])->name('settings.withdrawal-fee');
+        Route::put('/settings/login-announcement', [AdminSettingsController::class, 'updateLoginAnnouncement'])->name('settings.login-announcement');
         Route::resource('master-accounts', AdminMasterAccountController::class)->except(['show', 'destroy']);
         Route::get('/revenue-splits', [RevenueSplitController::class, 'adminIndex'])->name('revenue-splits.index');
         Route::post('/revenue-splits/{changeRequest}/approve', [RevenueSplitController::class, 'approve'])->name('revenue-splits.approve');

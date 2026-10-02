@@ -50,6 +50,35 @@
                 </form>
             </section>
 
+            <section class="border-2 border-black bg-white shadow-[4px_4px_0_#000]">
+                <div class="border-b-2 border-black p-6">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <h3 class="text-xl font-black">Login Announcement Popup</h3>
+                        <span class="border-2 border-black px-3 py-1 text-xs font-black uppercase {{ $loginAnnouncement['enabled'] ? 'bg-emerald-300' : 'bg-gray-100' }}">{{ $loginAnnouncement['enabled'] ? 'Active' : 'Disabled' }}</span>
+                    </div>
+                    <p class="mt-2 text-sm font-bold text-black/60">Shown once after each Artist or Master Account login. Add text, an image, a YouTube video, or any combination.</p>
+                </div>
+                <form method="POST" action="{{ route('admin.settings.login-announcement') }}" enctype="multipart/form-data" class="space-y-5 p-6">
+                    @csrf @method('PUT')
+                    <input type="hidden" name="enabled" value="0">
+                    <label class="flex items-center gap-3 font-black"><input type="checkbox" name="enabled" value="1" @checked(old('enabled', $loginAnnouncement['enabled'])) class="h-5 w-5 border-2 border-black text-brand-500 focus:ring-0"> Enable login announcement</label>
+                    <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+                        <div><x-input-label for="announcement_title" value="Title" /><x-text-input id="announcement_title" name="title" class="mt-1 block w-full" :value="old('title', $loginAnnouncement['title'])" maxlength="200" /><x-input-error :messages="$errors->get('title')" class="mt-2" /></div>
+                        <div><x-input-label for="announcement_youtube_url" value="YouTube URL" /><x-text-input id="announcement_youtube_url" name="youtube_url" type="url" class="mt-1 block w-full" :value="old('youtube_url', $loginAnnouncement['youtube_url'])" placeholder="https://youtu.be/..." /><x-input-error :messages="$errors->get('youtube_url')" class="mt-2" /></div>
+                    </div>
+                    <div><x-input-label for="announcement_body" value="Announcement Text" /><textarea id="announcement_body" name="body" rows="6" maxlength="5000" class="mt-1 block w-full border-2 border-black px-3 py-2.5 font-semibold focus:border-brand-500 focus:ring-0">{{ old('body', $loginAnnouncement['body']) }}</textarea><x-input-error :messages="$errors->get('body')" class="mt-2" /></div>
+                    <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+                        <div><x-input-label for="announcement_image" value="Image (JPG, PNG, WebP, GIF — max 10 MB)" /><input id="announcement_image" name="image" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="mt-1 block w-full border-2 border-black bg-white p-2 font-bold"><x-input-error :messages="$errors->get('image')" class="mt-2" />@if($loginAnnouncement['image_path'])<label class="mt-2 flex items-center gap-2 text-sm font-bold"><input type="checkbox" name="remove_image" value="1"> Remove current image</label><img src="{{ asset('storage/'.$loginAnnouncement['image_path']) }}" alt="Current announcement" class="mt-3 max-h-48 border-2 border-black object-contain">@endif</div>
+                        <div>@if($loginAnnouncementEmbedUrl)<x-input-label value="Current YouTube Preview" /><div class="mt-1 aspect-video border-2 border-black"><iframe class="h-full w-full" src="{{ $loginAnnouncementEmbedUrl }}" title="YouTube preview" allowfullscreen></iframe></div>@else<div class="border-2 border-dashed border-black/30 p-5 text-sm font-bold text-black/40">Paste a public YouTube, Shorts, or youtu.be URL to embed a video.</div>@endif</div>
+                    </div>
+                    <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+                        <div><x-input-label for="announcement_button_text" value="Button Text (optional)" /><x-text-input id="announcement_button_text" name="button_text" class="mt-1 block w-full" :value="old('button_text', $loginAnnouncement['button_text'])" placeholder="Learn More" /></div>
+                        <div><x-input-label for="announcement_button_url" value="Button URL (optional)" /><x-text-input id="announcement_button_url" name="button_url" type="url" class="mt-1 block w-full" :value="old('button_url', $loginAnnouncement['button_url'])" placeholder="https://..." /><x-input-error :messages="$errors->get('button_url')" class="mt-2" /></div>
+                    </div>
+                    <button class="border-2 border-black bg-brand-500 px-6 py-3 font-black uppercase shadow-[3px_3px_0_#000]">Save Login Announcement</button>
+                </form>
+            </section>
+
             <section class="border-2 border-black {{ $maintenanceActive ? 'bg-amber-200' : 'bg-white' }} shadow-[4px_4px_0_#000]">
                 <div class="p-6 border-b-2 border-black">
                     <div class="flex flex-wrap items-center gap-3">

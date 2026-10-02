@@ -17,6 +17,7 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased bg-cream text-black">
+        @php($loginAnnouncement = app(\App\Services\LoginAnnouncement::class)->forUser(Auth::user()))
         <div class="min-h-screen flex">
             <!-- Sidebar Navigation -->
             @include('layouts.navigation')
@@ -59,5 +60,8 @@
                 </footer>
             </div>
         </div>
+        @if($loginAnnouncement)
+            @include('components.login-announcement', ['announcement' => $loginAnnouncement])
+        @endif
     </body>
 </html>

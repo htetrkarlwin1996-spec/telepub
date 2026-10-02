@@ -27,6 +27,7 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
 
         $request->session()->regenerate();
+        $request->session()->forget('login_announcement_shown');
 
         $fallbackRoute = $request->user()->isAdmin()
             ? route('admin.dashboard', absolute: false)
