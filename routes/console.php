@@ -41,12 +41,12 @@ Artisan::command('spaces:check', function (SpacesClientFactory $spaces) {
     try {
         $client = $spaces->make();
         $client->putObject([
-            'Bucket' => config('filesystems.disks.s3.bucket'),
+            'Bucket' => config('services.spaces.bucket'),
             'Key' => $key,
             'Body' => 'TeleMusic Spaces connectivity check',
             'ContentType' => 'text/plain',
         ]);
-        $client->deleteObject(['Bucket' => config('filesystems.disks.s3.bucket'), 'Key' => $key]);
+        $client->deleteObject(['Bucket' => config('services.spaces.bucket'), 'Key' => $key]);
         $this->info('DigitalOcean Spaces upload and delete check passed.');
 
         return 0;

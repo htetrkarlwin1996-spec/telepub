@@ -57,13 +57,13 @@ return [
 
         's3' => [
             'driver' => 's3',
-            'key' => env('AWS_ACCESS_KEY_ID'),
-            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'key' => env('TELEMUSIC_SPACES_KEY', env('AWS_ACCESS_KEY_ID')),
+            'secret' => env('TELEMUSIC_SPACES_SECRET', env('AWS_SECRET_ACCESS_KEY')),
             'region' => env('AWS_DEFAULT_REGION'),
-            'signing_region' => env('AWS_SIGNING_REGION', 'us-east-1'),
-            'bucket' => env('AWS_BUCKET'),
+            'signing_region' => env('TELEMUSIC_SPACES_SIGNING_REGION', env('AWS_SIGNING_REGION', 'us-east-1')),
+            'bucket' => env('TELEMUSIC_SPACES_BUCKET', env('AWS_BUCKET')),
             'url' => env('AWS_URL'),
-            'endpoint' => env('AWS_ENDPOINT'),
+            'endpoint' => env('TELEMUSIC_SPACES_ENDPOINT', env('AWS_ENDPOINT')),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
             'throw' => false,
             'report' => false,

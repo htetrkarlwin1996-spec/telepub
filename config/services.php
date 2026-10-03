@@ -28,6 +28,14 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'spaces' => [
+        'key' => env('TELEMUSIC_SPACES_KEY', env('AWS_ACCESS_KEY_ID')),
+        'secret' => env('TELEMUSIC_SPACES_SECRET', env('AWS_SECRET_ACCESS_KEY')),
+        'bucket' => env('TELEMUSIC_SPACES_BUCKET', env('AWS_BUCKET')),
+        'endpoint' => env('TELEMUSIC_SPACES_ENDPOINT', env('AWS_ENDPOINT')),
+        'signing_region' => env('TELEMUSIC_SPACES_SIGNING_REGION', env('AWS_SIGNING_REGION', 'us-east-1')),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

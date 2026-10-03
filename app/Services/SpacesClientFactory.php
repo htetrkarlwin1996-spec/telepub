@@ -9,7 +9,7 @@ class SpacesClientFactory
 {
     public function make(): S3Client
     {
-        $config = config('filesystems.disks.s3');
+        $config = config('services.spaces');
         foreach (['key', 'secret', 'bucket', 'endpoint'] as $required) {
             if (blank($config[$required] ?? null)) {
                 throw new RuntimeException('DigitalOcean Spaces configuration is missing: '.$required.'.');

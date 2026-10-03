@@ -37,7 +37,7 @@ class TransferReleaseAudioToSpaces implements ShouldQueue
             throw new \RuntimeException('The staged audio file is missing or unreadable.');
         }
 
-        $config = config('filesystems.disks.s3');
+        $config = config('services.spaces');
 
         try {
             $spaces->make()->putObject([
