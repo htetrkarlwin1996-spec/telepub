@@ -13,6 +13,8 @@ use Throwable;
 
 class ChunkedAudioUpload
 {
+    public function __construct(private readonly SpacesClientFactory $spaces) {}
+
     public function handle(Request $request): array
     {
         if ($request->input('action') === 'single') {
@@ -281,17 +283,6 @@ class ChunkedAudioUpload
 
     private function spacesClient(): S3Client
     {
-        $config = config('filesystems.disks.s3');
-
-        return new S3Client([
-            'version' => 'latest',
-            'region' => $config['region'],
-            'endpoint' => $config['endpoint'],
-            'use_path_style_endpoint' => (bool) $config['use_path_style_endpoint'],
-            'signature_version' => 'v4',
-            'request_checksum_calculation' => 'when_required',
-            'response_checksum_validation' => 'when_required',
-            'credentials' => ['key' => $config['key'], 'secret' => $config['secret']],
-        ]);
+        return $this->spaces->make();
     }
 }

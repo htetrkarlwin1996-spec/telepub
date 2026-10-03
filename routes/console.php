@@ -1,7 +1,9 @@
 <?php
 
 use App\Models\Album;
+use App\Services\SpacesClientFactory;
 use App\Services\UserNotifier;
+use Aws\Exception\AwsException;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -30,6 +32,35 @@ Artisan::command('releases:notify-live', function (UserNotifier $notifier) {
 })->purpose('Email users when an approved release reaches its release date');
 
 Schedule::command('releases:notify-live')->hourly()->withoutOverlapping();
+Schedule::command('queue:work --stop-when-empty --queue=default --tries=3 --timeout=1200')
+    ->everyMinute()
+    ->withoutOverlapping(30);
+
+Artisan::command('spaces:check', function (SpacesClientFactory $spaces) {
+    $key = 'healthchecks/telemusic-'.now()->format('YmdHis').'.txt';
+    try {
+        $client = $spaces->make();
+        $client->putObject([
+            'Bucket' => config('filesystems.disks.s3.bucket'),
+            'Key' => $key,
+            'Body' => 'TeleMusic Spaces connectivity check',
+            'ContentType' => 'text/plain',
+        ]);
+        $client->deleteObject(['Bucket' => config('filesystems.disks.s3.bucket'), 'Key' => $key]);
+        $this->info('DigitalOcean Spaces upload and delete check passed.');
+
+        return 0;
+    } catch (AwsException $exception) {
+        $this->error('Spaces check failed: '.($exception->getAwsErrorCode() ?: 'AWS error').' - '.($exception->getAwsErrorMessage() ?: $exception->getMessage()));
+        $this->line('Request ID: '.($exception->getAwsRequestId() ?: 'N/A'));
+
+        return 1;
+    } catch (Throwable $exception) {
+        $this->error('Spaces check failed: '.$exception->getMessage());
+
+        return 1;
+    }
+})->purpose('Verify DigitalOcean Spaces upload credentials and configuration');
 
 Artisan::command('catalog:import-shamwela {--check : Show the target account and import counts without writing}', function () {
     $email = 'shamwela2023@gmail.com';

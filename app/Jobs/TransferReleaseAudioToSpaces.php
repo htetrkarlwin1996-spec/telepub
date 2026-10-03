@@ -2,7 +2,8 @@
 
 namespace App\Jobs;
 
-use Aws\S3\S3Client;
+use App\Services\SpacesClientFactory;
+use Aws\Exception\AwsException;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -26,7 +27,7 @@ class TransferReleaseAudioToSpaces implements ShouldQueue
         public string $contentType = 'application/octet-stream',
     ) {}
 
-    public function handle(): void
+    public function handle(SpacesClientFactory $spaces): void
     {
         $disk = Storage::disk('local');
         $absolutePath = $disk->path($this->localPath);
@@ -37,19 +38,9 @@ class TransferReleaseAudioToSpaces implements ShouldQueue
         }
 
         $config = config('filesystems.disks.s3');
-        $client = new S3Client([
-            'version' => 'latest',
-            'region' => $config['region'],
-            'endpoint' => $config['endpoint'],
-            'use_path_style_endpoint' => (bool) $config['use_path_style_endpoint'],
-            'signature_version' => 'v4',
-            'request_checksum_calculation' => 'when_required',
-            'response_checksum_validation' => 'when_required',
-            'credentials' => ['key' => $config['key'], 'secret' => $config['secret']],
-        ]);
 
         try {
-            $client->putObject([
+            $spaces->make()->putObject([
                 'Bucket' => $config['bucket'],
                 'Key' => $this->destinationPath,
                 'Body' => $stream,
@@ -61,6 +52,17 @@ class TransferReleaseAudioToSpaces implements ShouldQueue
                 'user_id' => $this->userId,
                 'key' => $this->destinationPath,
             ]);
+        } catch (AwsException $exception) {
+            Log::channel('audio_upload')->error('Spaces rejected the queued audio transfer.', [
+                'user_id' => $this->userId,
+                'key' => $this->destinationPath,
+                'aws_error_code' => $exception->getAwsErrorCode(),
+                'aws_error_message' => $exception->getAwsErrorMessage(),
+                'aws_request_id' => $exception->getAwsRequestId(),
+                'status_code' => $exception->getStatusCode(),
+            ]);
+
+            throw $exception;
         } finally {
             fclose($stream);
         }
