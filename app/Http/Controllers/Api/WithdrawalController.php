@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Withdrawal;
 use App\Services\AdminNotifier;
+use App\Services\UserNotifier;
 use App\Services\WithdrawalFee;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -41,7 +42,7 @@ class WithdrawalController extends Controller
     /**
      * Request a new withdrawal.
      */
-    public function store(Request $request, WithdrawalFee $withdrawalFee, AdminNotifier $notifier): JsonResponse
+    public function store(Request $request, WithdrawalFee $withdrawalFee, AdminNotifier $notifier, UserNotifier $userNotifier): JsonResponse
     {
         $artist = $request->user()->artist;
 
@@ -84,6 +85,7 @@ class WithdrawalController extends Controller
             return $withdrawal;
         });
         $notifier->withdrawalRequested($withdrawal);
+        $userNotifier->withdrawalRequested($withdrawal);
 
         return response()->json([
             'data' => $withdrawal,

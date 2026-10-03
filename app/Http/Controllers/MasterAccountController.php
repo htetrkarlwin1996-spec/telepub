@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Artist;
 use App\Models\RoyaltyAllocation;
 use App\Models\User;
+use App\Services\UserNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -33,7 +34,7 @@ class MasterAccountController extends Controller
         return view('manager.artists.create', compact('account'));
     }
 
-    public function storeArtist(Request $request)
+    public function storeArtist(Request $request, UserNotifier $notifier)
     {
         $account = $this->account($request);
         $validated = $request->validate([
@@ -69,11 +70,14 @@ class MasterAccountController extends Controller
             'status' => 'active',
             'created_by' => $request->user()->id,
         ]);
+        if ($user) {
+            $notifier->accountCreated($user, 'Artist');
+        }
 
         return redirect()->route('manager.dashboard')->with('success', 'Managed artist created.');
     }
 
-    public function updateArtist(Request $request, Artist $artist)
+    public function updateArtist(Request $request, Artist $artist, UserNotifier $notifier)
     {
         $account = $this->account($request);
         abort_unless($account->artists()->whereKey($artist->id)->exists(), 403);
@@ -82,6 +86,10 @@ class MasterAccountController extends Controller
             'access_level' => ['required', Rule::in(['report_only', 'full_access'])],
         ]);
         $account->artists()->updateExistingPivot($artist->id, $validated);
+        $notifier->activity($artist->user, 'Managed artist access updated', 'Your label/master account updated your TeleMusic access level or management fee.', route('dashboard'), 'Review Account', [
+            'Access level' => str_replace('_', ' ', $validated['access_level']),
+            'Management fee' => isset($validated['management_fee_percentage']) ? $validated['management_fee_percentage'].'%' : 'Account default',
+        ]);
 
         return back()->with('success', 'Artist access and fee updated.');
     }

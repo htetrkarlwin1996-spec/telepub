@@ -7,6 +7,7 @@ use App\Models\Artist;
 use App\Models\RevenueSplitChangeRequest;
 use App\Services\AdminNotifier;
 use App\Services\RevenueSplitService;
+use App\Services\UserNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -23,7 +24,7 @@ class RevenueSplitController extends Controller
         return view('admin.revenue-splits.index', compact('releases', 'requests'));
     }
 
-    public function requestChange(Request $request, Album $album, RevenueSplitService $splits, AdminNotifier $notifier)
+    public function requestChange(Request $request, Album $album, RevenueSplitService $splits, AdminNotifier $notifier, UserNotifier $userNotifier)
     {
         abort_unless($album->artist_id === current_artist()?->id, 403);
         abort_unless($album->splitsAreLocked(), 422, 'Revenue shares are not locked yet and may be edited on the release.');
@@ -41,11 +42,12 @@ class RevenueSplitController extends Controller
             'Release' => $album->title,
             'Reason' => $validated['reason'],
         ]);
+        $userNotifier->activity($request->user(), 'Collaborator share change requested', 'Your collaborator share change request for “'.$album->title.'” was sent to Admin for review.', route('artist.catalog.show', $album), 'View Release');
 
         return back()->with('success', 'Revenue split change request sent to Admin.');
     }
 
-    public function approve(Request $request, RevenueSplitChangeRequest $changeRequest, RevenueSplitService $splits)
+    public function approve(Request $request, RevenueSplitChangeRequest $changeRequest, RevenueSplitService $splits, UserNotifier $notifier)
     {
         abort_unless($changeRequest->status === 'pending', 422);
         $validated = $request->validate(['admin_note' => ['nullable', 'string', 'max:2000']]);
@@ -62,11 +64,12 @@ class RevenueSplitController extends Controller
                 'reviewed_at' => now(), 'admin_note' => $validated['admin_note'] ?? null,
             ]);
         });
+        $notifier->splitChanged($changeRequest->album->fresh(), 'approved', $validated['admin_note'] ?? null);
 
         return back()->with('success', 'Revenue split change approved for future royalties.');
     }
 
-    public function reject(Request $request, RevenueSplitChangeRequest $changeRequest)
+    public function reject(Request $request, RevenueSplitChangeRequest $changeRequest, UserNotifier $notifier)
     {
         abort_unless($changeRequest->status === 'pending', 422);
         $validated = $request->validate(['admin_note' => ['required', 'string', 'max:2000']]);
@@ -74,6 +77,7 @@ class RevenueSplitController extends Controller
             'status' => 'rejected', 'reviewed_by' => $request->user()->id,
             'reviewed_at' => now(), 'admin_note' => $validated['admin_note'],
         ]);
+        $notifier->splitChanged($changeRequest->album, 'rejected', $validated['admin_note']);
 
         return back()->with('success', 'Revenue split change rejected.');
     }

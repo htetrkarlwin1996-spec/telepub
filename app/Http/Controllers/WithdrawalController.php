@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Withdrawal;
 use App\Services\AdminNotifier;
+use App\Services\UserNotifier;
 use App\Services\WithdrawalFee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -35,7 +36,7 @@ class WithdrawalController extends Controller
         return view('artist.withdrawals.create', compact('artist', 'withdrawalFeePercentage', 'minimumWithdrawalAmount'));
     }
 
-    public function store(Request $request, WithdrawalFee $withdrawalFee, AdminNotifier $notifier)
+    public function store(Request $request, WithdrawalFee $withdrawalFee, AdminNotifier $notifier, UserNotifier $userNotifier)
     {
         $artist = current_artist();
 
@@ -85,6 +86,7 @@ class WithdrawalController extends Controller
             return $withdrawal;
         });
         $notifier->withdrawalRequested($withdrawal);
+        $userNotifier->withdrawalRequested($withdrawal);
 
         return redirect()->route('artist.withdrawals')
             ->with('success', 'Withdrawal request submitted for review.')

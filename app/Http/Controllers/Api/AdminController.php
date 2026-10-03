@@ -13,6 +13,7 @@ use App\Models\Song;
 use App\Models\User;
 use App\Models\Withdrawal;
 use App\Services\RoyaltyService;
+use App\Services\UserNotifier;
 use App\Services\WithdrawalLifecycle;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -66,7 +67,7 @@ class AdminController extends Controller
         ]);
     }
 
-    public function storeArtist(Request $request): JsonResponse
+    public function storeArtist(Request $request, UserNotifier $notifier): JsonResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -92,6 +93,7 @@ class AdminController extends Controller
             'country' => $validated['country'] ?? null,
             'revenue_share_percentage' => $validated['revenue_share_percentage'] ?? 85,
         ]);
+        $notifier->accountCreated($user, 'Artist');
 
         return response()->json([
             'data' => $artist->load('user'),
@@ -99,7 +101,7 @@ class AdminController extends Controller
         ], 201);
     }
 
-    public function updateArtist(Request $request, Artist $artist): JsonResponse
+    public function updateArtist(Request $request, Artist $artist, UserNotifier $notifier): JsonResponse
     {
         $validated = $request->validate([
             'artist_name' => 'sometimes|string|max:255',
@@ -111,6 +113,7 @@ class AdminController extends Controller
         ]);
 
         $artist->update($validated);
+        $notifier->activity($artist->user, 'Artist profile updated', 'Admin updated your TeleMusic artist profile.', route('artist.profile'), 'Review Profile');
 
         return response()->json([
             'data' => $artist->fresh()->load('user'),
@@ -144,13 +147,15 @@ class AdminController extends Controller
         ]);
     }
 
-    public function approveRelease(Request $request, Album $album): JsonResponse
+    public function approveRelease(Request $request, Album $album, UserNotifier $notifier): JsonResponse
     {
         $album->update([
             'status' => 'approved',
             'approved_at' => now(),
+            'release_notified_at' => null,
             'notes' => $request->input('notes', $album->notes),
         ]);
+        $notifier->releaseApproved($album->fresh());
 
         return response()->json([
             'data' => $album->fresh()->load('artist'),
@@ -158,7 +163,7 @@ class AdminController extends Controller
         ]);
     }
 
-    public function rejectRelease(Request $request, Album $album): JsonResponse
+    public function rejectRelease(Request $request, Album $album, UserNotifier $notifier): JsonResponse
     {
         $validated = $request->validate([
             'rejection_reason' => 'required|string|max:2000',
@@ -169,6 +174,7 @@ class AdminController extends Controller
             'rejected_at' => now(),
             'rejection_reason' => $validated['rejection_reason'],
         ]);
+        $notifier->releaseRejected($album->fresh());
 
         return response()->json([
             'data' => $album->fresh()->load('artist'),

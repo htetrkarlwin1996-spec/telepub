@@ -1,12 +1,35 @@
 <?php
 
+use App\Models\Album;
+use App\Services\UserNotifier;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+Artisan::command('releases:notify-live', function (UserNotifier $notifier) {
+    $count = 0;
+    Album::query()
+        ->where('status', 'approved')
+        ->whereNotNull('release_date')
+        ->whereDate('release_date', '<=', today())
+        ->whereNull('release_notified_at')
+        ->orderBy('id')
+        ->chunkById(100, function ($albums) use ($notifier, &$count) {
+            foreach ($albums as $album) {
+                $notifier->releaseReleased($album);
+                $album->update(['release_notified_at' => now()]);
+                $count++;
+            }
+        });
+    $this->info("Sent {$count} release-date notifications.");
+})->purpose('Email users when an approved release reaches its release date');
+
+Schedule::command('releases:notify-live')->hourly()->withoutOverlapping();
 
 Artisan::command('catalog:import-shamwela {--check : Show the target account and import counts without writing}', function () {
     $email = 'shamwela2023@gmail.com';

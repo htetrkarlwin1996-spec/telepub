@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
 use App\Services\AdminNotifier;
+use App\Services\UserNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,7 +26,7 @@ class ProfileController extends Controller
     /**
      * Update the user's profile information.
      */
-    public function update(ProfileUpdateRequest $request, AdminNotifier $notifier): RedirectResponse
+    public function update(ProfileUpdateRequest $request, AdminNotifier $notifier, UserNotifier $userNotifier): RedirectResponse
     {
         $request->user()->fill($request->validated());
 
@@ -38,6 +39,7 @@ class ProfileController extends Controller
             'Name' => $request->user()->name,
             'Email' => $request->user()->email,
         ]);
+        $userNotifier->activity($request->user(), 'Profile updated', 'Your TeleMusic account profile was updated successfully.', route('profile.edit'), 'Review Profile');
 
         return Redirect::route('profile.edit')->with('status', 'profile-updated');
     }

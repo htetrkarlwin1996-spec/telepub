@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Artist;
 use App\Services\AdminNotifier;
+use App\Services\UserNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -27,7 +28,7 @@ class ArtistController extends Controller
     /**
      * Update artist profile.
      */
-    public function updateProfile(Request $request, AdminNotifier $notifier): JsonResponse
+    public function updateProfile(Request $request, AdminNotifier $notifier, UserNotifier $userNotifier): JsonResponse
     {
         $artist = $request->user()->artist;
 
@@ -62,6 +63,7 @@ class ArtistController extends Controller
         $notifier->activity('artist_profile_updated', 'API artist profile updated', $artist->artist_name.' updated their artist profile.', route('admin.artists.edit', $artist), [
             'Artist' => $artist->artist_name, 'Account email' => $request->user()->email,
         ]);
+        $userNotifier->activity($request->user(), 'Artist profile updated', 'Your TeleMusic artist profile was updated successfully.', route('artist.profile'), 'Review Profile');
 
         return response()->json([
             'data' => $artist->fresh()->load('user'),
@@ -72,7 +74,7 @@ class ArtistController extends Controller
     /**
      * Create / initialize artist profile (first-time setup).
      */
-    public function setup(Request $request, AdminNotifier $notifier): JsonResponse
+    public function setup(Request $request, AdminNotifier $notifier, UserNotifier $userNotifier): JsonResponse
     {
         $user = $request->user();
 
@@ -91,6 +93,7 @@ class ArtistController extends Controller
         $notifier->activity('artist_profile_created', 'Artist profile created', $artist->artist_name.' created an artist profile.', route('admin.artists.edit', $artist), [
             'Artist' => $artist->artist_name, 'Account email' => $user->email,
         ]);
+        $userNotifier->activity($user, 'Artist profile created', 'Your TeleMusic artist profile was created successfully.', route('artist.profile'), 'Review Profile');
 
         return response()->json([
             'data' => $artist->load('user'),

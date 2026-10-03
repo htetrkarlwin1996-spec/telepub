@@ -14,7 +14,7 @@ class Album extends Model
         'release_date', 'physical_release_date', 'price', 'selected_store_ids', 'payment_status', 'upc_code', 'status',
         'split_locked_at', 'split_locked_by',
         'copyright_holder', 'phonogram_right_holder', 'request_new_isrc',
-        'approved_at', 'rejected_at', 'rejection_reason', 'notes',
+        'approved_at', 'rejected_at', 'release_notified_at', 'rejection_reason', 'notes',
     ];
 
     protected $casts = [
@@ -25,6 +25,7 @@ class Album extends Model
         'request_new_isrc' => 'boolean',
         'approved_at' => 'datetime',
         'rejected_at' => 'datetime',
+        'release_notified_at' => 'datetime',
         'split_locked_at' => 'datetime',
     ];
 

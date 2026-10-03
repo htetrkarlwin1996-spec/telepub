@@ -9,6 +9,7 @@ use App\Models\ReleasePayment;
 use App\Models\Song;
 use App\Models\User;
 use App\Notifications\ReleaseSubmitted;
+use App\Notifications\UserActivityNotification;
 use App\Services\MyanMyanPayService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -49,6 +50,7 @@ class ReleaseCheckoutTest extends TestCase
         $this->assertDatabaseHas('distributions', ['album_id' => $album->id, 'song_id' => $song->id, 'store_id' => $store->id, 'status' => 'submitted']);
         Notification::assertSentTo($admin, ReleaseSubmitted::class);
         Notification::assertSentOnDemand(ReleaseSubmitted::class);
+        Notification::assertSentTo($user, UserActivityNotification::class, fn (UserActivityNotification $notification) => $notification->toMail($user)->subject === '[TeleMusic] Release submitted');
     }
 
     public function test_audio_upload_accepts_chunks_and_reassembles_the_original_file(): void

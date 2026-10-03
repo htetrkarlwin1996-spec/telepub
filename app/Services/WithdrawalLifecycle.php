@@ -9,20 +9,25 @@ use Illuminate\Support\Facades\DB;
 
 class WithdrawalLifecycle
 {
+    public function __construct(private readonly UserNotifier $notifier) {}
+
     public function approve(Withdrawal $withdrawal, ?int $adminId, ?string $note = null): Withdrawal
     {
-        return DB::transaction(function () use ($withdrawal, $adminId, $note) {
+        $updated = DB::transaction(function () use ($withdrawal, $adminId, $note) {
             $locked = Withdrawal::lockForUpdate()->findOrFail($withdrawal->id);
             abort_unless($locked->status === 'pending', 422, 'Only pending withdrawals may be approved.');
             $locked->update(['status' => 'approved', 'admin_notes' => $note, 'processed_by' => $adminId]);
 
             return $locked->fresh();
         });
+        $this->notifier->withdrawalStatus($updated);
+
+        return $updated;
     }
 
     public function complete(Withdrawal $withdrawal, ?int $adminId, ?string $note = null): Withdrawal
     {
-        return DB::transaction(function () use ($withdrawal, $adminId, $note) {
+        $updated = DB::transaction(function () use ($withdrawal, $adminId, $note) {
             $locked = Withdrawal::lockForUpdate()->findOrFail($withdrawal->id);
             abort_unless($locked->status === 'approved', 422, 'Only approved withdrawals may be completed.');
             $artist = Artist::lockForUpdate()->findOrFail($locked->artist_id);
@@ -41,11 +46,14 @@ class WithdrawalLifecycle
 
             return $locked->fresh();
         });
+        $this->notifier->withdrawalStatus($updated);
+
+        return $updated;
     }
 
     public function reject(Withdrawal $withdrawal, ?int $adminId, ?string $note = null): Withdrawal
     {
-        return DB::transaction(function () use ($withdrawal, $adminId, $note) {
+        $updated = DB::transaction(function () use ($withdrawal, $adminId, $note) {
             $locked = Withdrawal::lockForUpdate()->findOrFail($withdrawal->id);
             abort_unless(in_array($locked->status, ['pending', 'approved', 'processing'], true), 422, 'This withdrawal can no longer be rejected.');
             $artist = Artist::lockForUpdate()->findOrFail($locked->artist_id);
@@ -60,5 +68,8 @@ class WithdrawalLifecycle
 
             return $locked->fresh();
         });
+        $this->notifier->withdrawalStatus($updated);
+
+        return $updated;
     }
 }

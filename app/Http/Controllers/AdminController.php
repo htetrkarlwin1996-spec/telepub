@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Models\Withdrawal;
 use App\Services\RoyaltyCsvImportService;
 use App\Services\RoyaltyService;
+use App\Services\UserNotifier;
 use App\Services\WithdrawalLifecycle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -60,7 +61,7 @@ class AdminController extends Controller
         return view('admin.artists.create');
     }
 
-    public function storeArtist(Request $request)
+    public function storeArtist(Request $request, UserNotifier $notifier)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -83,11 +84,12 @@ class AdminController extends Controller
         Artist::create([
             'user_id' => $user->id,
             'artist_name' => $validated['artist_name'],
-            'genre' => $validated['genre'],
-            'bio' => $validated['bio'],
-            'country' => $validated['country'],
+            'genre' => $validated['genre'] ?? null,
+            'bio' => $validated['bio'] ?? null,
+            'country' => $validated['country'] ?? null,
             'revenue_share_percentage' => $validated['revenue_share_percentage'] ?? 85.00,
         ]);
+        $notifier->accountCreated($user, 'Artist');
 
         return redirect()->route('admin.artists')->with('success', 'Artist created successfully.');
     }
@@ -97,7 +99,7 @@ class AdminController extends Controller
         return view('admin.artists.edit', compact('artist'));
     }
 
-    public function updateArtist(Request $request, Artist $artist)
+    public function updateArtist(Request $request, Artist $artist, UserNotifier $notifier)
     {
         $validated = $request->validate([
             'artist_name' => 'required|string|max:255',
@@ -114,6 +116,7 @@ class AdminController extends Controller
         ]);
 
         $artist->update($validated);
+        $notifier->activity($artist->user, 'Artist profile updated', 'Admin updated your TeleMusic artist profile.', route('artist.profile'), 'Review Profile');
 
         return redirect()->route('admin.artists')->with('success', 'Artist updated successfully.');
     }
@@ -236,9 +239,9 @@ class AdminController extends Controller
             return back()->withInput()->withErrors(['stores' => 'Enter an amount for at least one store.']);
         }
 
-        DB::transaction(function () use ($rows, $validated, $royaltyService) {
-            foreach ($rows as $row) {
-                $royaltyService->create([
+        $royalties = DB::transaction(function () use ($rows, $validated, $royaltyService) {
+            return $rows->map(function ($row) use ($validated, $royaltyService) {
+                return $royaltyService->create([
                     'artist_id' => $validated['artist_id'],
                     'store_id' => $row['store_id'],
                     'royalty_type' => $validated['royalty_type'],
@@ -249,9 +252,10 @@ class AdminController extends Controller
                     'streams' => $row['streams'] ?? 0,
                     'notes' => $validated['notes'] ?? 'Bulk manual entry',
                     'entered_by' => auth()->id(),
-                ]);
-            }
+                ], false);
+            });
         });
+        $royaltyService->notifyBatch($royalties);
 
         return redirect()->route('admin.royalties')->with('success', $rows->count().' store royalty entries added successfully.');
     }
@@ -340,7 +344,7 @@ class AdminController extends Controller
         return view('admin.payouts.create', compact('artists'));
     }
 
-    public function storePayout(Request $request)
+    public function storePayout(Request $request, UserNotifier $notifier)
     {
         $validated = $request->validate([
             'artist_id' => 'required|exists:artists,id',
@@ -354,7 +358,7 @@ class AdminController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        DB::transaction(function () use ($validated) {
+        $payout = DB::transaction(function () use ($validated) {
             $artist = Artist::lockForUpdate()->findOrFail($validated['artist_id']);
             if ((float) $validated['amount'] > (float) $artist->available_balance) {
                 throw ValidationException::withMessages(['amount' => 'Payout amount exceeds the artist available balance.']);
@@ -378,7 +382,7 @@ class AdminController extends Controller
                 'processed_by' => auth()->id(),
             ]);
 
-            Payout::create([
+            $payout = Payout::create([
                 ...$validated,
                 'withdrawal_id' => $withdrawal->id,
                 'total' => $total,
@@ -390,7 +394,17 @@ class AdminController extends Controller
             ]);
 
             $artist->decrement('available_balance', $validated['amount']);
+
+            return $payout;
         });
+        $notifier->payoutCreated(
+            $payout->artist,
+            (float) $payout->amount,
+            (float) $payout->fee,
+            (float) $payout->total,
+            $payout->currency,
+            $payout->payment_reference,
+        );
 
         return redirect()->route('admin.payouts')->with('success', 'Payout processed successfully.');
     }
@@ -471,7 +485,7 @@ class AdminController extends Controller
         return view('admin.albums.create', compact('artists', 'genres'));
     }
 
-    public function storeAlbum(Request $request)
+    public function storeAlbum(Request $request, UserNotifier $notifier)
     {
         $validated = $request->validate([
             'artist_id' => 'required|exists:artists,id',
@@ -489,7 +503,12 @@ class AdminController extends Controller
         $validated['slug'] = Str::slug($validated['title']).'-'.uniqid();
         $validated['status'] = $validated['status'] ?? 'draft';
 
-        Album::create($validated);
+        $album = Album::create($validated);
+        if ($album->status === 'submitted') {
+            $notifier->releaseSubmitted($album);
+        } elseif ($album->status === 'approved') {
+            $notifier->releaseApproved($album);
+        }
 
         return redirect()->route('admin.albums')->with('success', 'Album created successfully.');
     }
@@ -502,7 +521,7 @@ class AdminController extends Controller
         return view('admin.albums.edit', compact('album', 'artists', 'genres'));
     }
 
-    public function updateAlbum(Request $request, Album $album)
+    public function updateAlbum(Request $request, Album $album, UserNotifier $notifier)
     {
         $validated = $request->validate([
             'artist_id' => 'required|exists:artists,id',
@@ -517,7 +536,17 @@ class AdminController extends Controller
             'status' => 'required|in:draft,submitted,approved,rejected',
         ]);
 
+        $oldStatus = $album->status;
         $album->update($validated);
+        if ($oldStatus !== $album->status) {
+            if ($album->status === 'submitted') {
+                $notifier->releaseSubmitted($album);
+            } elseif ($album->status === 'approved') {
+                $notifier->releaseApproved($album);
+            } elseif ($album->status === 'rejected') {
+                $notifier->releaseRejected($album);
+            }
+        }
 
         return redirect()->route('admin.albums')->with('success', 'Album updated successfully.');
     }
@@ -673,7 +702,7 @@ class AdminController extends Controller
         return view('admin.releases.show', compact('album', 'stores'));
     }
 
-    public function approveRelease(Request $request, Album $album)
+    public function approveRelease(Request $request, Album $album, UserNotifier $notifier)
     {
         $validated = $request->validate([
             'songs' => 'required|array',
@@ -684,6 +713,7 @@ class AdminController extends Controller
             'status' => 'approved',
             'approved_at' => now(),
             'rejected_at' => null,
+            'release_notified_at' => null,
             'rejection_reason' => null,
         ]);
 
@@ -705,12 +735,13 @@ class AdminController extends Controller
             'status' => 'approved',
             'approved_at' => now(),
         ]);
+        $notifier->releaseApproved($album->fresh());
 
         return redirect()->route('admin.releases.show', $album)
             ->with('success', 'Release approved successfully! ISRC codes have been saved.');
     }
 
-    public function rejectRelease(Request $request, Album $album)
+    public function rejectRelease(Request $request, Album $album, UserNotifier $notifier)
     {
         $validated = $request->validate([
             'rejection_reason' => 'required|string|max:1000',
@@ -725,6 +756,7 @@ class AdminController extends Controller
 
         // Reject all distributions
         $album->distributions()->update(['status' => 'rejected']);
+        $notifier->releaseRejected($album->fresh());
 
         return redirect()->route('admin.releases.show', $album)
             ->with('success', 'Release rejected.');

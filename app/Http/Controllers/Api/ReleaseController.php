@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Album;
 use App\Models\Artist;
 use App\Services\AdminNotifier;
+use App\Services\RevenueSplitService;
+use App\Services\UserNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -204,7 +206,7 @@ class ReleaseController extends Controller
     /**
      * Submit release for approval.
      */
-    public function submit(Album $album, AdminNotifier $notifier): JsonResponse
+    public function submit(Album $album, AdminNotifier $notifier, UserNotifier $userNotifier, RevenueSplitService $splits): JsonResponse
     {
         $this->authorizeAccess($album);
 
@@ -225,7 +227,14 @@ class ReleaseController extends Controller
             'status' => 'submitted',
             'notes' => request('notes'),
         ]);
+        if (! $album->splitsAreLocked()) {
+            $splits->lock($album, request()->user());
+        }
         $notifier->releaseSubmitted($album->fresh());
+        $userNotifier->releaseSubmitted($album->fresh());
+        if ($album->collaboratingArtists()->exists()) {
+            $userNotifier->splitChanged($album->fresh(), 'confirmed');
+        }
 
         return response()->json([
             'data' => $album->fresh()->load('artist', 'songs', 'stores'),

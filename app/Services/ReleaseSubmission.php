@@ -10,6 +10,7 @@ class ReleaseSubmission
     public function __construct(
         private readonly RevenueSplitService $splits,
         private readonly AdminNotifier $notifier,
+        private readonly UserNotifier $userNotifier,
     ) {}
 
     public function finalize(Album $album): void
@@ -28,5 +29,9 @@ class ReleaseSubmission
         $album->update(['payment_status' => 'paid', 'status' => 'submitted']);
         $album->songs()->update(['status' => 'submitted']);
         $this->notifier->releaseSubmitted($album->fresh());
+        $this->userNotifier->releaseSubmitted($album->fresh());
+        if ($album->collaboratingArtists()->exists()) {
+            $this->userNotifier->splitChanged($album->fresh(), 'confirmed');
+        }
     }
 }

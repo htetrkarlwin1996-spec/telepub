@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Services\UserNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -22,12 +23,13 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest $request, UserNotifier $notifier): RedirectResponse
     {
         $request->authenticate();
 
         $request->session()->regenerate();
         $request->session()->forget('login_announcement_shown');
+        $notifier->login($request->user(), $request->ip(), $request->userAgent());
 
         $fallbackRoute = $request->user()->isAdmin()
             ? route('admin.dashboard', absolute: false)

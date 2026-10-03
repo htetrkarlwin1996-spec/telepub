@@ -6,10 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Otp;
 use App\Models\User;
 use App\Notifications\SendOtp;
+use App\Services\UserNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -61,6 +61,7 @@ class OtpVerificationController extends Controller
                 $user->markEmailAsVerified();
             }
             $request->session()->forget(['otp_email', 'otp_type']);
+
             return redirect()->route('dashboard')->with('status', 'Email verified successfully!');
         }
 
@@ -68,6 +69,7 @@ class OtpVerificationController extends Controller
             $request->session()->put('password_reset_verified', true);
             $request->session()->put('password_reset_email', $email);
             $request->session()->forget(['otp_email', 'otp_type']);
+
             return redirect()->route('password.reset.otp');
         }
 
@@ -83,7 +85,7 @@ class OtpVerificationController extends Controller
         return view('auth.reset-password-otp');
     }
 
-    public function updatePassword(Request $request): RedirectResponse
+    public function updatePassword(Request $request, UserNotifier $notifier): RedirectResponse
     {
         if (! $request->session()->get('password_reset_verified')) {
             return redirect()->route('login');
@@ -103,6 +105,7 @@ class OtpVerificationController extends Controller
         $user->update([
             'password' => Hash::make($request->password),
         ]);
+        $notifier->activity($user, 'Password changed', 'Your TeleMusic password was reset successfully.', route('login'), 'Sign In');
 
         $request->session()->forget(['password_reset_verified', 'password_reset_email']);
 

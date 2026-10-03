@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\AdminNotifier;
+use App\Services\UserNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -48,7 +49,7 @@ class AuthController extends Controller
     /**
      * Login with email + password.
      */
-    public function login(Request $request): JsonResponse
+    public function login(Request $request, UserNotifier $notifier): JsonResponse
     {
         $validated = $request->validate([
             'email' => 'required|string|email',
@@ -71,6 +72,7 @@ class AuthController extends Controller
         $user->tokens()->delete();
 
         $token = $user->createToken('api-token')->plainTextToken;
+        $notifier->login($user, $request->ip(), $request->userAgent());
 
         return response()->json([
             'data' => $user->load('artist'),
@@ -102,7 +104,7 @@ class AuthController extends Controller
     /**
      * Update authenticated user profile.
      */
-    public function updateUser(Request $request, AdminNotifier $notifier): JsonResponse
+    public function updateUser(Request $request, AdminNotifier $notifier, UserNotifier $userNotifier): JsonResponse
     {
         $user = $request->user();
 
@@ -117,6 +119,7 @@ class AuthController extends Controller
         $notifier->activity('user_profile_updated', 'API user profile updated', $user->name.' updated their account profile.', route('admin.artists'), [
             'Name' => $user->name, 'Email' => $user->email,
         ]);
+        $userNotifier->activity($user, 'Profile updated', 'Your TeleMusic account profile was updated successfully.', route('profile.edit'), 'Review Profile');
 
         return response()->json([
             'data' => $user->fresh()->load('artist'),
@@ -143,7 +146,7 @@ class AuthController extends Controller
     /**
      * Reset password with token.
      */
-    public function resetPassword(Request $request): JsonResponse
+    public function resetPassword(Request $request, UserNotifier $notifier): JsonResponse
     {
         $request->validate([
             'token' => 'required',
@@ -153,10 +156,11 @@ class AuthController extends Controller
 
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
-            function (User $user, string $password) {
+            function (User $user, string $password) use ($notifier) {
                 $user->forceFill([
                     'password' => Hash::make($password),
                 ])->save();
+                $notifier->activity($user, 'Password changed', 'Your TeleMusic password was reset successfully.', route('login'), 'Sign In');
             }
         );
 

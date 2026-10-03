@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Artist;
 use App\Services\AdminNotifier;
+use App\Services\UserNotifier;
 use Illuminate\Http\Request;
 
 class ArtistController extends Controller
@@ -52,7 +53,7 @@ class ArtistController extends Controller
         return view('artist.setup', compact('artist', 'genres', 'countries'));
     }
 
-    public function updateSetup(Request $request, AdminNotifier $notifier)
+    public function updateSetup(Request $request, AdminNotifier $notifier, UserNotifier $userNotifier)
     {
         $user = auth()->user();
         $artist = $user->artist;
@@ -90,6 +91,7 @@ class ArtistController extends Controller
             'Account email' => $user->email,
             'Country' => $artist->country ?: 'Not specified',
         ]);
+        $userNotifier->activity($user, 'Artist profile saved', 'Your TeleMusic artist profile was saved successfully.', route('artist.profile'), 'Review Profile');
 
         return redirect()->route('dashboard')->with('success', 'Profile updated successfully.');
     }
@@ -103,7 +105,7 @@ class ArtistController extends Controller
         return view('artist.profile', compact('artist', 'genres', 'countries'));
     }
 
-    public function updateProfile(Request $request, AdminNotifier $notifier)
+    public function updateProfile(Request $request, AdminNotifier $notifier, UserNotifier $userNotifier)
     {
         $artist = current_artist();
 
@@ -139,6 +141,7 @@ class ArtistController extends Controller
             'Artist' => $artist->artist_name,
             'Account email' => $request->user()->email,
         ]);
+        $userNotifier->activity($request->user(), 'Artist profile updated', 'Your TeleMusic artist profile was updated successfully.', route('artist.profile'), 'Review Profile');
 
         return redirect()->route('artist.profile')->with('success', 'Profile updated successfully.');
     }

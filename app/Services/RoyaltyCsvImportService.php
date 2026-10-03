@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\MusicStore;
+use App\Models\Royalty;
 use App\Models\RoyaltyImport;
 use App\Models\Song;
 use App\Models\User;
@@ -12,7 +13,10 @@ use RuntimeException;
 
 class RoyaltyCsvImportService
 {
-    public function __construct(private readonly RoyaltyAllocationService $allocations) {}
+    public function __construct(
+        private readonly RoyaltyAllocationService $allocations,
+        private readonly UserNotifier $notifier,
+    ) {}
 
     public function import(UploadedFile $file, array $defaults, User $admin): array
     {
@@ -37,7 +41,7 @@ class RoyaltyCsvImportService
         $storesByName = $stores->keyBy(fn (MusicStore $store) => $this->normalize($store->name));
         $storesBySlug = $stores->keyBy(fn (MusicStore $store) => $this->normalize($store->slug));
 
-        return DB::transaction(function () use ($file, $hash, $existingImport, $rows, $headers, $isrcColumn, $amountColumn, $defaults, $admin, $songs, $storesById, $storesByName, $storesBySlug) {
+        $result = DB::transaction(function () use ($file, $hash, $existingImport, $rows, $headers, $isrcColumn, $amountColumn, $defaults, $admin, $songs, $storesById, $storesByName, $storesBySlug) {
             $import = $existingImport ?? RoyaltyImport::create([
                 'file_name' => $file->getClientOriginalName(),
                 'file_hash' => $hash,
@@ -130,8 +134,38 @@ class RoyaltyCsvImportService
                 'skipped' => count($errors),
                 'skip_messages' => array_slice($errors, 0, 10),
                 'already_imported' => $alreadyImported,
+                'import_id' => $import->id,
+                'new_rows' => array_column($inserts, 'import_row'),
             ];
         });
+
+        $summaries = [];
+        foreach (array_chunk($result['new_rows'], 500) as $rowsChunk) {
+            Royalty::with('allocations')
+                ->where('royalty_import_id', $result['import_id'])
+                ->whereIn('import_row', $rowsChunk)
+                ->get()
+                ->each(function (Royalty $royalty) use (&$summaries) {
+                    foreach ($royalty->allocations->whereIn('beneficiary_type', ['artist', 'master_account']) as $allocation) {
+                        $key = $allocation->beneficiary_type.':'.$allocation->beneficiary_id;
+                        $summaries[$key] ??= [
+                            'type' => $allocation->beneficiary_type,
+                            'id' => (int) $allocation->beneficiary_id,
+                            'amount' => 0.0,
+                            'entries' => 0,
+                            'currency' => $allocation->currency,
+                        ];
+                        $summaries[$key]['amount'] += (float) $allocation->allocated_amount;
+                        $summaries[$key]['entries']++;
+                    }
+                });
+        }
+        foreach ($summaries as $summary) {
+            $this->notifier->royaltyBatchSummary($summary['type'], $summary['id'], $summary['amount'], $summary['entries'], $summary['currency']);
+        }
+        unset($result['import_id'], $result['new_rows']);
+
+        return $result;
     }
 
     private function read(UploadedFile $file): array

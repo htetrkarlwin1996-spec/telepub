@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\MasterAccount;
 use App\Models\User;
+use App\Services\UserNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -22,10 +23,10 @@ class AdminMasterAccountController extends Controller
         return view('admin.master-accounts.create');
     }
 
-    public function store(Request $request)
+    public function store(Request $request, UserNotifier $notifier)
     {
         $validated = $this->validated($request, true);
-        DB::transaction(function () use ($validated) {
+        $owner = DB::transaction(function () use ($validated) {
             $owner = User::create([
                 'name' => $validated['owner_name'],
                 'email' => $validated['owner_email'],
@@ -42,7 +43,10 @@ class AdminMasterAccountController extends Controller
                 'default_management_fee_percentage' => $validated['default_management_fee_percentage'],
                 'maximum_management_fee_percentage' => $validated['maximum_management_fee_percentage'],
             ]);
+
+            return $owner;
         });
+        $notifier->accountCreated($owner, 'Master Account');
 
         return redirect()->route('admin.master-accounts.index')->with('success', 'Master account created.');
     }
@@ -54,7 +58,7 @@ class AdminMasterAccountController extends Controller
         return view('admin.master-accounts.edit', compact('masterAccount'));
     }
 
-    public function update(Request $request, MasterAccount $masterAccount)
+    public function update(Request $request, MasterAccount $masterAccount, UserNotifier $notifier)
     {
         $validated = $this->validated($request, false, $masterAccount);
         $masterAccount->update(collect($validated)->except(['owner_name', 'owner_email', 'password'])->all());
@@ -63,6 +67,10 @@ class AdminMasterAccountController extends Controller
             $ownerData['password'] = Hash::make($validated['password']);
         }
         $masterAccount->owner->update($ownerData);
+        $notifier->activity($masterAccount->owner, 'Master Account updated', 'Admin updated your TeleMusic Master Account settings.', route('dashboard'), 'Review Account');
+        if (filled($validated['password'] ?? null)) {
+            $notifier->activity($masterAccount->owner, 'Password changed', 'Admin changed your TeleMusic Master Account password.', route('login'), 'Sign In');
+        }
 
         return back()->with('success', 'Master account fees updated.');
     }
