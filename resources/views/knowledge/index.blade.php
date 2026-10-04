@@ -1,5 +1,5 @@
 <x-app-layout>
-    <x-slot name="header">Knowledge</x-slot>
+    <x-slot name="header">Knowledges</x-slot>
     <div class="mx-auto max-w-7xl">
         <div class="mb-8 border-2 border-black bg-brand-500 p-7 shadow-[6px_6px_0_#000]">
             <p class="text-xs font-black uppercase tracking-[.2em]">TeleMusic, LLC</p>

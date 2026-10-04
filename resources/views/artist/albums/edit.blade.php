@@ -14,7 +14,10 @@
                         </div>
                         <div>
                             <x-input-label for="genre" value="Genre" />
-                            <x-text-input id="genre" class="block mt-1 w-full" type="text" name="genre" value="{{ $album->genre }}" />
+                            <select id="genre" name="genre" required class="block mt-1 w-full border-2 border-black px-3 py-2.5 text-sm font-semibold text-black focus:border-brand-500 focus:ring-0 rounded-none">
+                                <option value="">Select genre...</option>
+                                @foreach($genres as $genre)<option value="{{ $genre }}" @selected(old('genre', $album->genre) === $genre)>{{ $genre }}</option>@endforeach
+                            </select>
                         </div>
                         <div>
                             <x-input-label for="label" value="Label" />
@@ -47,7 +50,8 @@
                             <textarea id="notes" class="block mt-1 w-full border-2 border-black px-3 py-2.5 text-sm font-semibold text-black placeholder:text-black/30 focus:border-brand-500 focus:ring-0 focus:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all rounded-none" name="notes" rows="2">{{ $album->notes }}</textarea>
                         </div>
                     </div>
-                    <div class="flex justify-end mt-4">
+                    <div class="flex justify-end mt-4 gap-3">
+                        <a href="{{ route('artist.catalog.edit', $album) }}" class="inline-flex items-center border-2 border-black bg-white px-4 py-2 text-xs font-black uppercase">Full Release Editor</a>
                         <x-primary-button>{{ __('Update Album') }}</x-primary-button>
                     </div>
                 </form>

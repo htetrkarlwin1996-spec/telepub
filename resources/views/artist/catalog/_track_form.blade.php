@@ -46,6 +46,9 @@
     $lyricist = $getCreditEntries('lyricist');
     $producers = $getCreditEntries('producers');
     $vocals = $getCreditEntries('vocals');
+    if (count($lyricist) === 0) $lyricist = [['name' => '']];
+    if (count($producers) === 0) $producers = [['name' => '']];
+    if (count($vocals) === 0) $vocals = [['name' => '']];
 @endphp
 
 <div class="mt-4 space-y-4">
@@ -198,7 +201,7 @@
 
     <!-- Lyricist -->
     <div class="border-2 border-black p-4 credit-section" data-field="lyricist" data-track="{{ $index }}">
-        <label class="block font-extrabold text-xs uppercase mb-2">Lyricist</label>
+        <label class="block font-extrabold text-xs uppercase mb-2">Lyricist <span class="text-red-500">*</span></label>
         <div class="person-list space-y-2">
             @if(count($lyricist) > 0)
                 @foreach($lyricist as $lIdx => $l)
@@ -206,6 +209,7 @@
                         <input type="text"
                             name="tracks[{{ $index }}][lyricist][{{ $lIdx }}][name]"
                             value="{{ $l['name'] ?? '' }}"
+                            required
                             class="flex-1 px-3 py-2 border-2 border-black font-bold text-sm focus:outline-none focus:ring-0 focus:border-brand-500"
                             placeholder="Lyricist name">
                         <input type="hidden" name="tracks[{{ $index }}][lyricist][{{ $lIdx }}][spotify_url]" value="{{ $l['spotify_url'] ?? '' }}" class="link-spotify">
@@ -232,7 +236,7 @@
 
     <!-- Producer(s) -->
     <div class="border-2 border-black p-4 credit-section" data-field="producers" data-track="{{ $index }}">
-        <label class="block font-extrabold text-xs uppercase mb-2">Producer(s)</label>
+        <label class="block font-extrabold text-xs uppercase mb-2">Producer(s) <span class="text-red-500">*</span></label>
         <div class="person-list space-y-2">
             @if(count($producers) > 0)
                 @foreach($producers as $pIdx => $p)
@@ -240,6 +244,7 @@
                         <input type="text"
                             name="tracks[{{ $index }}][producers][{{ $pIdx }}][name]"
                             value="{{ $p['name'] ?? '' }}"
+                            required
                             class="flex-1 px-3 py-2 border-2 border-black font-bold text-sm focus:outline-none focus:ring-0 focus:border-brand-500"
                             placeholder="Producer name">
                         <input type="hidden" name="tracks[{{ $index }}][producers][{{ $pIdx }}][spotify_url]" value="{{ $p['spotify_url'] ?? '' }}" class="link-spotify">
@@ -266,7 +271,7 @@
 
     <!-- Vocals -->
     <div class="border-2 border-black p-4 credit-section" data-field="vocals" data-track="{{ $index }}">
-        <label class="block font-extrabold text-xs uppercase mb-2">Vocals</label>
+        <label class="block font-extrabold text-xs uppercase mb-2">Vocals <span class="text-red-500">*</span></label>
         <div class="person-list space-y-2">
             @if(count($vocals) > 0)
                 @foreach($vocals as $vIdx => $v)
@@ -274,6 +279,7 @@
                         <input type="text"
                             name="tracks[{{ $index }}][vocals][{{ $vIdx }}][name]"
                             value="{{ $v['name'] ?? '' }}"
+                            required
                             class="flex-1 px-3 py-2 border-2 border-black font-bold text-sm focus:outline-none focus:ring-0 focus:border-brand-500"
                             placeholder="Vocalist name">
                         <input type="hidden" name="tracks[{{ $index }}][vocals][{{ $vIdx }}][spotify_url]" value="{{ $v['spotify_url'] ?? '' }}" class="link-spotify">
@@ -380,8 +386,8 @@
 
 <!-- Lyrics -->
 <div class="mt-4">
-    <label class="block font-extrabold text-xs uppercase mb-1">Lyrics</label>
-    <textarea name="tracks[{{ $index }}][lyrics]" rows="3"
+    <label class="block font-extrabold text-xs uppercase mb-1">Lyrics <span class="text-red-500">*</span></label>
+    <textarea name="tracks[{{ $index }}][lyrics]" rows="3" required
         class="w-full px-3 py-2 border-2 border-black font-bold text-sm focus:outline-none focus:ring-0 focus:border-brand-500"
-        placeholder="Optional: paste lyrics here">{{ $song->lyrics ?? old('tracks.' . $index . '.lyrics') }}</textarea>
+        placeholder="Paste the complete lyrics here">{{ $song->lyrics ?? old('tracks.' . $index . '.lyrics') }}</textarea>
 </div>

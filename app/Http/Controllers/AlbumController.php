@@ -19,7 +19,7 @@ class AlbumController extends Controller
 
     public function create()
     {
-        return view('artist.albums.create');
+        return redirect()->route('artist.catalog.create');
     }
 
     public function store(Request $request)
@@ -28,7 +28,7 @@ class AlbumController extends Controller
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'genre' => 'nullable|string|max:100',
+            'genre' => 'required|string|max:100',
             'label' => 'nullable|string|max:255',
             'release_date' => 'nullable|date',
             'upc_code' => 'nullable|string|max:50',
@@ -55,7 +55,9 @@ class AlbumController extends Controller
             abort(403);
         }
 
-        return view('artist.albums.edit', compact('album'));
+        $genres = CatalogController::genres();
+
+        return view('artist.albums.edit', compact('album', 'genres'));
     }
 
     public function update(Request $request, Album $album)
@@ -67,7 +69,7 @@ class AlbumController extends Controller
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'genre' => 'nullable|string|max:100',
+            'genre' => 'required|string|max:100',
             'label' => 'nullable|string|max:255',
             'release_date' => 'nullable|date',
             'upc_code' => 'nullable|string|max:50',

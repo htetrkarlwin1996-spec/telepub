@@ -256,13 +256,13 @@
                 }
             });
 
-            // Reset person-list containers (keep only one default entry for primary_artists and composers)
+            // Reset person-list containers (keep one default entry for required credits)
             const personLists = template.querySelectorAll('.person-list');
             personLists.forEach(list => {
                 const entries = list.querySelectorAll('.person-entry');
                 const section = list.closest('.credit-section');
                 const field = section ? section.dataset.field : '';
-                if (field === 'primary_artists' || field === 'composers') {
+                if (['primary_artists', 'composers', 'lyricist', 'producers', 'vocals'].includes(field)) {
                     while (entries.length > 1) {
                         entries[entries.length - 1].remove();
                     }

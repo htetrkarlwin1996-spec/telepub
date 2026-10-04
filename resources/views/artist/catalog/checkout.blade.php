@@ -7,7 +7,7 @@
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" x-data="{
                 method: @js(old('method', '')),
-                addons: @js(old('addons', $album->selected_addons ?? [])),
+                addons: @js($album->selected_addons ?? []),
                 base: {{ (float) $pricing['usd'] }},
                 addonPrices: @js(collect($pricing['addons'])->mapWithKeys(fn ($item, $key) => [$key => $item['price']])),
                 totalUsd() { return this.base + this.addons.reduce((sum, key) => sum + Number(this.addonPrices[key] || 0), 0); },
@@ -30,18 +30,9 @@
                     <form x-show="method" x-cloak method="POST" action="{{ route('artist.catalog.pay', $album) }}" data-payment-form class="border-2 border-black bg-white p-6 shadow-[5px_5px_0_#000]">
                         @csrf
                         <input type="hidden" name="method" :value="method">
-                        <div class="mb-6">
-                            <h3 class="text-lg font-black">Optional Royalty Collection Add-ons</h3>
-                            <p class="mt-1 text-sm font-bold text-black/60">Each selected service is charged once for this album.</p>
-                            <div class="mt-4 space-y-3">
-                                @foreach($pricing['addons'] as $key => $addon)
-                                    <label class="flex cursor-pointer items-center justify-between gap-4 border-2 border-black p-4" :class="addons.includes('{{ $key }}') ? 'bg-brand-500/30' : 'bg-white'">
-                                        <span class="flex items-center gap-3"><input type="checkbox" name="addons[]" value="{{ $key }}" x-model="addons" class="border-2 border-black text-black focus:ring-brand-500"><span class="font-black">{{ $addon['name'] }}</span></span>
-                                        <span class="whitespace-nowrap font-black">USD {{ number_format($addon['price'], 2) }}</span>
-                                    </label>
-                                @endforeach
-                            </div>
-                        </div>
+                        @if(filled($album->selected_addons))
+                            <div class="mb-6 border-2 border-black bg-brand-500/20 p-4"><h3 class="font-black">Selected Royalty Add-ons</h3>@foreach($album->selected_addons as $key)<div class="mt-2 flex justify-between gap-3 text-sm font-bold"><span>{{ data_get($pricing, 'addons.'.$key.'.name', $key) }}</span><span>USD {{ number_format(data_get($pricing, 'addons.'.$key.'.price', 0), 2) }}</span></div>@endforeach</div>
+                        @endif
                         <p class="text-xs font-extrabold uppercase text-black/50">{{ $pricing['is_first'] ? 'First release price' : ucfirst($album->release_type).' release price' }}</p>
                         <p class="mt-1 text-sm font-bold text-black/60">Base release price: USD {{ number_format($pricing['usd'], 2) }}</p>
                         <h3 class="mt-2 text-xl font-black" x-text="{

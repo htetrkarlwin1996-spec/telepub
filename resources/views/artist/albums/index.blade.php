@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-black text-2xl text-black tracking-tight">{{ __('My Albums') }}</h2>
-            <a href="{{ route('artist.albums.create') }}" class="inline-flex items-center px-4 py-2 bg-brand-500 border-2 border-black font-extrabold text-xs text-black uppercase tracking-widest shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all rounded-none">+ New Album</a>
+            <a href="{{ route('artist.catalog.create') }}" class="inline-flex items-center px-4 py-2 bg-brand-500 border-2 border-black font-extrabold text-xs text-black uppercase tracking-widest shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all rounded-none">+ New Release</a>
         </div>
     </x-slot>
     <div class="py-8 px-6 sm:px-8 lg:px-10">
@@ -49,12 +49,12 @@
                                 </td>
                                 <td class="py-3 px-2 text-xs font-semibold text-black/50">{{ $album->release_date ? $album->release_date->format('Y-m-d') : '-' }}</td>
                                 <td class="py-3 px-2 text-right">
-                                    <a href="{{ route('artist.albums.edit', $album) }}" class="font-extrabold text-black underline decoration-brand-500 decoration-2 underline-offset-2 hover:decoration-black text-xs mr-3">Edit</a>
+                                    <a href="{{ route('artist.catalog.edit', $album) }}" class="font-extrabold text-black underline decoration-brand-500 decoration-2 underline-offset-2 hover:decoration-black text-xs mr-3">Edit Release</a>
                                     <a href="{{ route('artist.albums.show', $album) }}" class="font-extrabold text-black underline decoration-brand-500 decoration-2 underline-offset-2 hover:decoration-black text-xs">View</a>
                                 </td>
                             </tr>
                             @empty
-                            <tr><td colspan="7" class="py-8 text-center font-bold text-black/40">No albums yet. <a href="{{ route('artist.albums.create') }}" class="text-black underline decoration-brand-500 decoration-2">Create your first album</a></td></tr>
+                            <tr><td colspan="7" class="py-8 text-center font-bold text-black/40">No albums yet. <a href="{{ route('artist.catalog.create') }}" class="text-black underline decoration-brand-500 decoration-2">Create your first release</a></td></tr>
                             @endforelse
                         </tbody>
                     </table>

@@ -76,7 +76,7 @@
         </x-nav-link>
         <x-nav-link :href="route('admin.knowledge.index')" :active="request()->routeIs('admin.knowledge*')">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6.25v13m0-13C10.84 5.48 9.35 5 7.75 5H4v12h3.75c1.6 0 3.09.48 4.25 1.25m0-12C13.16 5.48 14.65 5 16.25 5H20v12h-3.75c-1.6 0-3.09.48-4.25 1.25"/></svg>
-            {{ __('Knowledge') }}
+            {{ __('Knowledges') }}
         </x-nav-link>
         <x-nav-link :href="route('admin.settings')" :active="request()->routeIs('admin.settings*')">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10.3 2.7a1 1 0 011.4 0l1.6 1.6a1 1 0 001 .25l2.2-.6a1 1 0 011.22.7l.6 2.2a1 1 0 00.73.73l2.2.6a1 1 0 01.7 1.22l-.6 2.2a1 1 0 00.25 1l1.6 1.6a1 1 0 010 1.4l-1.6 1.6a1 1 0 00-.25 1l.6 2.2a1 1 0 01-.7 1.22l-2.2.6a1 1 0 00-.73.73l-.6 2.2a1 1 0 01-1.22.7l-2.2-.6a1 1 0 00-1 .25l-1.6 1.6a1 1 0 01-1.4 0l-1.6-1.6a1 1 0 00-1-.25l-2.2.6a1 1 0 01-1.22-.7l-.6-2.2a1 1 0 00-.73-.73l-2.2-.6a1 1 0 01-.7-1.22l.6-2.2a1 1 0 00-.25-1L.7 15.7a1 1 0 010-1.4l1.6-1.6a1 1 0 00.25-1l-.6-2.2a1 1 0 01.7-1.22l2.2-.6a1 1 0 00.73-.73l.6-2.2a1 1 0 011.22-.7l2.2.6a1 1 0 001-.25l1.6-1.6z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
@@ -94,7 +94,7 @@
         <x-nav-link :href="route('artist.royalties')" :active="request()->routeIs('artist.royalties*')">{{ __('Royalties') }}</x-nav-link>
         <x-nav-link :href="route('artist.withdrawals')" :active="request()->routeIs('artist.withdrawals*')">{{ __('Withdrawals') }}</x-nav-link>
         <x-nav-link :href="route('artist.analytics')" :active="request()->routeIs('artist.analytics*')">{{ __('Analytics') }}</x-nav-link>
-        <x-nav-link :href="route('knowledge.index')" :active="request()->routeIs('knowledge.*')">{{ __('Knowledge') }}</x-nav-link>
+        <x-nav-link :href="route('knowledge.index')" :active="request()->routeIs('knowledge.*')">{{ __('Knowledges') }}</x-nav-link>
         <x-nav-link :href="route('artist.profile')" :active="request()->routeIs('artist.profile*')">{{ __('Artist Profile') }}</x-nav-link>
         @endif
         @else
@@ -146,7 +146,7 @@
         </x-nav-link>
         <x-nav-link :href="route('knowledge.index')" :active="request()->routeIs('knowledge.*')">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6.25v13m0-13C10.84 5.48 9.35 5 7.75 5H4v12h3.75c1.6 0 3.09.48 4.25 1.25m0-12C13.16 5.48 14.65 5 16.25 5H20v12h-3.75c-1.6 0-3.09.48-4.25 1.25"/></svg>
-            {{ __('Knowledge') }}
+            {{ __('Knowledges') }}
         </x-nav-link>
         @endif
     </div>

@@ -6,6 +6,7 @@ use App\Models\Album;
 use App\Models\AppSetting;
 use App\Models\Artist;
 use App\Models\KnowledgePost;
+use App\Models\MusicStore;
 use App\Models\ReleasePayment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -53,15 +54,41 @@ class KnowledgeAndAddonServicesTest extends TestCase
         $user = User::factory()->create(['role' => 'artist']);
         $artist = Artist::create(['user_id' => $user->id, 'artist_name' => 'Addon Artist']);
         $album = Album::create(['artist_id' => $artist->id, 'title' => 'Addon Album', 'release_type' => 'album', 'status' => 'draft']);
+        $store = MusicStore::create(['name' => 'Addon Store', 'slug' => 'addon-store', 'is_active' => true]);
 
-        $this->actingAs($user)->post(route('artist.catalog.pay', $album), [
-            'method' => 'offline', 'addons' => ['composer_songwriter', 'mechanical'],
-        ])->assertSessionHas('success');
+        $this->actingAs($user)->get(route('artist.catalog.step4', $album))
+            ->assertOk()
+            ->assertSeeText('Royalty Collection Add-on Services')
+            ->assertSeeText('Composer / Songwriter Royalties')
+            ->assertSeeText('Global Performance Royalties')
+            ->assertSeeText('Mechanical Royalties')
+            ->assertSee(route('knowledge.show', KnowledgePost::where('slug', 'mechanical-royalties-streaming-downloads')->firstOrFail()));
+
+        $this->post(route('artist.catalog.store-step4', $album), [
+            'stores' => [$store->id], 'addons' => ['composer_songwriter', 'mechanical'],
+        ])->assertRedirect(route('artist.catalog.checkout', $album));
+        $this->post(route('artist.catalog.pay', $album), ['method' => 'offline'])->assertSessionHas('success');
 
         $payment = ReleasePayment::firstOrFail();
         $this->assertEquals(648, (float) $payment->amount);
         $this->assertSame(['composer_songwriter', 'mechanical'], $payment->addon_services);
         $this->assertSame(['composer_songwriter', 'mechanical'], $album->fresh()->selected_addons);
+    }
+
+    public function test_step_two_requires_composer_lyricist_producer_and_vocals(): void
+    {
+        $user = User::factory()->create(['role' => 'artist']);
+        $artist = Artist::create(['user_id' => $user->id, 'artist_name' => 'Credit Artist']);
+        $album = Album::create(['artist_id' => $artist->id, 'title' => 'Credits', 'release_type' => 'single', 'status' => 'draft']);
+
+        $this->actingAs($user)->from(route('artist.catalog.step2', $album))->post(route('artist.catalog.store-step2', $album), [
+            'tracks' => [[
+                'title' => 'Incomplete Credits',
+                'primary_artists' => [['name' => 'Credit Artist']],
+                'composers' => [['name' => 'A Composer']],
+            ]],
+        ])->assertRedirect(route('artist.catalog.step2', $album))
+            ->assertSessionHasErrors(['tracks.0.lyricist', 'tracks.0.producers', 'tracks.0.vocals', 'tracks.0.lyrics']);
     }
 
     public function test_new_royalty_labels_are_used_everywhere(): void

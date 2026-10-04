@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Album;
 use App\Models\Artist;
 use App\Models\MusicStore;
+use App\Models\KnowledgePost;
 use App\Models\Song;
 use App\Services\ChunkedAudioUpload;
+use App\Services\ReleasePricing;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
@@ -219,19 +221,19 @@ class CatalogController extends Controller
             'tracks.*.composers.*.apple_music_url' => 'nullable|url|max:500',
             'tracks.*.composers.*.youtube_url' => 'nullable|url|max:500',
             'tracks.*.composers.*.tidal_url' => 'nullable|url|max:500',
-            'tracks.*.lyricist' => 'nullable|array',
+            'tracks.*.lyricist' => 'required|array|min:1',
             'tracks.*.lyricist.*.name' => 'required|string|max:500',
             'tracks.*.lyricist.*.spotify_url' => 'nullable|url|max:500',
             'tracks.*.lyricist.*.apple_music_url' => 'nullable|url|max:500',
             'tracks.*.lyricist.*.youtube_url' => 'nullable|url|max:500',
             'tracks.*.lyricist.*.tidal_url' => 'nullable|url|max:500',
-            'tracks.*.producers' => 'nullable|array',
+            'tracks.*.producers' => 'required|array|min:1',
             'tracks.*.producers.*.name' => 'required|string|max:500',
             'tracks.*.producers.*.spotify_url' => 'nullable|url|max:500',
             'tracks.*.producers.*.apple_music_url' => 'nullable|url|max:500',
             'tracks.*.producers.*.youtube_url' => 'nullable|url|max:500',
             'tracks.*.producers.*.tidal_url' => 'nullable|url|max:500',
-            'tracks.*.vocals' => 'nullable|array',
+            'tracks.*.vocals' => 'required|array|min:1',
             'tracks.*.vocals.*.name' => 'required|string|max:500',
             'tracks.*.vocals.*.spotify_url' => 'nullable|url|max:500',
             'tracks.*.vocals.*.apple_music_url' => 'nullable|url|max:500',
@@ -249,7 +251,7 @@ class CatalogController extends Controller
             'tracks.*.audio_file_path' => 'nullable|string|max:500',
             'tracks.*.explicit' => 'boolean',
             'tracks.*.language' => 'nullable|string|max:50',
-            'tracks.*.lyrics' => 'nullable|string',
+            'tracks.*.lyrics' => 'required|string',
             'tracks.*.duration' => 'nullable|integer|min:0',
         ]);
 
@@ -330,12 +332,18 @@ class CatalogController extends Controller
     /**
      * Show Step 4: Store selection.
      */
-    public function step4(Album $album)
+    public function step4(Album $album, ReleasePricing $releasePricing)
     {
         $this->authorizeAlbum($album, true);
         $stores = MusicStore::where('is_active', true)->get();
+        $pricing = $releasePricing->for($album);
+        $addonArticles = KnowledgePost::whereIn('slug', [
+            'composer-songwriter-royalties-composition-share',
+            'global-performance-royalties-public-performance-share',
+            'mechanical-royalties-streaming-downloads',
+        ])->where('is_published', true)->get()->keyBy('slug');
 
-        return view('artist.catalog.create-step-4', compact('album', 'stores'));
+        return view('artist.catalog.create-step-4', compact('album', 'stores', 'pricing', 'addonArticles'));
     }
 
     /**
@@ -348,9 +356,15 @@ class CatalogController extends Controller
         $validated = $request->validate([
             'stores' => 'required|array|min:1',
             'stores.*' => 'exists:music_stores,id',
+            'addons' => 'nullable|array',
+            'addons.*' => 'string|in:composer_songwriter,global_performance,mechanical',
         ]);
 
-        $album->update(['selected_store_ids' => array_values($validated['stores']), 'payment_status' => 'unpaid']);
+        $album->update([
+            'selected_store_ids' => array_values($validated['stores']),
+            'selected_addons' => array_values(array_unique($validated['addons'] ?? [])),
+            'payment_status' => 'unpaid',
+        ]);
 
         return redirect()->route('artist.catalog.checkout', $album)
             ->with('success', 'Stores saved. Complete checkout to submit your release.');

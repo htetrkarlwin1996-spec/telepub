@@ -37,11 +37,8 @@ class ReleaseCheckoutController extends Controller
         $this->authorizeAlbum($album);
         $data = $request->validate([
             'method' => ['required', 'in:stripe,paypal,offline,myanmyanpay'],
-            'addons' => ['nullable', 'array'],
-            'addons.*' => ['string', 'in:composer_songwriter,global_performance,mechanical'],
         ]);
-        $prices = $pricing->totalFor($album, $data['addons'] ?? []);
-        $album->update(['selected_addons' => $prices['selected_addons']]);
+        $prices = $pricing->totalFor($album, $album->selected_addons ?? []);
         $method = $data['method'];
         $currency = match ($method) {
             'offline' => 'THB', 'myanmyanpay' => 'MMK', default => 'USD'

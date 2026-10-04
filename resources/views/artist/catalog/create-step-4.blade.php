@@ -61,7 +61,15 @@
                 </div>
             </div>
 
-            <form method="POST" action="{{ route('artist.catalog.store-step4', $album) }}">
+            @php
+                $selectedAddons = old('addons', $album->selected_addons ?? []);
+                $articleSlugs = [
+                    'composer_songwriter' => 'composer-songwriter-royalties-composition-share',
+                    'global_performance' => 'global-performance-royalties-public-performance-share',
+                    'mechanical' => 'mechanical-royalties-streaming-downloads',
+                ];
+            @endphp
+            <form method="POST" action="{{ route('artist.catalog.store-step4', $album) }}" x-data="{ selected: @js($selectedAddons), base: {{ (float) $pricing['usd'] }}, prices: @js(collect($pricing['addons'])->mapWithKeys(fn ($item, $key) => [$key => $item['price']])), total() { return this.base + this.selected.reduce((sum, key) => sum + Number(this.prices[key] || 0), 0) } }">
                 @csrf
 
                 <!-- Store Selection -->
@@ -69,12 +77,13 @@
                     <label class="block font-extrabold text-sm uppercase mb-4">Select Stores <span class="text-red-500">*</span></label>
                     <p class="text-xs font-bold text-black/50 mb-4">Choose the stores where you want your music to be available.</p>
 
+                    @php($selectedStores = old('stores', $album->selected_store_ids ?? []))
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                         @foreach($stores as $store)
                             <label class="flex items-center gap-3 p-3 border-2 border-black cursor-pointer hover:bg-brand-100 transition-all
-                                {{ in_array($store->id, old('stores', [])) ? 'bg-brand-200' : '' }}">
+                                {{ in_array($store->id, $selectedStores) ? 'bg-brand-200' : '' }}">
                                 <input type="checkbox" name="stores[]" value="{{ $store->id }}"
-                                    {{ in_array($store->id, old('stores', [])) ? 'checked' : '' }}
+                                    {{ in_array($store->id, $selectedStores) ? 'checked' : '' }}
                                     class="w-5 h-5 border-2 border-black rounded-none focus:ring-0 focus:ring-offset-0 flex-shrink-0">
                                 <x-store-logo :store="$store" size="8" />
                                 <span class="font-bold text-sm">{{ $store->name }}</span>
@@ -85,6 +94,26 @@
                     @error('stores')
                         <p class="text-red-600 text-xs font-bold mt-2">{{ $message }}</p>
                     @enderror
+                </div>
+
+                <div class="mt-6 bg-white border-2 border-black shadow-[5px_5px_0_#000] p-6">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div><h2 class="font-black text-lg">Royalty Collection Add-on Services</h2><p class="mt-1 text-xs font-bold text-black/55">Optional — each selected service is charged once for this album.</p></div>
+                        <div class="border-2 border-black bg-brand-500 px-4 py-2 text-right"><div class="text-[10px] font-black uppercase">Step 5 Total</div><div class="text-xl font-black" x-text="'USD ' + total().toFixed(2)"></div></div>
+                    </div>
+                    <div class="mt-5 space-y-3">
+                        @foreach($pricing['addons'] as $key => $addon)
+                            @php($article = $addonArticles->get($articleSlugs[$key]))
+                            <div class="border-2 border-black p-4" :class="selected.includes('{{ $key }}') ? 'bg-brand-500/20' : 'bg-white'">
+                                <label class="flex cursor-pointer items-center justify-between gap-4">
+                                    <span class="flex items-center gap-3"><input type="checkbox" name="addons[]" value="{{ $key }}" x-model="selected" class="h-5 w-5 border-2 border-black text-black focus:ring-brand-500"><span class="font-black">{{ $addon['name'] }}</span></span>
+                                    <span class="whitespace-nowrap font-black">+ USD {{ number_format($addon['price'], 2) }}</span>
+                                </label>
+                                @if($article)<a href="{{ route('knowledge.show', $article) }}" target="_blank" class="mt-2 inline-flex text-xs font-black text-blue-700 underline decoration-2 underline-offset-2">Why should I add this service? Read the guide →</a>@endif
+                            </div>
+                        @endforeach
+                    </div>
+                    <div class="mt-4 flex justify-between border-t-2 border-black pt-4 font-black"><span>Base release price</span><span>USD {{ number_format($pricing['usd'], 2) }}</span></div>
                 </div>
 
                 <!-- Actions -->

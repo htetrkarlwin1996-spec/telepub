@@ -226,10 +226,10 @@
             const personLists = template.querySelectorAll('.person-list');
             personLists.forEach(list => {
                 const entries = list.querySelectorAll('.person-entry');
-                // For primary_artists and composers, keep the first entry only
+                // Keep one entry for every required credit field.
                 const section = list.closest('.credit-section');
                 const field = section ? section.dataset.field : '';
-                if (field === 'primary_artists' || field === 'composers') {
+                if (['primary_artists', 'composers', 'lyricist', 'producers', 'vocals'].includes(field)) {
                     // Keep first entry, remove rest
                     while (entries.length > 1) {
                         entries[entries.length - 1].remove();
