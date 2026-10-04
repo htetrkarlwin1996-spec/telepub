@@ -5,7 +5,14 @@
             @if(session('success'))<div class="mb-6 p-4 bg-emerald-300 border-2 border-black font-bold">{{ session('success') }}</div>@endif
             @if($errors->any())<div class="mb-6 p-4 bg-red-100 border-2 border-black font-bold">{{ $errors->first() }}</div>@endif
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" x-data="{ method: @js(old('method', '')) }">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" x-data="{
+                method: @js(old('method', '')),
+                addons: @js(old('addons', $album->selected_addons ?? [])),
+                base: {{ (float) $pricing['usd'] }},
+                addonPrices: @js(collect($pricing['addons'])->mapWithKeys(fn ($item, $key) => [$key => $item['price']])),
+                totalUsd() { return this.base + this.addons.reduce((sum, key) => sum + Number(this.addonPrices[key] || 0), 0); },
+                money(value, digits = 2) { return Number(value).toLocaleString('en-US', {minimumFractionDigits: digits, maximumFractionDigits: digits}); }
+            }">
                 <div class="lg:col-span-2 space-y-5">
                     <div class="bg-white border-2 border-black shadow-[5px_5px_0_#000] p-6">
                         <h2 class="font-black text-xl">Select Payment Method</h2>
@@ -23,7 +30,20 @@
                     <form x-show="method" x-cloak method="POST" action="{{ route('artist.catalog.pay', $album) }}" data-payment-form class="border-2 border-black bg-white p-6 shadow-[5px_5px_0_#000]">
                         @csrf
                         <input type="hidden" name="method" :value="method">
+                        <div class="mb-6">
+                            <h3 class="text-lg font-black">Optional Royalty Collection Add-ons</h3>
+                            <p class="mt-1 text-sm font-bold text-black/60">Each selected service is charged once for this album.</p>
+                            <div class="mt-4 space-y-3">
+                                @foreach($pricing['addons'] as $key => $addon)
+                                    <label class="flex cursor-pointer items-center justify-between gap-4 border-2 border-black p-4" :class="addons.includes('{{ $key }}') ? 'bg-brand-500/30' : 'bg-white'">
+                                        <span class="flex items-center gap-3"><input type="checkbox" name="addons[]" value="{{ $key }}" x-model="addons" class="border-2 border-black text-black focus:ring-brand-500"><span class="font-black">{{ $addon['name'] }}</span></span>
+                                        <span class="whitespace-nowrap font-black">USD {{ number_format($addon['price'], 2) }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
                         <p class="text-xs font-extrabold uppercase text-black/50">{{ $pricing['is_first'] ? 'First release price' : ucfirst($album->release_type).' release price' }}</p>
+                        <p class="mt-1 text-sm font-bold text-black/60">Base release price: USD {{ number_format($pricing['usd'], 2) }}</p>
                         <h3 class="mt-2 text-xl font-black" x-text="{
                             stripe: 'Stripe / Card',
                             paypal: 'PayPal',
@@ -31,9 +51,9 @@
                             myanmyanpay: 'MyanMyanPay MMQR'
                         }[method]"></h3>
                         <div class="mt-3 text-4xl font-black">
-                            <span x-show="method === 'stripe' || method === 'paypal'">USD {{ number_format($pricing['usd'], 2) }}</span>
-                            <span x-show="method === 'offline'">THB {{ number_format($pricing['thb'], 2) }}</span>
-                            <span x-show="method === 'myanmyanpay'">MMK {{ number_format($pricing['mmk'], 0) }}</span>
+                            <span x-show="method === 'stripe' || method === 'paypal'" x-text="'USD ' + money(totalUsd())"></span>
+                            <span x-show="method === 'offline'" x-text="'THB ' + money(totalUsd() * {{ (float) $pricing['usd_to_thb'] }})"></span>
+                            <span x-show="method === 'myanmyanpay'" x-text="'MMK ' + money(totalUsd() * {{ (float) $pricing['usd_to_mmk'] }}, 0)"></span>
                         </div>
                         <div x-show="method === 'offline'" class="mt-5 border-2 border-black bg-amber-100 p-4">
                             <h4 class="font-black">Thai Bank Instructions</h4>
@@ -44,7 +64,7 @@
                 </div>
                 <aside class="space-y-5">
                     @if($qrImage)<button type="button" data-open-mmqr class="w-full bg-emerald-100 border-2 border-black shadow-[4px_4px_0_#000] p-5 text-left"><span class="block font-black text-lg">MMQR Payment Pending</span><span class="block mt-2 text-sm font-bold text-black/60">Open QR code to complete payment</span></button>@endif
-                    @if($payments->isNotEmpty())<div class="bg-white border-2 border-black p-5"><h3 class="font-black">Payment History</h3>@foreach($payments as $payment)<div class="py-3 border-b border-black/10"><div class="flex justify-between font-bold"><span>{{ ucfirst($payment->provider) }}</span><span>{{ strtoupper($payment->status) }}</span></div><div class="text-xs font-semibold text-black/50">{{ $payment->currency }} {{ number_format($payment->amount, 2) }} · {{ $payment->reference }}</div>@if($payment->provider === 'myanmyanpay' && in_array($payment->status, ['pending', 'expired', 'failed'], true))<a href="{{ route('artist.release-payments.status', $payment) }}" class="mt-2 inline-flex border border-black bg-amber-100 px-2 py-1 text-[10px] font-black uppercase">Check Status</a>@endif</div>@endforeach</div>@endif
+                    @if($payments->isNotEmpty())<div class="bg-white border-2 border-black p-5"><h3 class="font-black">Payment History</h3>@foreach($payments as $payment)<div class="py-3 border-b border-black/10"><div class="flex justify-between font-bold"><span>{{ ucfirst($payment->provider) }}</span><span>{{ strtoupper($payment->status) }}</span></div><div class="text-xs font-semibold text-black/50">{{ $payment->currency }} {{ number_format($payment->amount, 2) }} · {{ $payment->reference }}</div>@if(filled($payment->addon_services))<div class="mt-1 text-[10px] font-black uppercase text-black/50">Add-ons: {{ collect($payment->addon_services)->map(fn ($key) => data_get($pricing, 'addons.'.$key.'.name', $key))->join(', ') }}</div>@endif @if($payment->provider === 'myanmyanpay' && in_array($payment->status, ['pending', 'expired', 'failed'], true))<a href="{{ route('artist.release-payments.status', $payment) }}" class="mt-2 inline-flex border border-black bg-amber-100 px-2 py-1 text-[10px] font-black uppercase">Check Status</a>@endif</div>@endforeach</div>@endif
                 </aside>
             </div>
             <a href="{{ route('artist.catalog.step4', $album) }}" class="inline-block mt-8 px-5 py-3 bg-white border-2 border-black font-black">← Back to Stores</a>

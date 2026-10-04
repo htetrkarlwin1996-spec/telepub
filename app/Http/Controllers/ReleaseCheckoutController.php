@@ -35,20 +35,25 @@ class ReleaseCheckoutController extends Controller
     public function pay(Request $request, Album $album, ReleasePricing $pricing, MyanMyanPayService $mmpay)
     {
         $this->authorizeAlbum($album);
-        $data = $request->validate(['method' => ['required', 'in:stripe,paypal,offline,myanmyanpay']]);
-        $prices = $pricing->for($album);
+        $data = $request->validate([
+            'method' => ['required', 'in:stripe,paypal,offline,myanmyanpay'],
+            'addons' => ['nullable', 'array'],
+            'addons.*' => ['string', 'in:composer_songwriter,global_performance,mechanical'],
+        ]);
+        $prices = $pricing->totalFor($album, $data['addons'] ?? []);
+        $album->update(['selected_addons' => $prices['selected_addons']]);
         $method = $data['method'];
         $currency = match ($method) {
             'offline' => 'THB', 'myanmyanpay' => 'MMK', default => 'USD'
         };
         $amount = match ($method) {
-            'offline' => $prices['thb'], 'myanmyanpay' => $prices['mmk'], default => $prices['usd']
+            'offline' => $prices['total_thb'], 'myanmyanpay' => $prices['total_mmk'], default => $prices['total_usd']
         };
         if ($method === 'myanmyanpay') {
             return Cache::lock('mmqr-payment-album-'.$album->id, 30)->block(10, fn () => $this->myanmyanpay($request, $album, (float) $amount, $mmpay));
         }
         $reference = 'REL-'.strtoupper(substr($method, 0, 3)).'-'.now()->format('YmdHis').'-'.Str::upper(Str::random(6));
-        $payment = ReleasePayment::create(['album_id' => $album->id, 'user_id' => $request->user()->id, 'provider' => $method, 'amount' => $amount, 'currency' => $currency, 'reference' => $reference]);
+        $payment = ReleasePayment::create(['album_id' => $album->id, 'user_id' => $request->user()->id, 'provider' => $method, 'amount' => $amount, 'currency' => $currency, 'reference' => $reference, 'addon_services' => $prices['selected_addons']]);
         $album->update(['payment_status' => 'pending']);
 
         try {
@@ -80,6 +85,11 @@ class ReleaseCheckoutController extends Controller
                 ->orWhere(fn ($legacy) => $legacy->whereNull('expires_at')->where('created_at', '>', now()->subMinutes(15))))
             ->latest()->first();
         if ($existing) {
+            if (array_values($existing->addon_services ?? []) !== array_values($album->selected_addons ?? [])) {
+                return redirect()->route('artist.catalog.checkout', $album)
+                    ->withErrors(['payment' => 'Your active MMQR order has a different total. Cancel it before changing add-on services.'])
+                    ->with('open_mmqr', true);
+            }
             return redirect()->route('artist.catalog.checkout', $album)
                 ->with('success', 'Your existing MMQR order is still active and has been reopened.')
                 ->with('open_mmqr', true);
@@ -90,7 +100,7 @@ class ReleaseCheckoutController extends Controller
         $payment = ReleasePayment::create([
             'album_id' => $album->id, 'user_id' => $request->user()->id,
             'provider' => 'myanmyanpay', 'amount' => $amount, 'currency' => 'MMK',
-            'reference' => $reference, 'expires_at' => now()->addMinutes(15),
+            'reference' => $reference, 'addon_services' => $album->selected_addons ?? [], 'expires_at' => now()->addMinutes(15),
         ]);
         $album->update(['payment_status' => 'pending']);
 

@@ -19,11 +19,11 @@
                         <div class="text-3xl font-black text-black mt-1">{{ money($balanceBreakdown['royalties']) }}</div>
                     </div>
                     <div>
-                        <div class="text-xs font-extrabold uppercase tracking-wider text-black/60">Publishing Rights</div>
+                        <div class="text-xs font-extrabold uppercase tracking-wider text-black/60">Global Performance Royalties</div>
                         <div class="text-3xl font-black text-black mt-1">{{ money($balanceBreakdown['publishing_rights']) }}</div>
                     </div>
                     <div>
-                        <div class="text-xs font-extrabold uppercase tracking-wider text-black/60">Composer Rights</div>
+                        <div class="text-xs font-extrabold uppercase tracking-wider text-black/60">Composer / Songwriter Royalties</div>
                         <div class="text-3xl font-black text-black mt-1">{{ money($balanceBreakdown['composer_rights']) }}</div>
                     </div>
                     <div>

@@ -118,6 +118,13 @@
                         @foreach(['release_price_first_usd'=>'First Release (USD)','release_price_single_usd'=>'Single (USD)','release_price_ep_usd'=>'EP (USD)','release_price_album_usd'=>'Album (USD)'] as $key=>$label)
                             <label class="text-xs font-black uppercase">{{ $label }}<input type="number" step="0.01" min="0" name="{{ $key }}" value="{{ old($key, $releasePricing[str_replace(['release_price_','_usd'], '', $key)]) }}" class="mt-1 block w-full border-2 border-black px-3 py-2.5 font-black"></label>
                         @endforeach
+                        @foreach([
+                            'addon_composer_songwriter_usd'=>['Composer / Songwriter Add-on (per album, USD)', 'composer_songwriter'],
+                            'addon_global_performance_usd'=>['Global Performance Add-on (per album, USD)', 'global_performance'],
+                            'addon_mechanical_usd'=>['Mechanical Add-on (per album, USD)', 'mechanical'],
+                        ] as $key=>$definition)
+                            <label class="text-xs font-black uppercase">{{ $definition[0] }}<input type="number" step="0.01" min="0" name="{{ $key }}" value="{{ old($key, $releasePricing['addons'][$definition[1]]['price']) }}" class="mt-1 block w-full border-2 border-black px-3 py-2.5 font-black"></label>
+                        @endforeach
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <label class="text-xs font-black uppercase">1 USD to THB<input type="number" step="0.0001" name="usd_to_thb_rate" value="{{ old('usd_to_thb_rate', $releasePricing['usd_to_thb']) }}" class="mt-1 block w-full border-2 border-black px-3 py-2.5 font-black"></label>

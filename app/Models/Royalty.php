@@ -13,8 +13,8 @@ class Royalty extends Model
 
     public const TYPES = [
         'royalties' => 'Royalties',
-        'publishing_rights' => 'Publishing Rights',
-        'composer_rights' => 'Composer Rights',
+        'publishing_rights' => 'Global Performance Royalties',
+        'composer_rights' => 'Composer / Songwriter Royalties',
         'mechanical_royalties' => 'Mechanical Royalties',
     ];
 

@@ -112,6 +112,9 @@ class AdminSettingsController extends Controller
             'usd_to_thb_rate' => ['required', 'numeric', 'min:0.0001'],
             'usd_to_mmk_rate' => ['required', 'numeric', 'min:0.0001'],
             'offline_bank_instructions' => ['required', 'string', 'max:5000'],
+            'addon_composer_songwriter_usd' => ['required', 'numeric', 'min:0', 'max:9999'],
+            'addon_global_performance_usd' => ['required', 'numeric', 'min:0', 'max:9999'],
+            'addon_mechanical_usd' => ['required', 'numeric', 'min:0', 'max:9999'],
         ]);
 
         foreach ($validated as $key => $value) {

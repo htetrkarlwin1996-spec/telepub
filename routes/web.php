@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminBulkReleaseController;
 use App\Http\Controllers\AdminCatalogController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminMaintenanceController;
+use App\Http\Controllers\AdminKnowledgeController;
 use App\Http\Controllers\AdminMasterAccountController;
 use App\Http\Controllers\AdminNotificationController;
 use App\Http\Controllers\AdminSettingsController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DistributionController;
 use App\Http\Controllers\ImpersonationController;
+use App\Http\Controllers\KnowledgeController;
 use App\Http\Controllers\MasterAccountController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReleaseCheckoutController;
@@ -43,6 +45,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::get('/support', [SupportMessageController::class, 'create'])->name('support.create');
     Route::post('/support', [SupportMessageController::class, 'store'])->middleware('throttle:5,10')->name('support.store');
+    Route::get('/knowledge', [KnowledgeController::class, 'index'])->name('knowledge.index');
+    Route::get('/knowledge/{knowledgePost}', [KnowledgeController::class, 'show'])->name('knowledge.show');
 
     // Artist Setup (no artist middleware — redirects here if no artist profile)
     Route::get('/artist/setup', [ArtistController::class, 'setup'])->name('artist.setup');
@@ -147,6 +151,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/settings/release-pricing', [AdminSettingsController::class, 'updateReleasePricing'])->name('settings.release-pricing');
         Route::put('/settings/withdrawal-fee', [AdminSettingsController::class, 'updateWithdrawalFee'])->name('settings.withdrawal-fee');
         Route::put('/settings/login-announcement', [AdminSettingsController::class, 'updateLoginAnnouncement'])->name('settings.login-announcement');
+        Route::resource('knowledge', AdminKnowledgeController::class)->except('show')->parameters(['knowledge' => 'knowledgePost']);
         Route::resource('master-accounts', AdminMasterAccountController::class)->except(['show', 'destroy']);
         Route::get('/revenue-splits', [RevenueSplitController::class, 'adminIndex'])->name('revenue-splits.index');
         Route::post('/revenue-splits/{changeRequest}/approve', [RevenueSplitController::class, 'approve'])->name('revenue-splits.approve');
