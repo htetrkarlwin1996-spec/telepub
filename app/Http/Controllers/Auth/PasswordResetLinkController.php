@@ -27,9 +27,7 @@ class PasswordResetLinkController extends Controller
         $user = User::where('email', $request->email)->first();
 
         if (! $user) {
-            return back()
-                ->withInput($request->only('email'))
-                ->withErrors(['email' => __('We could not find a user with that email address.')]);
+            return back()->with('status', 'If an account exists for that email, an OTP code has been sent.');
         }
 
         // Invalidate old unused OTPs

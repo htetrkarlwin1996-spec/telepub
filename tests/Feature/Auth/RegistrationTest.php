@@ -33,7 +33,7 @@ class RegistrationTest extends TestCase
             'password_confirmation' => 'password',
         ]);
 
-        $this->assertAuthenticated();
+        $this->assertGuest();
         $response->assertRedirect(route('otp.verify', absolute: false));
 
         $user = User::where('email', 'test@example.com')->firstOrFail();
@@ -47,6 +47,7 @@ class RegistrationTest extends TestCase
             ->assertRedirect(route('dashboard', absolute: false));
 
         $this->assertTrue($user->fresh()->hasVerifiedEmail());
+        $this->assertAuthenticatedAs($user->fresh());
 
         $this->actingAs($user->fresh())->get('/dashboard')
             ->assertRedirect(route('artist.setup', absolute: false));

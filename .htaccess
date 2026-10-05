@@ -1,4 +1,12 @@
 
+# Block secrets, logs, source-control metadata, and deployment archives when
+# cPanel is accidentally configured to serve the project root.
+<IfModule mod_authz_core.c>
+  <FilesMatch "(^\.|\.env|\.log$|\.zip$|\.sql$|composer\.(json|lock)$|package(-lock)?\.json$|artisan$)">
+    Require all denied
+  </FilesMatch>
+</IfModule>
+
 # BEGIN cPanel-generated php ini directives, do not edit
 # Manual editing of this file may result in unexpected behavior.
 # To make changes to this file, use the cPanel MultiPHP INI Editor (Home >> Software >> MultiPHP INI Editor)

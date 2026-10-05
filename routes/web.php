@@ -34,12 +34,12 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
-Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('auth')->name('dashboard');
+Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::post('/webhooks/stripe/releases', [ReleaseCheckoutController::class, 'stripeWebhook'])->name('webhooks.stripe');
 Route::post('/webhooks/myanmyanpay/releases', [ReleaseCheckoutController::class, 'myanWebhook'])->name('webhooks.myanmyanpay');
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

@@ -40,12 +40,15 @@ Route::middleware('guest')->group(function () {
 Route::get('verify-otp', [OtpVerificationController::class, 'create'])
     ->name('otp.verify');
 Route::post('verify-otp', [OtpVerificationController::class, 'store'])
+    ->middleware('throttle:5,1')
     ->name('otp.verify.post');
 Route::post('resend-otp', [OtpVerificationController::class, 'resend'])
+    ->middleware('throttle:3,10')
     ->name('otp.resend');
 Route::get('reset-password-otp', [OtpVerificationController::class, 'showResetForm'])
     ->name('password.reset.otp');
 Route::post('reset-password-otp', [OtpVerificationController::class, 'updatePassword'])
+    ->middleware('throttle:5,1')
     ->name('password.update.otp');
 
 Route::middleware('auth')->group(function () {

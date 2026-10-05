@@ -10,6 +10,7 @@ use App\Services\UserNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -59,6 +60,8 @@ class OtpVerificationController extends Controller
             $user = User::where('email', $email)->first();
             if ($user) {
                 $user->markEmailAsVerified();
+                Auth::login($user);
+                $request->session()->regenerate();
             }
             $request->session()->forget(['otp_email', 'otp_type']);
 

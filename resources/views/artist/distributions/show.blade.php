@@ -18,7 +18,13 @@
                         @endif">{{ ucfirst($distribution->status) }}</span></dd></div>
                     <div class="flex justify-between py-2 border-b border-black/10"><dt class="font-bold text-black/60">Fee:</dt><dd class="font-bold text-black">{{ money($distribution->distribution_fee) }}</dd></div>
                     <div class="flex justify-between py-2 border-b border-black/10"><dt class="font-bold text-black/60">Submitted:</dt><dd class="font-semibold text-black/70">{{ $distribution->submitted_at ? $distribution->submitted_at->format('Y-m-d H:i') : '-' }}</dd></div>
-                    <div class="flex justify-between py-2 border-b border-black/10"><dt class="font-bold text-black/60">Store URL:</dt><dd>{!! $distribution->store_url ? '<a href="'.$distribution->store_url.'" target="_blank" class="font-extrabold text-black underline decoration-brand-500 decoration-2 underline-offset-2 hover:decoration-black">View on Store →</a>' : '<span class="font-semibold text-black/40">-</span>' !!}</dd></div>
+                    <div class="flex justify-between py-2 border-b border-black/10"><dt class="font-bold text-black/60">Store URL:</dt><dd>
+                        @if($distribution->store_url && in_array(parse_url($distribution->store_url, PHP_URL_SCHEME), ['http', 'https'], true))
+                            <a href="{{ $distribution->store_url }}" target="_blank" rel="noopener noreferrer" class="font-extrabold text-black underline decoration-brand-500 decoration-2 underline-offset-2 hover:decoration-black">View on Store →</a>
+                        @else
+                            <span class="font-semibold text-black/40">-</span>
+                        @endif
+                    </dd></div>
                 </dl>
             </div>
         </div>

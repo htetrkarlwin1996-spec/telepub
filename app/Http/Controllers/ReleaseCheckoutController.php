@@ -68,7 +68,7 @@ class ReleaseCheckoutController extends Controller
             report($e);
             $payment->update(['status' => 'failed', 'gateway_response' => ['error' => $e->getMessage()]]);
 
-            return back()->withErrors(['payment' => 'Payment could not be started: '.$e->getMessage()]);
+            return back()->withErrors(['payment' => 'Payment could not be started. Please try again or contact support.']);
         }
     }
 

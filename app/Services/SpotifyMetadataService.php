@@ -92,8 +92,14 @@ class SpotifyMetadataService
             return null;
         }
 
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        $allowedHosts = ['i.scdn.co', 'mosaic.scdn.co', 'image-cdn-ak.spotifycdn.com', 'seeded-session-images.scdn.co'];
+        if (! in_array($host, $allowedHosts, true)) {
+            return null;
+        }
+
         try {
-            $response = Http::timeout(20)->get($url);
+            $response = Http::timeout(20)->withoutRedirecting()->get($url);
             if ($response->failed()) {
                 return null;
             }

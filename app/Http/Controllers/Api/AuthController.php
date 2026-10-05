@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Otp;
+use App\Notifications\SendOtp;
 use App\Services\AdminNotifier;
 use App\Services\UserNotifier;
 use Illuminate\Http\JsonResponse;
@@ -34,16 +36,45 @@ class AuthController extends Controller
             'role' => 'artist',
         ]);
 
-        $token = $user->createToken('api-token')->plainTextToken;
+        $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        Otp::create([
+            'email' => $user->email,
+            'otp' => $otp,
+            'type' => 'registration',
+            'expires_at' => now()->addMinutes(10),
+        ]);
+        $user->notify(new SendOtp($otp, 'registration'));
         $notifier->activity('user_registered', 'New API user registered', $user->name.' created a TeleMusic account through the API.', route('admin.artists'), [
             'Name' => $user->name, 'Email' => $user->email, 'Role' => ucfirst($user->role),
         ]);
 
         return response()->json([
             'data' => $user->load('artist'),
-            'token' => $token,
-            'message' => 'Registration successful.',
-        ], 201);
+            'message' => 'Registration successful. Verify the OTP sent to your email before signing in.',
+        ], 202);
+    }
+
+    public function verifyRegistrationOtp(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required|string|size:6',
+        ]);
+        $record = Otp::where('email', $validated['email'])->where('type', 'registration')
+            ->where('otp', $validated['otp'])->latest()->first();
+        if (! $record || ! $record->isValid()) {
+            throw ValidationException::withMessages(['otp' => ['The OTP code is invalid or has expired.']]);
+        }
+        $user = User::where('email', $validated['email'])->firstOrFail();
+        $record->markAsUsed();
+        $user->markEmailAsVerified();
+        $user->tokens()->delete();
+
+        return response()->json([
+            'data' => $user->load('artist'),
+            'token' => $user->createToken('api-token')->plainTextToken,
+            'message' => 'Email verified successfully.',
+        ]);
     }
 
     /**
@@ -66,6 +97,10 @@ class AuthController extends Controller
 
         if (! $user->is_active) {
             return response()->json(['message' => 'Account is deactivated.'], 403);
+        }
+
+        if (! $user->hasVerifiedEmail()) {
+            return response()->json(['message' => 'Verify your email before signing in.'], 403);
         }
 
         // Revoke old tokens

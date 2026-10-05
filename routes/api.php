@@ -22,12 +22,13 @@ use Illuminate\Support\Facades\Route;
 
 // ===== PUBLIC AUTH ROUTES (rate limited) =====
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,60');
+Route::post('/verify-otp', [AuthController::class, 'verifyRegistrationOtp'])->middleware('throttle:5,1');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,60');
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:3,60');
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:5,60');
 
 // ===== AUTHENTICATED USER ROUTES =====
-Route::middleware(['auth:sanctum', 'throttle:120,60'])->group(function () {
+Route::middleware(['auth:sanctum', 'verified', 'throttle:120,60'])->group(function () {
 
     // --- Auth ---
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -37,33 +38,33 @@ Route::middleware(['auth:sanctum', 'throttle:120,60'])->group(function () {
     // --- Artist Profile ---
     Route::prefix('artist')->group(function () {
         Route::get('/profile', [ArtistController::class, 'profile']);
-        Route::put('/profile', [ArtistController::class, 'updateProfile']);
-        Route::post('/setup', [ArtistController::class, 'setup']);
+        Route::put('/profile', [ArtistController::class, 'updateProfile'])->middleware('artist.manage');
+        Route::post('/setup', [ArtistController::class, 'setup'])->middleware('artist.manage');
     });
 
     // --- Artist Releases / Catalog ---
     Route::prefix('artist/releases')->group(function () {
         Route::get('/', [ReleaseController::class, 'index']);
         Route::get('/collaborations', [ReleaseController::class, 'collaborations']);
-        Route::post('/', [ReleaseController::class, 'store']);
+        Route::post('/', [ReleaseController::class, 'store'])->middleware('artist.manage');
         Route::get('{album}', [ReleaseController::class, 'show']);
-        Route::put('{album}', [ReleaseController::class, 'update']);
-        Route::delete('{album}', [ReleaseController::class, 'destroy']);
-        Route::post('{album}/submit', [ReleaseController::class, 'submit']);
+        Route::put('{album}', [ReleaseController::class, 'update'])->middleware('artist.manage');
+        Route::delete('{album}', [ReleaseController::class, 'destroy'])->middleware('artist.manage');
+        Route::post('{album}/submit', [ReleaseController::class, 'submit'])->middleware('artist.manage');
 
         // Tracks nested under releases
         Route::get('{album}/tracks', [TrackController::class, 'index']);
-        Route::post('{album}/tracks', [TrackController::class, 'batchSave']);
+        Route::post('{album}/tracks', [TrackController::class, 'batchSave'])->middleware('artist.manage');
 
         // Pricing & Stores
-        Route::put('{album}/pricing', [ReleaseController::class, 'updatePricing']);
-        Route::post('{album}/stores', [ReleaseController::class, 'selectStores']);
+        Route::put('{album}/pricing', [ReleaseController::class, 'updatePricing'])->middleware('artist.manage');
+        Route::post('{album}/stores', [ReleaseController::class, 'selectStores'])->middleware('artist.manage');
     });
 
     // --- Tracks (standalone) ---
     Route::prefix('artist/tracks')->group(function () {
-        Route::delete('{song}', [TrackController::class, 'destroy']);
-        Route::post('upload-audio', [TrackController::class, 'uploadAudio']);
+        Route::delete('{song}', [TrackController::class, 'destroy'])->middleware('artist.manage');
+        Route::post('upload-audio', [TrackController::class, 'uploadAudio'])->middleware('artist.manage');
     });
 
     // --- Stores (public for authenticated) ---
@@ -79,7 +80,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,60'])->group(function () {
     // --- Artist Withdrawals ---
     Route::prefix('artist/withdrawals')->group(function () {
         Route::get('/', [WithdrawalController::class, 'index']);
-        Route::post('/', [WithdrawalController::class, 'store']);
+        Route::post('/', [WithdrawalController::class, 'store'])->middleware('artist.manage');
     });
 
     // --- Artist Analytics ---

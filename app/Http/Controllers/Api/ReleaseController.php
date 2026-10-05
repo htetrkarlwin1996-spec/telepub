@@ -6,8 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Album;
 use App\Models\Artist;
 use App\Services\AdminNotifier;
-use App\Services\RevenueSplitService;
-use App\Services\UserNotifier;
+use App\Services\ReleaseSubmission;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -92,6 +91,7 @@ class ReleaseController extends Controller
             'collaborators.*.id' => 'required|exists:artists,id',
             'collaborators.*.share_percentage' => 'required|numeric|min:1|max:99',
         ]);
+        $this->validateCollaborators($validated['collaborators'] ?? [], $artist->id);
 
         $album = DB::transaction(function () use ($artist, $validated) {
             $album = $artist->albums()->create([
@@ -144,7 +144,7 @@ class ReleaseController extends Controller
      */
     public function update(Request $request, Album $album): JsonResponse
     {
-        $this->authorizeAccess($album);
+        $this->authorizeManage($album);
 
         if ($album->status !== 'draft') {
             return response()->json(['message' => 'Only draft releases can be edited.'], 422);
@@ -163,6 +163,9 @@ class ReleaseController extends Controller
             'collaborators.*.id' => 'required|exists:artists,id',
             'collaborators.*.share_percentage' => 'required|numeric|min:1|max:99',
         ]);
+        if (array_key_exists('collaborators', $validated)) {
+            $this->validateCollaborators($validated['collaborators'] ?? [], $album->artist_id);
+        }
 
         DB::transaction(function () use ($album, $validated) {
             $album->update($validated);
@@ -190,7 +193,7 @@ class ReleaseController extends Controller
      */
     public function destroy(Album $album): JsonResponse
     {
-        $this->authorizeAccess($album);
+        $this->authorizeManage($album);
 
         if ($album->status !== 'draft') {
             return response()->json(['message' => 'Only draft releases can be deleted.'], 422);
@@ -206,9 +209,9 @@ class ReleaseController extends Controller
     /**
      * Submit release for approval.
      */
-    public function submit(Album $album, AdminNotifier $notifier, UserNotifier $userNotifier, RevenueSplitService $splits): JsonResponse
+    public function submit(Album $album, ReleaseSubmission $submission): JsonResponse
     {
-        $this->authorizeAccess($album);
+        $this->authorizeManage($album);
 
         if ($album->status !== 'draft') {
             return response()->json(['message' => 'Release already submitted.'], 422);
@@ -219,22 +222,16 @@ class ReleaseController extends Controller
             return response()->json(['message' => 'Add at least one track before submitting.'], 422);
         }
 
-        if ($album->distributions()->count() === 0) {
+        if (empty($album->selected_store_ids) && $album->distributions()->count() === 0) {
             return response()->json(['message' => 'Select at least one store before submitting.'], 422);
         }
 
-        $album->update([
-            'status' => 'submitted',
-            'notes' => request('notes'),
-        ]);
-        if (! $album->splitsAreLocked()) {
-            $splits->lock($album, request()->user());
+        if ($album->payment_status !== 'paid') {
+            return response()->json(['message' => 'Payment must be completed before submitting this release.'], 422);
         }
-        $notifier->releaseSubmitted($album->fresh());
-        $userNotifier->releaseSubmitted($album->fresh());
-        if ($album->collaboratingArtists()->exists()) {
-            $userNotifier->splitChanged($album->fresh(), 'confirmed');
-        }
+
+        $album->update(['notes' => request('notes')]);
+        $submission->finalize($album);
 
         return response()->json([
             'data' => $album->fresh()->load('artist', 'songs', 'stores'),
@@ -247,7 +244,11 @@ class ReleaseController extends Controller
      */
     public function updatePricing(Request $request, Album $album): JsonResponse
     {
-        $this->authorizeAccess($album);
+        $this->authorizeManage($album);
+
+        if ($album->status !== 'draft') {
+            return response()->json(['message' => 'Only draft releases can be edited.'], 422);
+        }
 
         $validated = $request->validate([
             'price' => 'nullable|numeric|min:0',
@@ -268,7 +269,11 @@ class ReleaseController extends Controller
      */
     public function selectStores(Request $request, Album $album): JsonResponse
     {
-        $this->authorizeAccess($album);
+        $this->authorizeManage($album);
+
+        if ($album->status !== 'draft') {
+            return response()->json(['message' => 'Only draft releases can be edited.'], 422);
+        }
 
         $validated = $request->validate([
             'store_ids' => 'required|array',
@@ -331,5 +336,32 @@ class ReleaseController extends Controller
         if (! $isOwner && ! $isCollab) {
             abort(403, 'Unauthorized.');
         }
+    }
+
+    private function authorizeManage(Album $album): void
+    {
+        $user = request()->user();
+        if ($user->isAdmin()) {
+            return;
+        }
+
+        $artist = $user->artist;
+        $hasFullAccess = $artist && ! $artist->masterAccounts()
+            ->wherePivot('status', 'active')
+            ->wherePivot('access_level', 'report_only')
+            ->exists();
+
+        abort_unless($artist && $album->artist_id === $artist->id && $hasFullAccess, 403, 'Only the release owner with full access may make changes.');
+    }
+
+    private function validateCollaborators(array $collaborators, int $ownerArtistId): void
+    {
+        $ids = array_map(fn (array $item) => (int) $item['id'], $collaborators);
+        if (in_array($ownerArtistId, $ids, true) || count($ids) !== count(array_unique($ids))) {
+            abort(422, 'Collaborators must be unique and cannot include the release owner.');
+        }
+
+        $total = array_sum(array_map(fn (array $item) => (float) $item['share_percentage'], $collaborators));
+        abort_if($total > 100, 422, 'Collaborator shares cannot exceed 100%.');
     }
 }

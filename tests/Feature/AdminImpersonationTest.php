@@ -76,7 +76,7 @@ class AdminImpersonationTest extends TestCase
             ->assertRedirect(route('dashboard'));
 
         $this->assertAuthenticatedAs($legacyUser);
-        $this->get('/dashboard')->assertOk()->assertSee('Legacy Artist');
-        $this->get('/artist/catalog')->assertOk();
+        $this->get('/dashboard')->assertRedirect(route('verification.notice'));
+        $this->get('/artist/catalog')->assertRedirect(route('verification.notice'));
     }
 }

@@ -9,7 +9,6 @@ use App\Notifications\SendOtp;
 use App\Services\AdminNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
@@ -34,8 +33,6 @@ class RegisteredUserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
-
-        Auth::login($user);
 
         // Generate OTP for email verification
         $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);

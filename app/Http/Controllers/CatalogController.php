@@ -290,6 +290,12 @@ class CatalogController extends Controller
 
             // Handle audio file - AJAX upload path takes priority, then direct upload
             if (isset($trackData['audio_file_path']) && ! empty($trackData['audio_file_path'])) {
+                $allowedPaths = (array) $request->session()->get('release_audio_paths', []);
+                if (! in_array($trackData['audio_file_path'], $allowedPaths, true)) {
+                    throw ValidationException::withMessages([
+                        "tracks.{$index}.audio_file_path" => 'This audio upload does not belong to your session. Upload the file again.',
+                    ]);
+                }
                 $songData['audio_file'] = $trackData['audio_file_path'];
             } elseif (isset($trackData['audio_file']) && $trackData['audio_file'] instanceof UploadedFile) {
                 $songData['audio_file'] = $trackData['audio_file']->store('tracks', 'public');
@@ -503,7 +509,14 @@ class CatalogController extends Controller
     public function uploadAudio(Request $request, ChunkedAudioUpload $uploader)
     {
         try {
-            return response()->json($uploader->handle($request));
+            $result = $uploader->handle($request);
+            if (($result['complete'] ?? false) && filled($result['path'] ?? null)) {
+                $paths = (array) $request->session()->get('release_audio_paths', []);
+                $paths[] = $result['path'];
+                $request->session()->put('release_audio_paths', array_values(array_unique($paths)));
+            }
+
+            return response()->json($result);
         } catch (\Throwable $exception) {
             Log::channel('audio_upload')->error('Artist audio upload request failed.', [
                 'user_id' => $request->user()?->id,

@@ -7,6 +7,7 @@ use App\Models\Album;
 use App\Models\Song;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class TrackController extends Controller
 {
@@ -27,7 +28,7 @@ class TrackController extends Controller
      */
     public function batchSave(Request $request, Album $album): JsonResponse
     {
-        $this->authorizeAccess($album);
+        $this->authorizeManage($album);
 
         if ($album->status !== 'draft') {
             return response()->json(['message' => 'Only draft releases can be edited.'], 422);
@@ -35,7 +36,7 @@ class TrackController extends Controller
 
         $validated = $request->validate([
             'tracks'                    => 'required|array|min:1',
-            'tracks.*.id'               => 'nullable|exists:songs,id',
+            'tracks.*.id'               => ['nullable', Rule::exists('songs', 'id')->where('album_id', $album->id)],
             'tracks.*.title'            => 'required|string|max:255',
             'tracks.*.version'          => 'nullable|string|max:255',
             'tracks.*.track_number'     => 'required|integer|min:1',
@@ -68,7 +69,7 @@ class TrackController extends Controller
             }
 
             if (! empty($trackData['id'])) {
-                $song = Song::findOrFail($trackData['id']);
+                $song = $album->songs()->findOrFail($trackData['id']);
                 $song->update($trackData);
                 $submittedIds[] = $song->id;
             } else {
@@ -102,7 +103,7 @@ class TrackController extends Controller
             return response()->json(['message' => 'Only draft releases can be edited.'], 422);
         }
 
-        $this->authorizeAccess($album);
+        $this->authorizeManage($album);
 
         $song->delete();
 
@@ -121,7 +122,11 @@ class TrackController extends Controller
 
         $song = Song::findOrFail($request->song_id);
         $album = $song->album;
-        $this->authorizeAccess($album);
+        $this->authorizeManage($album);
+
+        if ($album->status !== 'draft') {
+            return response()->json(['message' => 'Only draft releases can be edited.'], 422);
+        }
 
         $path = $request->file('audio_file')->store('audio', 'public');
 
@@ -155,5 +160,21 @@ class TrackController extends Controller
         if (! $isOwner && ! $isCollab) {
             abort(403, 'Unauthorized.');
         }
+    }
+
+    private function authorizeManage(Album $album): void
+    {
+        $user = request()->user();
+        if ($user->isAdmin()) {
+            return;
+        }
+
+        $artist = $user->artist;
+        $hasFullAccess = $artist && ! $artist->masterAccounts()
+            ->wherePivot('status', 'active')
+            ->wherePivot('access_level', 'report_only')
+            ->exists();
+
+        abort_unless($artist && $album->artist_id === $artist->id && $hasFullAccess, 403, 'Only the release owner with full access may make changes.');
     }
 }
