@@ -69,6 +69,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/artist/catalog', [CatalogController::class, 'index'])->name('artist.catalog.index');
         Route::get('/artist/catalog/create', [CatalogController::class, 'create'])->middleware('artist.manage')->name('artist.catalog.create');
         Route::post('/artist/catalog/step1', [CatalogController::class, 'storeStep1'])->middleware('artist.manage')->name('artist.catalog.store-step1');
+        Route::post('/artist/catalog/upload-cover-art', [CatalogController::class, 'uploadCoverArt'])->middleware(['artist.manage', 'throttle:20,1'])->name('artist.catalog.upload-cover-art');
 
         // Step 2 — Tracks
         Route::get('/artist/catalog/{album}/step2', [CatalogController::class, 'step2'])->middleware('artist.manage')->name('artist.catalog.step2');

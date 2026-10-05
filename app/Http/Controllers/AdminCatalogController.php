@@ -266,7 +266,7 @@ class AdminCatalogController extends Controller
             'tracks.*.audio_file_path' => 'nullable|string|max:500',
             'tracks.*.explicit' => 'boolean',
             'tracks.*.language' => 'nullable|string|max:50',
-            'tracks.*.lyrics' => 'required|string',
+            'tracks.*.lyrics' => 'nullable|string',
             'tracks.*.duration' => 'nullable|integer|min:0',
         ]);
 

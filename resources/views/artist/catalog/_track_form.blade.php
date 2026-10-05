@@ -386,8 +386,8 @@
 
 <!-- Lyrics -->
 <div class="mt-4">
-    <label class="block font-extrabold text-xs uppercase mb-1">Lyrics <span class="text-red-500">*</span></label>
-    <textarea name="tracks[{{ $index }}][lyrics]" rows="3" required
+    <label class="block font-extrabold text-xs uppercase mb-1">Lyrics <span class="normal-case text-black/45">(Optional — leave blank if not applicable)</span></label>
+    <textarea name="tracks[{{ $index }}][lyrics]" rows="3"
         class="w-full px-3 py-2 border-2 border-black font-bold text-sm focus:outline-none focus:ring-0 focus:border-brand-500"
-        placeholder="Paste the complete lyrics here">{{ $song->lyrics ?? old('tracks.' . $index . '.lyrics') }}</textarea>
+        placeholder="Optional: paste lyrics here">{{ $song->lyrics ?? old('tracks.' . $index . '.lyrics') }}</textarea>
 </div>

@@ -10,6 +10,8 @@ use App\Models\MusicStore;
 use App\Models\ReleasePayment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class KnowledgeAndAddonServicesTest extends TestCase
@@ -88,7 +90,29 @@ class KnowledgeAndAddonServicesTest extends TestCase
                 'composers' => [['name' => 'A Composer']],
             ]],
         ])->assertRedirect(route('artist.catalog.step2', $album))
-            ->assertSessionHasErrors(['tracks.0.lyricist', 'tracks.0.producers', 'tracks.0.vocals', 'tracks.0.lyrics']);
+            ->assertSessionHasErrors(['tracks.0.lyricist', 'tracks.0.producers', 'tracks.0.vocals'])
+            ->assertSessionDoesntHaveErrors(['tracks.0.lyrics']);
+    }
+
+    public function test_artist_can_upload_cover_art_with_progress_endpoint_then_create_release(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create(['role' => 'artist']);
+        Artist::create(['user_id' => $user->id, 'artist_name' => 'Cover Artist']);
+
+        $upload = $this->actingAs($user)->post(route('artist.catalog.upload-cover-art'), [
+            'cover_art' => UploadedFile::fake()->image('album-cover.jpg', 3000, 3000),
+        ])->assertOk()->assertJson(['success' => true]);
+        $path = $upload->json('path');
+        Storage::disk('public')->assertExists($path);
+
+        $this->post(route('artist.catalog.store-step1'), [
+            'title' => 'Progress Cover Release', 'release_type' => 'single', 'genre' => 'Pop',
+            'release_date' => now()->addMonth()->toDateString(), 'cover_art_path' => $path,
+            'copyright_holder' => 'Cover Artist', 'phonogram_right_holder' => 'Cover Artist',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('albums', ['title' => 'Progress Cover Release', 'cover_art' => $path]);
     }
 
     public function test_new_royalty_labels_are_used_everywhere(): void

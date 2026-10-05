@@ -38,7 +38,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('artist.catalog.store-step1') }}" enctype="multipart/form-data" class="space-y-6">
+            <form method="POST" action="{{ route('artist.catalog.store-step1') }}" enctype="multipart/form-data" class="space-y-6" id="release-step-one-form">
                 @csrf
 
                 <!-- Collaborating Artists (Revenue Share) -->
@@ -166,12 +166,17 @@
                         <svg class="w-12 h-12 mx-auto text-black/30 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                         <p class="text-sm font-bold text-black/60 mb-2">Click or drag to upload</p>
                         <p class="text-xs font-bold text-black/40" id="file-name">No file selected</p>
-                        <input type="file" name="cover_art" id="cover_art" accept=".jpg,.jpeg,.png" required
-                            class="hidden" onchange="document.getElementById('file-name').textContent = this.files[0]?.name || 'No file selected'">
+                        <input type="hidden" name="cover_art_path" id="cover_art_path" value="{{ old('cover_art_path') }}">
+                        <input type="file" id="cover_art" accept=".jpg,.jpeg,.png" class="hidden">
                         <button type="button" onclick="document.getElementById('cover_art').click()"
                             class="mt-4 px-6 py-2 bg-brand-500 border-2 border-black font-extrabold text-xs uppercase hover:bg-brand-300 transition-all">
                             Choose File
                         </button>
+                        <div id="cover-progress-wrap" class="mt-5 hidden overflow-hidden border-2 border-black bg-white text-left">
+                            <div id="cover-progress-bar" class="h-7 bg-brand-500 text-center text-xs font-black leading-7 transition-all" style="width: 0%">0%</div>
+                        </div>
+                        <p id="cover-upload-status" class="mt-2 text-xs font-bold text-black/50">Select a 3000 × 3000 image to begin uploading.</p>
+                        <img id="cover-preview" alt="Album artwork preview" class="mx-auto mt-4 hidden h-40 w-40 border-2 border-black object-cover">
                     </div>
                     @error('cover_art')
                         <p class="text-red-600 text-xs font-bold mt-2">{{ $message }}</p>
@@ -200,11 +205,94 @@
                     <a href="{{ route('artist.catalog.index') }}" class="px-6 py-3 bg-gray-200 border-2 border-black font-extrabold text-sm uppercase hover:bg-gray-300 transition-all">
                         Cancel
                     </a>
-                    <button type="submit" class="px-8 py-3 bg-brand-500 border-2 border-black font-extrabold text-sm uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all">
+                    <button type="submit" id="step-one-submit" class="px-8 py-3 bg-brand-500 border-2 border-black font-extrabold text-sm uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all disabled:cursor-not-allowed disabled:opacity-50">
                         Next: Tracks →
                     </button>
                 </div>
             </form>
         </div>
     </div>
+    <script>
+        (() => {
+            const input = document.getElementById('cover_art');
+            const pathInput = document.getElementById('cover_art_path');
+            const area = document.getElementById('upload-area');
+            const fileName = document.getElementById('file-name');
+            const progressWrap = document.getElementById('cover-progress-wrap');
+            const progressBar = document.getElementById('cover-progress-bar');
+            const status = document.getElementById('cover-upload-status');
+            const preview = document.getElementById('cover-preview');
+            const submit = document.getElementById('step-one-submit');
+            let uploading = false;
+
+            const upload = file => {
+                if (!file || uploading) return;
+                pathInput.value = '';
+                fileName.textContent = file.name;
+                progressWrap.classList.remove('hidden');
+                progressBar.classList.remove('bg-red-300');
+                progressBar.style.width = '0%';
+                progressBar.textContent = '0%';
+                status.textContent = 'Uploading album artwork...';
+                status.className = 'mt-2 text-xs font-bold text-black/60';
+                submit.disabled = true;
+                uploading = true;
+
+                const reader = new FileReader();
+                reader.onload = event => { preview.src = event.target.result; preview.classList.remove('hidden'); };
+                reader.readAsDataURL(file);
+
+                const data = new FormData();
+                data.append('cover_art', file);
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', @js(route('artist.catalog.upload-cover-art')));
+                xhr.setRequestHeader('X-CSRF-TOKEN', document.querySelector('meta[name="csrf-token"]').content);
+                xhr.setRequestHeader('Accept', 'application/json');
+                xhr.upload.addEventListener('progress', event => {
+                    if (!event.lengthComputable) return;
+                    const percent = Math.round((event.loaded / event.total) * 100);
+                    progressBar.style.width = `${percent}%`;
+                    progressBar.textContent = `${percent}%`;
+                });
+                xhr.addEventListener('load', () => {
+                    let response = {};
+                    try { response = JSON.parse(xhr.responseText || '{}'); } catch (_) {}
+                    uploading = false;
+                    if (xhr.status >= 200 && xhr.status < 300 && response.success && response.path) {
+                        pathInput.value = response.path;
+                        progressBar.style.width = '100%';
+                        progressBar.textContent = '100%';
+                        status.textContent = '✓ Album artwork uploaded successfully.';
+                        status.className = 'mt-2 text-xs font-black text-green-700';
+                        submit.disabled = false;
+                        return;
+                    }
+                    const message = Object.values(response.errors || {}).flat()[0] || response.message || `Upload failed (HTTP ${xhr.status}).`;
+                    status.textContent = message;
+                    status.className = 'mt-2 text-xs font-black text-red-700';
+                    progressBar.classList.add('bg-red-300');
+                    submit.disabled = false;
+                });
+                xhr.addEventListener('error', () => {
+                    uploading = false;
+                    status.textContent = 'Network error while uploading. Please choose the file again.';
+                    status.className = 'mt-2 text-xs font-black text-red-700';
+                    submit.disabled = false;
+                });
+                xhr.send(data);
+            };
+
+            input.addEventListener('change', () => upload(input.files[0]));
+            ['dragenter', 'dragover'].forEach(name => area.addEventListener(name, event => { event.preventDefault(); area.classList.add('bg-brand-500/10'); }));
+            ['dragleave', 'drop'].forEach(name => area.addEventListener(name, event => { event.preventDefault(); area.classList.remove('bg-brand-500/10'); }));
+            area.addEventListener('drop', event => { const file = event.dataTransfer.files[0]; if (file) upload(file); });
+            document.getElementById('release-step-one-form').addEventListener('submit', event => {
+                if (uploading || !pathInput.value) {
+                    event.preventDefault();
+                    status.textContent = uploading ? 'Please wait for the album artwork upload to finish.' : 'Please upload album artwork before continuing.';
+                    status.className = 'mt-2 text-xs font-black text-red-700';
+                }
+            });
+        })();
+    </script>
 </x-app-layout>

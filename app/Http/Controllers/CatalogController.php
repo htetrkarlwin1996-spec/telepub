@@ -84,7 +84,8 @@ class CatalogController extends Controller
             'release_type' => 'required|in:single,ep,album',
             'genre' => 'required|string|max:100',
             'release_date' => 'required|date',
-            'cover_art' => 'required|image|mimes:jpeg,png,jpg|max:10240',
+            'cover_art' => 'nullable|required_without:cover_art_path|image|mimes:jpeg,png,jpg|max:10240',
+            'cover_art_path' => 'nullable|required_without:cover_art|string|max:500',
             'copyright_holder' => 'required|string|max:255',
             'phonogram_right_holder' => 'required|string|max:255',
             // Collaborating artists
@@ -95,15 +96,20 @@ class CatalogController extends Controller
         ]);
         $this->validateCollaboratorShares($validated, $artist->id);
 
-        // Validate image dimensions (3000x3000)
-        $image = $request->file('cover_art');
-        [$width, $height] = getimagesize($image);
-        if ($width !== 3000 || $height !== 3000) {
-            return back()->withErrors(['cover_art' => 'Album art must be exactly 3000×3000 pixels. Uploaded image is '.$width.'×'.$height.' pixels.'])->withInput();
+        if (filled($validated['cover_art_path'] ?? null)) {
+            $coverPath = $validated['cover_art_path'];
+            $expectedPrefix = 'cover_art/'.((int) $request->user()->id).'/';
+            if (! str_starts_with($coverPath, $expectedPrefix) || ! Storage::disk('public')->exists($coverPath)) {
+                throw ValidationException::withMessages(['cover_art' => 'The uploaded album artwork could not be verified. Please upload it again.']);
+            }
+        } else {
+            $image = $request->file('cover_art');
+            [$width, $height] = getimagesize($image);
+            if ($width !== 3000 || $height !== 3000) {
+                return back()->withErrors(['cover_art' => 'Album art must be exactly 3000×3000 pixels. Uploaded image is '.$width.'×'.$height.' pixels.'])->withInput();
+            }
+            $coverPath = $image->store('cover_art/'.((int) $request->user()->id), 'public');
         }
-
-        // Store cover art
-        $coverPath = $image->store('cover_art', 'public');
 
         // Create the album as draft
         $album = Album::create([
@@ -251,7 +257,7 @@ class CatalogController extends Controller
             'tracks.*.audio_file_path' => 'nullable|string|max:500',
             'tracks.*.explicit' => 'boolean',
             'tracks.*.language' => 'nullable|string|max:50',
-            'tracks.*.lyrics' => 'required|string',
+            'tracks.*.lyrics' => 'nullable|string',
             'tracks.*.duration' => 'nullable|integer|min:0',
         ]);
 
@@ -508,6 +514,24 @@ class CatalogController extends Controller
 
             throw $exception;
         }
+    }
+
+    public function uploadCoverArt(Request $request)
+    {
+        $validated = $request->validate([
+            'cover_art' => ['required', 'image', 'mimes:jpeg,png,jpg', 'max:10240'],
+        ]);
+        $image = $validated['cover_art'];
+        [$width, $height] = getimagesize($image->getRealPath());
+        if ($width !== 3000 || $height !== 3000) {
+            throw ValidationException::withMessages([
+                'cover_art' => "Album art must be exactly 3000×3000 pixels. Uploaded image is {$width}×{$height} pixels.",
+            ]);
+        }
+        $extension = strtolower($image->getClientOriginalExtension()) ?: 'jpg';
+        $path = $image->storeAs('cover_art/'.((int) $request->user()->id), Str::uuid().'.'.$extension, 'public');
+
+        return response()->json(['success' => true, 'path' => $path, 'filename' => $image->getClientOriginalName()]);
     }
 
     /**
