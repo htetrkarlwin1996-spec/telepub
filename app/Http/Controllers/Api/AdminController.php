@@ -86,6 +86,11 @@ class AdminController extends Controller
             'role' => 'artist',
             'is_active' => true,
         ]);
+        $user->forceFill([
+            'role' => 'artist',
+            'is_active' => true,
+            'email_verified_at' => now(),
+        ])->save();
 
         $artist = $user->artist()->create([
             'artist_name' => $validated['artist_name'],

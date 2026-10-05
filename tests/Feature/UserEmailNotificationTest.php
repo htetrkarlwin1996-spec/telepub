@@ -196,6 +196,7 @@ class UserEmailNotificationTest extends TestCase
             'revenue_share_percentage' => 85,
         ])->assertRedirect();
         $artistUser = User::where('email', 'created-artist@example.com')->firstOrFail();
+        $this->assertTrue($artistUser->hasVerifiedEmail());
         $this->assertNotificationTitle($artistUser, 'Artist account created');
 
         $this->post(route('admin.master-accounts.store'), [
@@ -208,6 +209,7 @@ class UserEmailNotificationTest extends TestCase
             'maximum_management_fee_percentage' => 20,
         ])->assertRedirect();
         $owner = User::where('email', 'label-owner@example.com')->firstOrFail();
+        $this->assertTrue($owner->hasVerifiedEmail());
         $this->assertNotificationTitle($owner, 'Master Account created');
     }
 

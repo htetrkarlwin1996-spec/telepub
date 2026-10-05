@@ -30,11 +30,23 @@
                         </div>
                         <div>
                             <x-input-label for="genre" value="Genre" />
-                            <x-text-input id="genre" class="block mt-1 w-full" type="text" name="genre" />
+                            <select id="genre" name="genre" class="block mt-1 w-full border-2 border-black px-3 py-2.5 text-sm font-semibold text-black focus:border-brand-500 focus:ring-0 rounded-none">
+                                <option value="">Select Genre</option>
+                                @foreach($genres as $genre)
+                                    <option value="{{ $genre }}" @selected(old('genre') === $genre)>{{ $genre }}</option>
+                                @endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('genre')" class="mt-2" />
                         </div>
                         <div>
                             <x-input-label for="country" value="Country" />
-                            <x-text-input id="country" class="block mt-1 w-full" type="text" name="country" />
+                            <select id="country" name="country" class="block mt-1 w-full border-2 border-black px-3 py-2.5 text-sm font-semibold text-black focus:border-brand-500 focus:ring-0 rounded-none">
+                                <option value="">Select Country</option>
+                                @foreach($countries as $country)
+                                    <option value="{{ $country }}" @selected(old('country') === $country)>{{ $country }}</option>
+                                @endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('country')" class="mt-2" />
                         </div>
                         <div>
                             <x-input-label for="revenue_share_percentage" value="Revenue Share (%)" />

@@ -58,7 +58,10 @@ class AdminController extends Controller
 
     public function createArtist()
     {
-        return view('admin.artists.create');
+        return view('admin.artists.create', [
+            'genres' => ArtistController::genres(),
+            'countries' => ArtistController::countries(),
+        ]);
     }
 
     public function storeArtist(Request $request, UserNotifier $notifier)
@@ -80,6 +83,11 @@ class AdminController extends Controller
             'password' => Hash::make($validated['password']),
             'role' => 'artist',
         ]);
+        $user->forceFill([
+            'role' => 'artist',
+            'is_active' => true,
+            'email_verified_at' => now(),
+        ])->save();
 
         Artist::create([
             'user_id' => $user->id,

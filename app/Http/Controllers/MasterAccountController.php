@@ -55,6 +55,11 @@ class MasterAccountController extends Controller
                 'password' => Hash::make($validated['password']),
                 'role' => 'artist',
             ]);
+            $user->forceFill([
+                'role' => 'artist',
+                'is_active' => true,
+                'email_verified_at' => now(),
+            ])->save();
         }
         $artist = Artist::create([
             'user_id' => $user?->id,

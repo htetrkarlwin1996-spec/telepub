@@ -32,7 +32,7 @@ class AdminMasterAccountController extends Controller
                 'email' => $validated['owner_email'],
                 'password' => Hash::make($validated['password']),
             ]);
-            $owner->forceFill(['role' => 'manager', 'is_active' => true])->save();
+            $owner->forceFill(['role' => 'manager', 'is_active' => true, 'email_verified_at' => now()])->save();
             MasterAccount::create([
                 'owner_user_id' => $owner->id,
                 'name' => $validated['name'],
