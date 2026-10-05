@@ -16,7 +16,7 @@ class ArtistController extends Controller
      */
     public function profile(Request $request): JsonResponse
     {
-        $artist = $request->user()->artist;
+        $artist = current_artist();
 
         if (! $artist) {
             return response()->json(['message' => 'Artist profile not found. Setup required.'], 404);
@@ -30,7 +30,7 @@ class ArtistController extends Controller
      */
     public function updateProfile(Request $request, AdminNotifier $notifier, UserNotifier $userNotifier): JsonResponse
     {
-        $artist = $request->user()->artist;
+        $artist = current_artist();
 
         if (! $artist) {
             return response()->json(['message' => 'Artist profile not found.'], 404);
@@ -78,9 +78,10 @@ class ArtistController extends Controller
     {
         $user = $request->user();
 
-        if ($user->artist) {
+        if (current_artist()) {
             return response()->json(['message' => 'Artist profile already exists.'], 409);
         }
+        abort_if($user->isManager(), 403, 'Master Accounts must create artists through the manager workflow.');
 
         $validated = $request->validate([
             'artist_name' => 'required|string|max:255',

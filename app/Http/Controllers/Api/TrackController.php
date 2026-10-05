@@ -146,7 +146,7 @@ class TrackController extends Controller
             return;
         }
 
-        $artist = $user->artist;
+        $artist = current_artist();
 
         if (! $artist) {
             abort(403, 'Unauthorized.');
@@ -169,11 +169,11 @@ class TrackController extends Controller
             return;
         }
 
-        $artist = $user->artist;
-        $hasFullAccess = $artist && ! $artist->masterAccounts()
+        $artist = current_artist();
+        $hasFullAccess = $user->isManager() || ($artist && ! $artist->masterAccounts()
             ->wherePivot('status', 'active')
             ->wherePivot('access_level', 'report_only')
-            ->exists();
+            ->exists());
 
         abort_unless($artist && $album->artist_id === $artist->id && $hasFullAccess, 403, 'Only the release owner with full access may make changes.');
     }

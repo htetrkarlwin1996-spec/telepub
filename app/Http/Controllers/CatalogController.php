@@ -210,6 +210,7 @@ class CatalogController extends Controller
     public function storeStep2(Request $request, Album $album)
     {
         $this->authorizeAlbum($album, true);
+        $this->ensureDraftIsEditable($album);
 
         $validated = $request->validate([
             'tracks' => 'required|array|min:1',
@@ -324,6 +325,7 @@ class CatalogController extends Controller
     public function storeStep3(Request $request, Album $album)
     {
         $this->authorizeAlbum($album, true);
+        $this->ensureDraftIsEditable($album);
 
         $validated = $request->validate([
             'release_date' => 'required|date',
@@ -364,6 +366,7 @@ class CatalogController extends Controller
     public function storeStep4(Request $request, Album $album)
     {
         $this->authorizeAlbum($album, true);
+        $this->ensureDraftIsEditable($album);
 
         $validated = $request->validate([
             'stores' => 'required|array|min:1',
@@ -417,6 +420,7 @@ class CatalogController extends Controller
     public function update(Request $request, Album $album)
     {
         $this->authorizeAlbum($album, true);
+        $this->ensureDraftIsEditable($album);
 
         $artist = current_artist();
 
@@ -448,10 +452,10 @@ class CatalogController extends Controller
             }
 
             // Delete old cover art
-            if ($album->cover_art) {
+            if ($this->isOwnedCoverPath($album->cover_art, $request->user()->id)) {
                 Storage::disk('public')->delete($album->cover_art);
             }
-            $validated['cover_art'] = $image->store('cover_art', 'public');
+            $validated['cover_art'] = $image->store('cover_art/'.((int) $request->user()->id), 'public');
         }
 
         $album->update($validated);
@@ -481,9 +485,10 @@ class CatalogController extends Controller
     public function destroy(Album $album)
     {
         $this->authorizeAlbum($album, true);
+        $this->ensureDraftIsEditable($album);
 
         // Delete cover art
-        if ($album->cover_art) {
+        if ($this->isOwnedCoverPath($album->cover_art, request()->user()->id)) {
             Storage::disk('public')->delete($album->cover_art);
         }
 
@@ -571,6 +576,22 @@ class CatalogController extends Controller
         if (! $isCollaborator) {
             abort(403, 'Unauthorized action.');
         }
+    }
+
+    private function ensureDraftIsEditable(Album $album): void
+    {
+        abort_unless($album->status === 'draft', 422, 'Only draft releases can be changed.');
+
+        $hasActivePayment = $album->hasMany(\App\Models\ReleasePayment::class)
+            ->whereIn('status', ['pending', 'paid'])
+            ->exists();
+        abort_if($hasActivePayment || in_array($album->payment_status, ['pending', 'paid'], true), 422,
+            'This release cannot be changed while a payment is pending or completed. Cancel the pending payment first.');
+    }
+
+    private function isOwnedCoverPath(?string $path, int $userId): bool
+    {
+        return filled($path) && str_starts_with($path, 'cover_art/'.$userId.'/');
     }
 
     private function validateCollaboratorShares(array $validated, int $primaryArtistId): void

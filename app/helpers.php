@@ -35,7 +35,9 @@ if (! function_exists('current_artist')) {
 
         if ($user->isManager()) {
             $account = $user->masterAccount;
-            $artistId = (int) session('managed_artist_id');
+            $artistId = (int) (request()->header('X-Artist-ID')
+                ?: request()->input('artist_id')
+                ?: (request()->hasSession() ? session('managed_artist_id') : 0));
 
             return $account?->artists()->wherePivot('status', 'active')->whereKey($artistId)->first()
                 ?? $account?->artists()->wherePivot('status', 'active')->first();

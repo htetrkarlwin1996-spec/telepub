@@ -18,6 +18,11 @@ class User extends Authenticatable implements MustVerifyEmail
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
+    protected $attributes = [
+        'role' => 'artist',
+        'is_active' => true,
+    ];
+
     protected function casts(): array
     {
         return [

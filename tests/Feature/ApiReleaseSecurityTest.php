@@ -6,6 +6,8 @@ use App\Models\Album;
 use App\Models\Artist;
 use App\Models\Song;
 use App\Models\User;
+use App\Models\MasterAccount;
+use App\Models\ReleasePayment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -78,6 +80,64 @@ class ApiReleaseSecurityTest extends TestCase
             ->assertForbidden();
 
         $this->assertSame('Original', $album->fresh()->title);
+    }
+
+    public function test_api_cannot_replace_cover_art_with_an_arbitrary_path(): void
+    {
+        [$owner, $album] = $this->releaseFor('cover-owner@example.com');
+        $album->update(['cover_art' => 'cover_art/owner/safe.jpg']);
+        Sanctum::actingAs($owner);
+
+        $this->putJson("/api/artist/releases/{$album->id}", [
+            'title' => 'Updated title',
+            'cover_art' => 'cover_art/another-user/art.jpg',
+        ])->assertOk();
+
+        $this->assertSame('cover_art/owner/safe.jpg', $album->fresh()->cover_art);
+    }
+
+    public function test_pending_payment_blocks_web_release_deletion(): void
+    {
+        [$owner, $album] = $this->releaseFor('pending-payment@example.com');
+        ReleasePayment::create([
+            'album_id' => $album->id,
+            'user_id' => $owner->id,
+            'provider' => 'stripe',
+            'amount' => 10,
+            'currency' => 'USD',
+            'reference' => 'SECURITY-PENDING-1',
+            'status' => 'pending',
+            'addon_services' => [],
+            'selected_store_ids' => [],
+        ]);
+
+        $this->actingAs($owner)->delete("/artist/catalog/{$album->id}")->assertUnprocessable();
+        $this->assertDatabaseHas('albums', ['id' => $album->id]);
+    }
+
+    public function test_master_account_can_manage_selected_artist_through_api(): void
+    {
+        [$artistOwner, $album] = $this->releaseFor('managed-artist@example.com');
+        $manager = User::factory()->create(['role' => 'manager']);
+        $master = MasterAccount::create([
+            'owner_user_id' => $manager->id,
+            'name' => 'API Label',
+            'platform_fee_percentage' => 0,
+            'default_management_fee_percentage' => 0,
+            'maximum_management_fee_percentage' => 100,
+        ]);
+        $master->artists()->attach($artistOwner->artist->id, [
+            'access_level' => 'report_only',
+            'status' => 'active',
+            'created_by' => $manager->id,
+        ]);
+        Sanctum::actingAs($manager);
+
+        $this->withHeader('X-Artist-ID', (string) $artistOwner->artist->id)
+            ->putJson("/api/artist/releases/{$album->id}", ['title' => 'Managed update'])
+            ->assertOk();
+
+        $this->assertSame('Managed update', $album->fresh()->title);
     }
 
     private function releaseFor(string $email): array

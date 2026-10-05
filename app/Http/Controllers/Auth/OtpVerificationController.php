@@ -7,6 +7,7 @@ use App\Models\Otp;
 use App\Models\User;
 use App\Notifications\SendOtp;
 use App\Services\UserNotifier;
+use App\Services\CredentialRevoker;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -44,11 +45,12 @@ class OtpVerificationController extends Controller
 
         $otpRecord = Otp::where('email', $email)
             ->where('type', $type)
-            ->where('otp', $request->otp)
+            ->whereNull('used_at')
             ->latest()
             ->first();
 
-        if (! $otpRecord || ! $otpRecord->isValid()) {
+        if (! $otpRecord || ! $otpRecord->isValid() || ! hash_equals($otpRecord->otp, $request->otp)) {
+            $otpRecord?->recordFailedAttempt();
             throw ValidationException::withMessages([
                 'otp' => __('The OTP code is invalid or has expired.'),
             ]);
@@ -88,7 +90,7 @@ class OtpVerificationController extends Controller
         return view('auth.reset-password-otp');
     }
 
-    public function updatePassword(Request $request, UserNotifier $notifier): RedirectResponse
+    public function updatePassword(Request $request, UserNotifier $notifier, CredentialRevoker $revoker): RedirectResponse
     {
         if (! $request->session()->get('password_reset_verified')) {
             return redirect()->route('login');
@@ -108,6 +110,7 @@ class OtpVerificationController extends Controller
         $user->update([
             'password' => Hash::make($request->password),
         ]);
+        $revoker->revoke($user);
         $notifier->activity($user, 'Password changed', 'Your TeleMusic password was reset successfully.', route('login'), 'Sign In');
 
         $request->session()->forget(['password_reset_verified', 'password_reset_email']);

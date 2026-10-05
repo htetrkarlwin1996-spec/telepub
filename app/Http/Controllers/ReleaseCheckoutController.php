@@ -50,7 +50,7 @@ class ReleaseCheckoutController extends Controller
             return Cache::lock('mmqr-payment-album-'.$album->id, 30)->block(10, fn () => $this->myanmyanpay($request, $album, (float) $amount, $mmpay));
         }
         $reference = 'REL-'.strtoupper(substr($method, 0, 3)).'-'.now()->format('YmdHis').'-'.Str::upper(Str::random(6));
-        $payment = ReleasePayment::create(['album_id' => $album->id, 'user_id' => $request->user()->id, 'provider' => $method, 'amount' => $amount, 'currency' => $currency, 'reference' => $reference, 'addon_services' => $prices['selected_addons']]);
+        $payment = ReleasePayment::create(['album_id' => $album->id, 'user_id' => $request->user()->id, 'provider' => $method, 'amount' => $amount, 'currency' => $currency, 'reference' => $reference, 'addon_services' => $prices['selected_addons'], 'selected_store_ids' => $album->selected_store_ids ?? []]);
         $album->update(['payment_status' => 'pending']);
 
         try {
@@ -82,9 +82,11 @@ class ReleaseCheckoutController extends Controller
                 ->orWhere(fn ($legacy) => $legacy->whereNull('expires_at')->where('created_at', '>', now()->subMinutes(15))))
             ->latest()->first();
         if ($existing) {
-            if (array_values($existing->addon_services ?? []) !== array_values($album->selected_addons ?? [])) {
+            $normalize = fn (array $values) => collect($values)->map('strval')->unique()->sort()->values()->all();
+            if ($normalize($existing->addon_services ?? []) !== $normalize($album->selected_addons ?? [])
+                || $normalize($existing->selected_store_ids ?? []) !== $normalize($album->selected_store_ids ?? [])) {
                 return redirect()->route('artist.catalog.checkout', $album)
-                    ->withErrors(['payment' => 'Your active MMQR order has a different total. Cancel it before changing add-on services.'])
+                    ->withErrors(['payment' => 'Your active MMQR order has different release selections. Cancel it and create a new payment.'])
                     ->with('open_mmqr', true);
             }
             return redirect()->route('artist.catalog.checkout', $album)
@@ -97,7 +99,7 @@ class ReleaseCheckoutController extends Controller
         $payment = ReleasePayment::create([
             'album_id' => $album->id, 'user_id' => $request->user()->id,
             'provider' => 'myanmyanpay', 'amount' => $amount, 'currency' => 'MMK',
-            'reference' => $reference, 'addon_services' => $album->selected_addons ?? [], 'expires_at' => now()->addMinutes(15),
+            'reference' => $reference, 'addon_services' => $album->selected_addons ?? [], 'selected_store_ids' => $album->selected_store_ids ?? [], 'expires_at' => now()->addMinutes(15),
         ]);
         $album->update(['payment_status' => 'pending']);
 
@@ -121,7 +123,7 @@ class ReleaseCheckoutController extends Controller
             report($e);
             $payment->update(['status' => 'failed', 'gateway_response' => ['error' => $e->getMessage()]]);
 
-            return back()->withErrors(['payment' => 'Payment could not be started: '.$e->getMessage()]);
+            return back()->withErrors(['payment' => 'Payment could not be started. Please try again or contact support.']);
         }
     }
 
@@ -316,8 +318,19 @@ class ReleaseCheckoutController extends Controller
             $payment = ReleasePayment::lockForUpdate()->findOrFail($payment->id);
             if ($payment->status === 'paid') {
                 return;
-            } $payment->update(['status' => 'paid', 'paid_at' => now()]);
-            $submission->finalize($payment->album);
+            }
+
+            $album = $payment->album()->lockForUpdate()->firstOrFail();
+            $normalize = fn (array $values) => collect($values)->map('strval')->unique()->sort()->values()->all();
+            abort_unless(
+                $normalize($payment->addon_services ?? []) === $normalize($album->selected_addons ?? [])
+                && $normalize($payment->selected_store_ids ?? []) === $normalize($album->selected_store_ids ?? []),
+                409,
+                'Release selections changed after checkout started. Cancel this payment and create a new one.'
+            );
+
+            $payment->update(['status' => 'paid', 'paid_at' => now()]);
+            $submission->finalize($album);
         });
     }
 

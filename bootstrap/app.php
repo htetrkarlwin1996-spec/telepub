@@ -3,6 +3,7 @@
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\EnsureArtistCanManage;
 use App\Http\Middleware\EnsureHasArtist;
+use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\PublicMaintenanceMode;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -29,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => AdminMiddleware::class,
             'artist' => EnsureHasArtist::class,
             'artist.manage' => EnsureArtistCanManage::class,
+            'active' => EnsureUserIsActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

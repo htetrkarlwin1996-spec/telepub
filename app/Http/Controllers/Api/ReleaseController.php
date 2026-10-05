@@ -19,7 +19,7 @@ class ReleaseController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $artist = $request->user()->artist;
+        $artist = current_artist();
 
         if (! $artist) {
             return response()->json(['message' => 'Artist profile required.'], 404);
@@ -46,7 +46,7 @@ class ReleaseController extends Controller
      */
     public function collaborations(Request $request): JsonResponse
     {
-        $artist = $request->user()->artist;
+        $artist = current_artist();
 
         if (! $artist) {
             return response()->json(['message' => 'Artist profile required.'], 404);
@@ -73,7 +73,7 @@ class ReleaseController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $artist = $request->user()->artist;
+        $artist = current_artist();
 
         if (! $artist) {
             return response()->json(['message' => 'Artist profile required.'], 404);
@@ -155,7 +155,6 @@ class ReleaseController extends Controller
             'release_type' => 'sometimes|in:single,ep,album',
             'genre' => 'nullable|string|max:255',
             'label' => 'nullable|string|max:255',
-            'cover_art' => 'nullable|string',
             'copyright_holder' => 'nullable|string|max:255',
             'phonogram_right_holder' => 'nullable|string|max:255',
             'request_new_isrc' => 'boolean',
@@ -322,7 +321,7 @@ class ReleaseController extends Controller
             return;
         }
 
-        $artist = $user->artist;
+        $artist = current_artist();
 
         if (! $artist) {
             abort(403, 'Unauthorized.');
@@ -345,11 +344,11 @@ class ReleaseController extends Controller
             return;
         }
 
-        $artist = $user->artist;
-        $hasFullAccess = $artist && ! $artist->masterAccounts()
+        $artist = current_artist();
+        $hasFullAccess = $user->isManager() || ($artist && ! $artist->masterAccounts()
             ->wherePivot('status', 'active')
             ->wherePivot('access_level', 'report_only')
-            ->exists();
+            ->exists());
 
         abort_unless($artist && $album->artist_id === $artist->id && $hasFullAccess, 403, 'Only the release owner with full access may make changes.');
     }

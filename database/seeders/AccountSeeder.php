@@ -17,7 +17,7 @@ class AccountSeeder extends Seeder
     public function run(): void
     {
         // ===== CREATE TELEMUSIC ADMIN =====
-        User::firstOrCreate(
+        $admin = User::firstOrCreate(
             ['email' => 'info@telemusic.io'],
             [
                 'name' => 'TeleMusic Admin',
@@ -28,9 +28,10 @@ class AccountSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+        $admin->forceFill(['role' => 'admin', 'is_active' => true])->save();
 
         // ===== CREATE LEGACY ADMIN USER =====
-        User::firstOrCreate(
+        $legacyAdmin = User::firstOrCreate(
             ['email' => 'admin@example.com'],
             [
                 'name' => 'Admin',
@@ -41,6 +42,7 @@ class AccountSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+        $legacyAdmin->forceFill(['role' => 'admin', 'is_active' => true])->save();
 
         // ===== CREATE mmstarlink532@gmail.com ARTIST =====
         $mmUser = User::firstOrCreate(

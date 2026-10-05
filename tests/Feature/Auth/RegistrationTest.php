@@ -56,4 +56,23 @@ class RegistrationTest extends TestCase
             ->assertOk()
             ->assertSee('Artist Profile Setup');
     }
+
+    public function test_otp_is_invalidated_after_five_wrong_attempts(): void
+    {
+        $otp = Otp::create([
+            'email' => 'locked@example.com',
+            'otp' => '123456',
+            'type' => 'registration',
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->withSession(['otp_email' => $otp->email, 'otp_type' => 'registration'])
+                ->post('/verify-otp', ['otp' => '000000'])
+                ->assertSessionHasErrors('otp');
+        }
+
+        $this->assertNotNull($otp->fresh()->used_at);
+        $this->assertSame(5, $otp->fresh()->failed_attempts);
+    }
 }

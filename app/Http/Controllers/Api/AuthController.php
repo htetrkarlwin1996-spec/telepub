@@ -8,6 +8,7 @@ use App\Models\Otp;
 use App\Notifications\SendOtp;
 use App\Services\AdminNotifier;
 use App\Services\UserNotifier;
+use App\Services\CredentialRevoker;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -61,8 +62,9 @@ class AuthController extends Controller
             'otp' => 'required|string|size:6',
         ]);
         $record = Otp::where('email', $validated['email'])->where('type', 'registration')
-            ->where('otp', $validated['otp'])->latest()->first();
-        if (! $record || ! $record->isValid()) {
+            ->whereNull('used_at')->latest()->first();
+        if (! $record || ! $record->isValid() || ! hash_equals($record->otp, $validated['otp'])) {
+            $record?->recordFailedAttempt();
             throw ValidationException::withMessages(['otp' => ['The OTP code is invalid or has expired.']]);
         }
         $user = User::where('email', $validated['email'])->firstOrFail();
@@ -181,7 +183,7 @@ class AuthController extends Controller
     /**
      * Reset password with token.
      */
-    public function resetPassword(Request $request, UserNotifier $notifier): JsonResponse
+    public function resetPassword(Request $request, UserNotifier $notifier, CredentialRevoker $revoker): JsonResponse
     {
         $request->validate([
             'token' => 'required',
@@ -191,10 +193,11 @@ class AuthController extends Controller
 
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
-            function (User $user, string $password) use ($notifier) {
+            function (User $user, string $password) use ($notifier, $revoker) {
                 $user->forceFill([
                     'password' => Hash::make($password),
                 ])->save();
+                $revoker->revoke($user);
                 $notifier->activity($user, 'Password changed', 'Your TeleMusic password was reset successfully.', route('login'), 'Sign In');
             }
         );
