@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Album;
+use App\Models\ReleasePayment;
 use App\Models\Song;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,28 +30,25 @@ class TrackController extends Controller
     public function batchSave(Request $request, Album $album): JsonResponse
     {
         $this->authorizeManage($album);
-
-        if ($album->status !== 'draft') {
-            return response()->json(['message' => 'Only draft releases can be edited.'], 422);
-        }
+        $this->ensureDraftIsEditable($album);
 
         $validated = $request->validate([
-            'tracks'                    => 'required|array|min:1',
-            'tracks.*.id'               => ['nullable', Rule::exists('songs', 'id')->where('album_id', $album->id)],
-            'tracks.*.title'            => 'required|string|max:255',
-            'tracks.*.version'          => 'nullable|string|max:255',
-            'tracks.*.track_number'     => 'required|integer|min:1',
-            'tracks.*.genre'            => 'nullable|string|max:255',
-            'tracks.*.language'         => 'nullable|string|max:50',
-            'tracks.*.explicit'         => 'boolean',
-            'tracks.*.lyrics'           => 'nullable|string',
-            'tracks.*.isrc_code'        => 'nullable|string|max:50',
+            'tracks' => 'required|array|min:1',
+            'tracks.*.id' => ['nullable', Rule::exists('songs', 'id')->where('album_id', $album->id)],
+            'tracks.*.title' => 'required|string|max:255',
+            'tracks.*.version' => 'nullable|string|max:255',
+            'tracks.*.track_number' => 'required|integer|min:1',
+            'tracks.*.genre' => 'nullable|string|max:255',
+            'tracks.*.language' => 'nullable|string|max:50',
+            'tracks.*.explicit' => 'boolean',
+            'tracks.*.lyrics' => 'nullable|string',
+            'tracks.*.isrc_code' => 'nullable|string|max:50',
             'tracks.*.request_new_isrc' => 'boolean',
-            'tracks.*.primary_artists'  => 'nullable|array',
-            'tracks.*.composers'        => 'nullable|array',
-            'tracks.*.producers'        => 'nullable|array',
-            'tracks.*.vocals'           => 'nullable|array',
-            'tracks.*.featuring'        => 'nullable|array',
+            'tracks.*.primary_artists' => 'nullable|array',
+            'tracks.*.composers' => 'nullable|array',
+            'tracks.*.producers' => 'nullable|array',
+            'tracks.*.vocals' => 'nullable|array',
+            'tracks.*.featuring' => 'nullable|array',
         ]);
 
         $existingIds = $album->songs()->pluck('id')->toArray();
@@ -58,8 +56,8 @@ class TrackController extends Controller
 
         foreach ($validated['tracks'] as $trackData) {
             $trackData['artist_id'] = $album->artist_id;
-            $trackData['album_id']  = $album->id;
-            $trackData['status']    = 'active';
+            $trackData['album_id'] = $album->id;
+            $trackData['status'] = 'active';
 
             // Encode credit arrays as JSON
             foreach (['primary_artists', 'composers', 'producers', 'vocals', 'featuring'] as $creditField) {
@@ -87,7 +85,7 @@ class TrackController extends Controller
         $songs = $album->songs()->orderBy('track_number')->get();
 
         return response()->json([
-            'data'    => $songs,
+            'data' => $songs,
             'message' => 'Tracks saved.',
         ]);
     }
@@ -99,11 +97,8 @@ class TrackController extends Controller
     {
         $album = $song->album;
 
-        if ($album->status !== 'draft') {
-            return response()->json(['message' => 'Only draft releases can be edited.'], 422);
-        }
-
         $this->authorizeManage($album);
+        $this->ensureDraftIsEditable($album);
 
         $song->delete();
 
@@ -117,23 +112,20 @@ class TrackController extends Controller
     {
         $request->validate([
             'audio_file' => 'required|file|mimes:mp3,wav,flac,aac,ogg|max:102400',
-            'song_id'    => 'required|exists:songs,id',
+            'song_id' => 'required|exists:songs,id',
         ]);
 
         $song = Song::findOrFail($request->song_id);
         $album = $song->album;
         $this->authorizeManage($album);
-
-        if ($album->status !== 'draft') {
-            return response()->json(['message' => 'Only draft releases can be edited.'], 422);
-        }
+        $this->ensureDraftIsEditable($album);
 
         $path = $request->file('audio_file')->store('audio', 'public');
 
         $song->update(['audio_file' => $path]);
 
         return response()->json([
-            'data'    => $song->fresh(),
+            'data' => $song->fresh(),
             'message' => 'Audio uploaded.',
         ]);
     }
@@ -152,7 +144,7 @@ class TrackController extends Controller
             abort(403, 'Unauthorized.');
         }
 
-        $isOwner  = $album->artist_id === $artist->id;
+        $isOwner = $album->artist_id === $artist->id;
         $isCollab = $album->collaboratingArtists()
             ->where('artist_id', $artist->id)
             ->exists();
@@ -176,5 +168,16 @@ class TrackController extends Controller
             ->exists());
 
         abort_unless($artist && $album->artist_id === $artist->id && $hasFullAccess, 403, 'Only the release owner with full access may make changes.');
+    }
+
+    private function ensureDraftIsEditable(Album $album): void
+    {
+        abort_unless($album->status === 'draft', 422, 'Only draft releases can be changed.');
+        abort_if(
+            in_array($album->payment_status, ['pending', 'paid'], true)
+            || ReleasePayment::where('album_id', $album->id)->whereIn('status', ['pending', 'paid'])->exists(),
+            422,
+            'This release cannot be changed while a payment is pending or completed.'
+        );
     }
 }

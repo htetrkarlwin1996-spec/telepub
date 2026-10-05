@@ -19,6 +19,12 @@ class ImpersonationController extends Controller
         abort_unless($artist->user, 404);
         abort_unless($artist->user->is_active, 403);
 
+        // An administrator has already authenticated and explicitly selected this account.
+        // Mark legacy accounts verified so impersonation cannot be trapped by the OTP gate.
+        if (! $artist->user->hasVerifiedEmail()) {
+            $artist->user->markEmailAsVerified();
+        }
+
         $request->session()->put([
             'impersonator_admin_id' => $admin->id,
             'impersonated_artist_id' => $artist->id,

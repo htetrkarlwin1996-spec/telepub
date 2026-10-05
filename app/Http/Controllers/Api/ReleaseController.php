@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Album;
 use App\Models\Artist;
-use App\Services\AdminNotifier;
+use App\Models\ReleasePayment;
 use App\Services\ReleaseSubmission;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -145,10 +145,7 @@ class ReleaseController extends Controller
     public function update(Request $request, Album $album): JsonResponse
     {
         $this->authorizeManage($album);
-
-        if ($album->status !== 'draft') {
-            return response()->json(['message' => 'Only draft releases can be edited.'], 422);
-        }
+        $this->ensureDraftIsEditable($album);
 
         $validated = $request->validate([
             'title' => 'sometimes|string|max:255',
@@ -193,10 +190,7 @@ class ReleaseController extends Controller
     public function destroy(Album $album): JsonResponse
     {
         $this->authorizeManage($album);
-
-        if ($album->status !== 'draft') {
-            return response()->json(['message' => 'Only draft releases can be deleted.'], 422);
-        }
+        $this->ensureDraftIsEditable($album);
 
         $album->songs()->delete();
         $album->collaboratingArtists()->detach();
@@ -244,10 +238,7 @@ class ReleaseController extends Controller
     public function updatePricing(Request $request, Album $album): JsonResponse
     {
         $this->authorizeManage($album);
-
-        if ($album->status !== 'draft') {
-            return response()->json(['message' => 'Only draft releases can be edited.'], 422);
-        }
+        $this->ensureDraftIsEditable($album);
 
         $validated = $request->validate([
             'price' => 'nullable|numeric|min:0',
@@ -269,10 +260,7 @@ class ReleaseController extends Controller
     public function selectStores(Request $request, Album $album): JsonResponse
     {
         $this->authorizeManage($album);
-
-        if ($album->status !== 'draft') {
-            return response()->json(['message' => 'Only draft releases can be edited.'], 422);
-        }
+        $this->ensureDraftIsEditable($album);
 
         $validated = $request->validate([
             'store_ids' => 'required|array',
@@ -362,5 +350,16 @@ class ReleaseController extends Controller
 
         $total = array_sum(array_map(fn (array $item) => (float) $item['share_percentage'], $collaborators));
         abort_if($total > 100, 422, 'Collaborator shares cannot exceed 100%.');
+    }
+
+    private function ensureDraftIsEditable(Album $album): void
+    {
+        abort_unless($album->status === 'draft', 422, 'Only draft releases can be changed.');
+        abort_if(
+            in_array($album->payment_status, ['pending', 'paid'], true)
+            || ReleasePayment::where('album_id', $album->id)->whereIn('status', ['pending', 'paid'])->exists(),
+            422,
+            'This release cannot be changed while a payment is pending or completed.'
+        );
     }
 }

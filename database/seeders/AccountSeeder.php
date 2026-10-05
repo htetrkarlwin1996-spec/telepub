@@ -2,10 +2,11 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use App\Models\Artist;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class AccountSeeder extends Seeder
 {
@@ -16,12 +17,19 @@ class AccountSeeder extends Seeder
      */
     public function run(): void
     {
+        $passwords = [
+            'primary_admin' => env('SEED_PRIMARY_ADMIN_PASSWORD') ?: Str::password(32),
+            'legacy_admin' => env('SEED_LEGACY_ADMIN_PASSWORD') ?: Str::password(32),
+            'mm_artist' => env('SEED_MM_ARTIST_PASSWORD') ?: Str::password(32),
+            'luna' => env('SEED_LUNA_PASSWORD') ?: Str::password(32),
+            'phoenix' => env('SEED_PHOENIX_PASSWORD') ?: Str::password(32),
+        ];
         // ===== CREATE TELEMUSIC ADMIN =====
         $admin = User::firstOrCreate(
             ['email' => 'info@telemusic.io'],
             [
                 'name' => 'TeleMusic Admin',
-                'password' => Hash::make('TeleMusic2026'),
+                'password' => Hash::make($passwords['primary_admin']),
                 'role' => 'admin',
                 'phone' => '+95-9-789654321',
                 'bio' => 'TeleMusic platform administrator',
@@ -35,7 +43,7 @@ class AccountSeeder extends Seeder
             ['email' => 'admin@example.com'],
             [
                 'name' => 'Admin',
-                'password' => Hash::make('password'),
+                'password' => Hash::make($passwords['legacy_admin']),
                 'role' => 'admin',
                 'phone' => '+1-555-0100',
                 'bio' => 'Platform administrator',
@@ -49,7 +57,7 @@ class AccountSeeder extends Seeder
             ['email' => 'mmstarlink532@gmail.com'],
             [
                 'name' => 'MM Star Link',
-                'password' => Hash::make('123456789'),
+                'password' => Hash::make($passwords['mm_artist']),
                 'role' => 'artist',
                 'phone' => '+95-9-123456789',
                 'bio' => 'Artist from Myanmar',
@@ -77,7 +85,7 @@ class AccountSeeder extends Seeder
             ['email' => 'luna@example.com'],
             [
                 'name' => 'Luna Star',
-                'password' => Hash::make('password'),
+                'password' => Hash::make($passwords['luna']),
                 'role' => 'artist',
                 'phone' => '+1-555-0101',
                 'bio' => 'Singer-songwriter from California',
@@ -109,7 +117,7 @@ class AccountSeeder extends Seeder
             ['email' => 'phoenix@example.com'],
             [
                 'name' => 'Phoenix Blaze',
-                'password' => Hash::make('password'),
+                'password' => Hash::make($passwords['phoenix']),
                 'role' => 'artist',
                 'phone' => '+1-555-0102',
                 'bio' => 'Hip-hop artist and producer from New York',
@@ -137,10 +145,6 @@ class AccountSeeder extends Seeder
         );
 
         $this->command->info('Accounts seeded successfully!');
-        $this->command->info('Admin 1: info@telemusic.io / TeleMusic2026');
-        $this->command->info('Admin 2: admin@example.com / password');
-        $this->command->info('Artist: mmstarlink532@gmail.com / 123456789 (MM Star Link)');
-        $this->command->info('Artist 1: luna@example.com / password (Luna Star)');
-        $this->command->info('Artist 2: phoenix@example.com / password (Phoenix Blaze)');
+        $this->command->warn('Seeder passwords are read from SEED_*_PASSWORD variables; missing values use random passwords.');
     }
 }

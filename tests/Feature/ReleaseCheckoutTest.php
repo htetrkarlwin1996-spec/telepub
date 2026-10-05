@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Album;
+use App\Models\AppSetting;
 use App\Models\Artist;
 use App\Models\MusicStore;
 use App\Models\ReleasePayment;
@@ -11,6 +12,7 @@ use App\Models\User;
 use App\Notifications\ReleaseSubmitted;
 use App\Notifications\UserActivityNotification;
 use App\Services\MyanMyanPayService;
+use App\Services\ReleasePricing;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
@@ -256,6 +258,77 @@ class ReleaseCheckoutTest extends TestCase
             ->assertOk()
             ->assertDontSee('id="mmqr-modal"', false)
             ->assertDontSee('MMQR Payment Pending');
+    }
+
+    public function test_artist_can_cancel_a_pending_offline_payment_and_unlock_release(): void
+    {
+        $user = User::factory()->create(['role' => 'artist']);
+        $artist = Artist::create(['user_id' => $user->id, 'artist_name' => 'Offline Cancel Artist']);
+        $album = Album::create(['artist_id' => $artist->id, 'title' => 'Offline', 'status' => 'draft', 'payment_status' => 'pending']);
+        $payment = ReleasePayment::create([
+            'album_id' => $album->id, 'user_id' => $user->id, 'provider' => 'offline',
+            'amount' => 539.64, 'currency' => 'THB', 'reference' => 'OFFLINE-CANCEL-1', 'status' => 'pending',
+        ]);
+
+        $this->actingAs($user)->post(route('artist.release-payments.cancel', $payment))
+            ->assertSessionHas('success');
+
+        $this->assertSame('cancelled', $payment->fresh()->status);
+        $this->assertSame('unpaid', $album->fresh()->payment_status);
+    }
+
+    public function test_later_release_pricing_is_per_track_through_eight_then_fixed(): void
+    {
+        $user = User::factory()->create(['role' => 'artist']);
+        $artist = Artist::create(['user_id' => $user->id, 'artist_name' => 'Track Price Artist']);
+        Album::create(['artist_id' => $artist->id, 'title' => 'Previous', 'status' => 'approved', 'payment_status' => 'paid']);
+        $album = Album::create(['artist_id' => $artist->id, 'title' => 'Next', 'status' => 'draft']);
+        AppSetting::where('key', 'release_price_per_track_usd')->update(['value' => '2.50']);
+        AppSetting::where('key', 'release_price_over_8_tracks_usd')->update(['value' => '15.00']);
+
+        foreach (range(1, 8) as $number) {
+            Song::create(['album_id' => $album->id, 'artist_id' => $artist->id, 'title' => 'Track '.$number, 'track_number' => $number]);
+        }
+        $this->assertSame(20.0, app(ReleasePricing::class)->for($album)['usd']);
+
+        Song::create(['album_id' => $album->id, 'artist_id' => $artist->id, 'title' => 'Track 9', 'track_number' => 9]);
+        $this->assertSame(15.0, app(ReleasePricing::class)->for($album)['usd']);
+    }
+
+    public function test_payment_snapshot_amount_is_rechecked_before_approval(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $user = User::factory()->create(['role' => 'artist']);
+        $artist = Artist::create(['user_id' => $user->id, 'artist_name' => 'Amount Check Artist']);
+        $album = Album::create(['artist_id' => $artist->id, 'title' => 'Amount Check', 'status' => 'draft', 'selected_store_ids' => []]);
+        $payment = ReleasePayment::create([
+            'album_id' => $album->id, 'user_id' => $user->id, 'provider' => 'offline',
+            'amount' => 1, 'currency' => 'USD', 'reference' => 'BAD-AMOUNT-1', 'status' => 'pending',
+            'addon_services' => [], 'selected_store_ids' => [],
+        ]);
+
+        $this->actingAs($admin)->post(route('admin.release-payments.approve', $payment))->assertStatus(409);
+        $this->assertSame('pending', $payment->fresh()->status);
+        $this->assertSame('draft', $album->fresh()->status);
+    }
+
+    public function test_legacy_payment_without_store_snapshot_can_still_be_approved(): void
+    {
+        Notification::fake();
+        $admin = User::factory()->create(['role' => 'admin']);
+        $user = User::factory()->create(['role' => 'artist']);
+        $artist = Artist::create(['user_id' => $user->id, 'artist_name' => 'Legacy Payment Artist']);
+        $album = Album::create(['artist_id' => $artist->id, 'title' => 'Legacy Payment', 'status' => 'draft', 'selected_store_ids' => []]);
+        Song::create(['album_id' => $album->id, 'artist_id' => $artist->id, 'title' => 'Legacy Track', 'track_number' => 1, 'status' => 'draft']);
+        $payment = ReleasePayment::create([
+            'album_id' => $album->id, 'user_id' => $user->id, 'provider' => 'offline',
+            'amount' => 999, 'currency' => 'USD', 'reference' => 'LEGACY-NO-SNAPSHOT-1', 'status' => 'pending',
+            'addon_services' => [], 'selected_store_ids' => null,
+        ]);
+
+        $this->actingAs($admin)->post(route('admin.release-payments.approve', $payment))->assertSessionHas('success');
+        $this->assertSame('paid', $payment->fresh()->status);
+        $this->assertSame('submitted', $album->fresh()->status);
     }
 
     public function test_missing_myanmyanpay_order_clears_the_local_pending_transaction(): void

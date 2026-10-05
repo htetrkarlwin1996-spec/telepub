@@ -106,9 +106,8 @@ class AdminSettingsController extends Controller
     {
         $validated = $request->validate([
             'release_price_first_usd' => ['required', 'numeric', 'min:0', 'max:9999'],
-            'release_price_single_usd' => ['required', 'numeric', 'min:0', 'max:9999'],
-            'release_price_ep_usd' => ['required', 'numeric', 'min:0', 'max:9999'],
-            'release_price_album_usd' => ['required', 'numeric', 'min:0', 'max:9999'],
+            'release_price_per_track_usd' => ['required', 'numeric', 'min:0', 'max:9999'],
+            'release_price_over_8_tracks_usd' => ['required', 'numeric', 'min:0', 'max:9999'],
             'usd_to_thb_rate' => ['required', 'numeric', 'min:0.0001'],
             'usd_to_mmk_rate' => ['required', 'numeric', 'min:0.0001'],
             'offline_bank_instructions' => ['required', 'string', 'max:5000'],

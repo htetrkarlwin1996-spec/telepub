@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Artist;
+use App\Models\Otp;
 use App\Models\RoyaltyAllocation;
 use App\Models\User;
+use App\Notifications\SendOtp;
 use App\Services\UserNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -58,7 +60,6 @@ class MasterAccountController extends Controller
             $user->forceFill([
                 'role' => 'artist',
                 'is_active' => true,
-                'email_verified_at' => now(),
             ])->save();
         }
         $artist = Artist::create([
@@ -77,6 +78,10 @@ class MasterAccountController extends Controller
         ]);
         if ($user) {
             $notifier->accountCreated($user, 'Artist');
+            $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            Otp::where('email', $user->email)->where('type', 'registration')->whereNull('used_at')->update(['used_at' => now()]);
+            Otp::create(['email' => $user->email, 'otp' => $otp, 'type' => 'registration', 'expires_at' => now()->addMinutes(10)]);
+            $user->notify(new SendOtp($otp, 'registration'));
         }
 
         return redirect()->route('manager.dashboard')->with('success', 'Managed artist created.');

@@ -8,6 +8,7 @@ use App\Models\Artist;
 use App\Models\KnowledgePost;
 use App\Models\MusicStore;
 use App\Models\ReleasePayment;
+use App\Models\Royalty;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -45,8 +46,8 @@ class KnowledgeAndAddonServicesTest extends TestCase
     {
         $admin = User::factory()->create(['role' => 'admin']);
         $this->actingAs($admin)->put(route('admin.settings.release-pricing'), [
-            'release_price_first_usd' => 10, 'release_price_single_usd' => 10,
-            'release_price_ep_usd' => 20, 'release_price_album_usd' => 30,
+            'release_price_first_usd' => 10, 'release_price_per_track_usd' => 10,
+            'release_price_over_8_tracks_usd' => 30,
             'addon_composer_songwriter_usd' => 5, 'addon_global_performance_usd' => 7,
             'addon_mechanical_usd' => 3, 'usd_to_thb_rate' => 36, 'usd_to_mmk_rate' => 4500,
             'offline_bank_instructions' => 'Transfer instructions',
@@ -117,7 +118,7 @@ class KnowledgeAndAddonServicesTest extends TestCase
 
     public function test_new_royalty_labels_are_used_everywhere(): void
     {
-        $this->assertSame('Global Performance Royalties', \App\Models\Royalty::TYPES['publishing_rights']);
-        $this->assertSame('Composer / Songwriter Royalties', \App\Models\Royalty::TYPES['composer_rights']);
+        $this->assertSame('Global Performance Royalties', Royalty::TYPES['publishing_rights']);
+        $this->assertSame('Composer / Songwriter Royalties', Royalty::TYPES['composer_rights']);
     }
 }

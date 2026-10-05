@@ -2,17 +2,16 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use App\Models\Artist;
 use App\Models\Album;
-use App\Models\Song;
-use App\Models\MusicStore;
-use App\Models\Distribution;
-use App\Models\Royalty;
 use App\Models\Analytics;
+use App\Models\Artist;
+use App\Models\Distribution;
 use App\Models\Invoice;
+use App\Models\MusicStore;
+use App\Models\Royalty;
+use App\Models\Song;
+use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -98,10 +97,9 @@ class DatabaseSeeder extends Seeder
         if (Album::count() > 0) {
             $this->command->info('Sample albums already exist — skipping sample data.');
             $this->command->info('Accounts preserved!');
-            $this->command->info('Admin: admin@example.com / password');
-            $this->command->info('Artist 1: luna@example.com / password (Luna Star)');
-            $this->command->info('Artist 2: phoenix@example.com / password (Phoenix Blaze)');
-            $this->command->info('Total stores: ' . MusicStore::count() . ' (DistroKid stores)');
+            $this->command->info('Demo account passwords come from SEED_*_PASSWORD environment variables.');
+            $this->command->info('Total stores: '.MusicStore::count().' (DistroKid stores)');
+
             return;
         }
 
@@ -335,9 +333,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->command->info('Database seeded successfully!');
-        $this->command->info('Admin login: admin@example.com / password');
-        $this->command->info('Artist 1 login: luna@example.com / password (Luna Star)');
-        $this->command->info('Artist 2 login: phoenix@example.com / password (Phoenix Blaze)');
-        $this->command->info('Total stores added: ' . count($stores) . ' (DistroKid stores)');
+        $this->command->info('Demo account passwords come from SEED_*_PASSWORD environment variables.');
+        $this->command->info('Total stores added: '.count($stores).' (DistroKid stores)');
     }
 }

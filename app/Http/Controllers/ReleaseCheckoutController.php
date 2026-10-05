@@ -89,6 +89,7 @@ class ReleaseCheckoutController extends Controller
                     ->withErrors(['payment' => 'Your active MMQR order has different release selections. Cancel it and create a new payment.'])
                     ->with('open_mmqr', true);
             }
+
             return redirect()->route('artist.catalog.checkout', $album)
                 ->with('success', 'Your existing MMQR order is still active and has been reopened.')
                 ->with('open_mmqr', true);
@@ -142,11 +143,30 @@ class ReleaseCheckoutController extends Controller
     public function cancel(Request $request, ReleasePayment $payment, MyanMyanPayService $mmpay)
     {
         abort_unless($payment->user_id === $request->user()->id, 403);
-        abort_unless($payment->provider === 'myanmyanpay', 422);
 
         if ($payment->status !== 'pending') {
             return redirect()->route('artist.catalog.checkout', $payment->album)
-                ->withErrors(['payment' => 'Only a pending MMQR transaction can be cancelled.']);
+                ->withErrors(['payment' => 'Only a pending transaction can be cancelled.']);
+        }
+
+        if ($payment->provider !== 'myanmyanpay') {
+            try {
+                if ($payment->provider === 'stripe' && filled(data_get($payment->gateway_response, 'session_id'))) {
+                    abort_unless(config('services.stripe.secret'), 503, 'Stripe is not configured.');
+                    Http::withToken(config('services.stripe.secret'))->asForm()
+                        ->post('https://api.stripe.com/v1/checkout/sessions/'.data_get($payment->gateway_response, 'session_id').'/expire')
+                        ->throw();
+                }
+                $this->cancelLocally($payment, ['cancelled_by_user' => true], 'cancelled');
+
+                return redirect()->route('artist.catalog.checkout', $payment->album)
+                    ->with('success', ucfirst($payment->provider).' payment cancelled. You can edit the release or start a new payment.');
+            } catch (\Throwable $e) {
+                report($e);
+
+                return redirect()->route('artist.catalog.checkout', $payment->album)
+                    ->withErrors(['payment' => 'Transaction could not be cancelled safely. Please contact support.']);
+            }
         }
 
         try {
@@ -319,15 +339,30 @@ class ReleaseCheckoutController extends Controller
             if ($payment->status === 'paid') {
                 return;
             }
+            abort_unless($payment->status === 'pending', 409, 'This payment is no longer active.');
 
             $album = $payment->album()->lockForUpdate()->firstOrFail();
             $normalize = fn (array $values) => collect($values)->map('strval')->unique()->sort()->values()->all();
+            $storesMatch = $payment->selected_store_ids === null
+                || $normalize($payment->selected_store_ids) === $normalize($album->selected_store_ids ?? []);
             abort_unless(
                 $normalize($payment->addon_services ?? []) === $normalize($album->selected_addons ?? [])
-                && $normalize($payment->selected_store_ids ?? []) === $normalize($album->selected_store_ids ?? []),
+                && $storesMatch,
                 409,
                 'Release selections changed after checkout started. Cancel this payment and create a new one.'
             );
+
+            // Legacy payments predate checkout snapshots; preserve their paid callback path.
+            if ($payment->selected_store_ids !== null) {
+                $prices = app(ReleasePricing::class)->totalFor($album, $payment->addon_services ?? []);
+                $expectedAmount = match ($payment->currency) {
+                    'THB' => $prices['total_thb'],
+                    'MMK' => $prices['total_mmk'],
+                    default => $prices['total_usd'],
+                };
+                abort_unless(abs((float) $payment->amount - (float) $expectedAmount) < 0.01, 409,
+                    'The release price changed after checkout started. Cancel this payment and create a new one.');
+            }
 
             $payment->update(['status' => 'paid', 'paid_at' => now()]);
             $submission->finalize($album);

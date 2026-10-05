@@ -4,10 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\Album;
 use App\Models\Artist;
-use App\Models\Song;
-use App\Models\User;
 use App\Models\MasterAccount;
 use App\Models\ReleasePayment;
+use App\Models\Song;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -113,6 +113,27 @@ class ApiReleaseSecurityTest extends TestCase
 
         $this->actingAs($owner)->delete("/artist/catalog/{$album->id}")->assertUnprocessable();
         $this->assertDatabaseHas('albums', ['id' => $album->id]);
+    }
+
+    public function test_pending_payment_blocks_api_release_and_track_mutations(): void
+    {
+        [$owner, $album] = $this->releaseFor('api-payment-lock@example.com');
+        $song = Song::create(['album_id' => $album->id, 'artist_id' => $album->artist_id, 'title' => 'Locked', 'track_number' => 1]);
+        ReleasePayment::create([
+            'album_id' => $album->id, 'user_id' => $owner->id, 'provider' => 'offline',
+            'amount' => 14.99, 'currency' => 'USD', 'reference' => 'API-LOCK-1',
+            'status' => 'pending', 'addon_services' => [], 'selected_store_ids' => [],
+        ]);
+        Sanctum::actingAs($owner);
+
+        $this->putJson("/api/artist/releases/{$album->id}", ['title' => 'Changed'])->assertUnprocessable();
+        $this->postJson("/api/artist/releases/{$album->id}/tracks", ['tracks' => [[
+            'id' => $song->id, 'title' => 'Changed', 'track_number' => 1,
+        ]]])->assertUnprocessable();
+        $this->postJson("/api/artist/releases/{$album->id}/stores", ['store_ids' => [1]])->assertUnprocessable();
+
+        $this->assertSame('Original', $album->fresh()->title);
+        $this->assertSame('Locked', $song->fresh()->title);
     }
 
     public function test_master_account_can_manage_selected_artist_through_api(): void
