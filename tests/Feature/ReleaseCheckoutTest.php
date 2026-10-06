@@ -15,6 +15,7 @@ use App\Services\MyanMyanPayService;
 use App\Services\ReleasePricing;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -295,20 +296,40 @@ class ReleaseCheckoutTest extends TestCase
         $this->assertSame(15.0, app(ReleasePricing::class)->for($album)['usd']);
     }
 
-    public function test_payment_snapshot_amount_is_rechecked_before_approval(): void
+    public function test_checkout_amount_remains_valid_when_live_pricing_changes(): void
     {
+        Notification::fake();
         $admin = User::factory()->create(['role' => 'admin']);
         $user = User::factory()->create(['role' => 'artist']);
         $artist = Artist::create(['user_id' => $user->id, 'artist_name' => 'Amount Check Artist']);
         $album = Album::create(['artist_id' => $artist->id, 'title' => 'Amount Check', 'status' => 'draft', 'selected_store_ids' => []]);
+        Song::create(['album_id' => $album->id, 'artist_id' => $artist->id, 'title' => 'Price Snapshot Track', 'track_number' => 1, 'status' => 'draft']);
         $payment = ReleasePayment::create([
             'album_id' => $album->id, 'user_id' => $user->id, 'provider' => 'offline',
             'amount' => 1, 'currency' => 'USD', 'reference' => 'BAD-AMOUNT-1', 'status' => 'pending',
             'addon_services' => [], 'selected_store_ids' => [],
         ]);
 
-        $this->actingAs($admin)->post(route('admin.release-payments.approve', $payment))->assertStatus(409);
-        $this->assertSame('pending', $payment->fresh()->status);
+        $this->actingAs($admin)->post(route('admin.release-payments.approve', $payment))->assertSessionHas('success');
+        $this->assertSame('paid', $payment->fresh()->status);
+        $this->assertSame('submitted', $album->fresh()->status);
+    }
+
+    public function test_cancelled_paypal_return_is_rejected_before_capture(): void
+    {
+        Http::fake();
+        $user = User::factory()->create(['role' => 'artist']);
+        $artist = Artist::create(['user_id' => $user->id, 'artist_name' => 'Cancelled PayPal Artist']);
+        $album = Album::create(['artist_id' => $artist->id, 'title' => 'Cancelled PayPal', 'status' => 'draft']);
+        $payment = ReleasePayment::create([
+            'album_id' => $album->id, 'user_id' => $user->id, 'provider' => 'paypal',
+            'amount' => 14.99, 'currency' => 'USD', 'reference' => 'PAYPAL-CANCELLED-1',
+            'status' => 'cancelled', 'gateway_response' => ['order_id' => 'ORDER-CANCELLED-1'],
+        ]);
+
+        $this->actingAs($user)->get(route('payments.paypal.return', $payment))->assertStatus(409);
+        Http::assertNothingSent();
+        $this->assertSame('cancelled', $payment->fresh()->status);
         $this->assertSame('draft', $album->fresh()->status);
     }
 

@@ -225,6 +225,9 @@ class ReleaseCheckoutController extends Controller
     public function paypalReturn(Request $request, ReleasePayment $payment, ReleaseSubmission $submission)
     {
         abort_unless($payment->user_id === $request->user()->id, 403);
+        $payment->refresh();
+        abort_unless($payment->status === 'pending', 409, 'This PayPal payment is no longer active. No capture was attempted.');
+
         $base = config('services.paypal.base_url');
         $token = Http::asForm()->withBasicAuth(config('services.paypal.client_id'), config('services.paypal.secret'))->post($base.'/v1/oauth2/token', ['grant_type' => 'client_credentials'])->throw()->json('access_token');
         $orderId = data_get($payment->gateway_response, 'order_id');
@@ -351,18 +354,6 @@ class ReleaseCheckoutController extends Controller
                 409,
                 'Release selections changed after checkout started. Cancel this payment and create a new one.'
             );
-
-            // Legacy payments predate checkout snapshots; preserve their paid callback path.
-            if ($payment->selected_store_ids !== null) {
-                $prices = app(ReleasePricing::class)->totalFor($album, $payment->addon_services ?? []);
-                $expectedAmount = match ($payment->currency) {
-                    'THB' => $prices['total_thb'],
-                    'MMK' => $prices['total_mmk'],
-                    default => $prices['total_usd'],
-                };
-                abort_unless(abs((float) $payment->amount - (float) $expectedAmount) < 0.01, 409,
-                    'The release price changed after checkout started. Cancel this payment and create a new one.');
-            }
 
             $payment->update(['status' => 'paid', 'paid_at' => now()]);
             $submission->finalize($album);
