@@ -61,6 +61,12 @@ return [
         'base_url' => env('PAYPAL_BASE_URL', 'https://api-m.paypal.com'),
     ],
 
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
+    ],
+
     'myanmyanpay' => [
         'app_id' => env('MYANMYANPAY_APP_ID'),
         'publishable_key' => env('MYANMYANPAY_PUBLISHABLE_KEY'),
