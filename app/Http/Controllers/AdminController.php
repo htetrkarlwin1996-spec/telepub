@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Models\Withdrawal;
 use App\Services\RoyaltyCsvImportService;
 use App\Services\RoyaltyService;
+use App\Services\TeleMusicAppDelivery;
 use App\Services\UserNotifier;
 use App\Services\WithdrawalLifecycle;
 use Illuminate\Http\Request;
@@ -710,7 +711,7 @@ class AdminController extends Controller
         return view('admin.releases.show', compact('album', 'stores'));
     }
 
-    public function approveRelease(Request $request, Album $album, UserNotifier $notifier)
+    public function approveRelease(Request $request, Album $album, UserNotifier $notifier, TeleMusicAppDelivery $appDelivery)
     {
         $validated = $request->validate([
             'songs' => 'required|array',
@@ -744,6 +745,7 @@ class AdminController extends Controller
             'approved_at' => now(),
         ]);
         $notifier->releaseApproved($album->fresh());
+        $appDelivery->dispatchIfSelected($album->fresh());
 
         return redirect()->route('admin.releases.show', $album)
             ->with('success', 'Release approved successfully! ISRC codes have been saved.');

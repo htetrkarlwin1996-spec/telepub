@@ -13,6 +13,7 @@ use App\Models\Song;
 use App\Models\User;
 use App\Models\Withdrawal;
 use App\Services\RoyaltyService;
+use App\Services\TeleMusicAppDelivery;
 use App\Services\UserNotifier;
 use App\Services\WithdrawalLifecycle;
 use Illuminate\Http\JsonResponse;
@@ -152,7 +153,7 @@ class AdminController extends Controller
         ]);
     }
 
-    public function approveRelease(Request $request, Album $album, UserNotifier $notifier): JsonResponse
+    public function approveRelease(Request $request, Album $album, UserNotifier $notifier, TeleMusicAppDelivery $appDelivery): JsonResponse
     {
         $album->update([
             'status' => 'approved',
@@ -160,7 +161,9 @@ class AdminController extends Controller
             'release_notified_at' => null,
             'notes' => $request->input('notes', $album->notes),
         ]);
+        $album->distributions()->update(['status' => 'approved', 'approved_at' => now()]);
         $notifier->releaseApproved($album->fresh());
+        $appDelivery->dispatchIfSelected($album->fresh());
 
         return response()->json([
             'data' => $album->fresh()->load('artist'),

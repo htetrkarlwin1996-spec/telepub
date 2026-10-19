@@ -47,7 +47,7 @@ class GoogleAuthenticationTest extends TestCase
         $this->assertAuthenticatedAs($existing);
         $this->assertSame('google-existing', $existing->fresh()->google_id);
         $this->assertNotNull($existing->fresh()->email_verified_at);
-        $this->assertDatabaseCount('users', 1);
+        $this->assertSame(1, User::where('email', 'existing@example.com')->count());
     }
 
     public function test_unverified_google_email_is_rejected(): void

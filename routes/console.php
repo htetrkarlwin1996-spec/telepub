@@ -2,6 +2,7 @@
 
 use App\Models\Album;
 use App\Services\SpacesClientFactory;
+use App\Services\TeleMusicAppDelivery;
 use App\Services\UserNotifier;
 use Aws\Exception\AwsException;
 use Illuminate\Foundation\Inspiring;
@@ -32,6 +33,22 @@ Artisan::command('releases:notify-live', function (UserNotifier $notifier) {
 })->purpose('Email users when an approved release reaches its release date');
 
 Schedule::command('releases:notify-live')->hourly()->withoutOverlapping();
+Artisan::command('telemusic-app:deliver-pending', function (TeleMusicAppDelivery $delivery) {
+    $count = 0;
+    Album::query()->where('status', 'approved')
+        ->whereHas('distributions', fn ($query) => $query
+            ->where('delivery_status', 'pending')
+            ->whereHas('store', fn ($store) => $store->where('delivery_driver', 'telemusic_api')))
+        ->chunkById(100, function ($albums) use ($delivery, &$count) {
+            foreach ($albums as $album) {
+                if ($delivery->dispatchIfSelected($album)) {
+                    $count++;
+                }
+            }
+        });
+    $this->info("Queued {$count} TeleMusic App releases.");
+})->purpose('Queue approved TeleMusic App releases that still need delivery');
+Schedule::command('telemusic-app:deliver-pending')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('queue:work --stop-when-empty --queue=default --tries=3 --timeout=1200')
     ->everyMinute()
     ->withoutOverlapping(30);

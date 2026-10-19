@@ -67,6 +67,13 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
 
+    'telemusic_app' => [
+        'api_url' => env('TELEMUSIC_APP_API_URL'),
+        'api_token' => env('TELEMUSIC_APP_API_TOKEN'),
+        'webhook_secret' => env('TELEMUSIC_APP_WEBHOOK_SECRET'),
+        'public_url' => env('TELEMUSIC_APP_PUBLIC_URL'),
+    ],
+
     'myanmyanpay' => [
         'app_id' => env('MYANMYANPAY_APP_ID'),
         'publishable_key' => env('MYANMYANPAY_PUBLISHABLE_KEY'),

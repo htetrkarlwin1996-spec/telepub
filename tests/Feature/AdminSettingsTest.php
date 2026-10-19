@@ -25,7 +25,7 @@ class AdminSettingsTest extends TestCase
     {
         $admin = User::factory()->create(['role' => 'admin']);
         $artistUser = User::factory()->create(['role' => 'artist', 'email_verified_at' => now()]);
-        Artist::create([
+        $artist = Artist::create([
             'user_id' => $artistUser->id,
             'artist_name' => 'Currency Artist',
             'available_balance' => 123.45,
@@ -43,7 +43,7 @@ class AdminSettingsTest extends TestCase
         $this->actingAs($artistUser)->get(route('dashboard'))
             ->assertOk()
             ->assertSee('EUR 123.45');
-        $this->assertEquals(123.45, Artist::firstOrFail()->available_balance);
+        $this->assertEquals(123.45, $artist->fresh()->available_balance);
     }
 
     public function test_artist_cannot_open_or_update_admin_settings(): void

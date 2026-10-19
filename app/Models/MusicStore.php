@@ -2,14 +2,14 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class MusicStore extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'slug', 'logo', 'description', 'url', 'is_active'];
+    protected $fillable = ['name', 'slug', 'logo', 'description', 'url', 'delivery_driver', 'is_active'];
 
     protected $casts = ['is_active' => 'boolean'];
 

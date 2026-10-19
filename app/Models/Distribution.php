@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class Distribution extends Model
 {
@@ -12,13 +12,17 @@ class Distribution extends Model
     protected $fillable = [
         'song_id', 'album_id', 'store_id', 'artist_id', 'status',
         'distribution_fee', 'store_url', 'submitted_at', 'approved_at',
-        'live_at', 'notes'
+        'live_at', 'notes', 'delivery_status', 'delivery_attempts', 'external_release_id',
+        'delivery_response', 'delivery_error', 'last_delivery_attempt_at', 'delivered_at',
     ];
 
     protected $casts = [
         'submitted_at' => 'datetime',
         'approved_at' => 'datetime',
         'live_at' => 'datetime',
+        'delivery_response' => 'array',
+        'last_delivery_attempt_at' => 'datetime',
+        'delivered_at' => 'datetime',
     ];
 
     public function song()

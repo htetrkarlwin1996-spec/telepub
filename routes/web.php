@@ -3,11 +3,12 @@
 use App\Http\Controllers\AdminBulkReleaseController;
 use App\Http\Controllers\AdminCatalogController;
 use App\Http\Controllers\AdminController;
-use App\Http\Controllers\AdminMaintenanceController;
 use App\Http\Controllers\AdminKnowledgeController;
+use App\Http\Controllers\AdminMaintenanceController;
 use App\Http\Controllers\AdminMasterAccountController;
 use App\Http\Controllers\AdminNotificationController;
 use App\Http\Controllers\AdminSettingsController;
+use App\Http\Controllers\AdminTeleMusicDeliveryController;
 use App\Http\Controllers\AlbumController;
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\ArtistController;
@@ -241,6 +242,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
         Route::delete('/songs/{song}', [AdminController::class, 'destroySong'])->name('songs.destroy');
         Route::get('/distributions', [AdminController::class, 'distributions'])->name('distributions');
         Route::post('/distributions', [AdminController::class, 'storeDistribution'])->name('distributions.store');
+        Route::post('/distributions/{distribution}/retry-telemusic', [AdminTeleMusicDeliveryController::class, 'retry'])->name('distributions.retry-telemusic');
 
         // Analytics
         Route::get('/analytics', [AdminController::class, 'analytics'])->name('analytics');

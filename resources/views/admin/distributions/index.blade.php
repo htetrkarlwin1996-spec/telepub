@@ -63,6 +63,7 @@
                                 <th class="text-center py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Status</th>
                                 <th class="text-left py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider hidden md:table-cell">Submitted</th>
                                 <th class="text-right py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Fee</th>
+                                <th class="text-right py-3 px-2 text-black font-extrabold uppercase text-xs tracking-wider">Delivery</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -87,9 +88,20 @@
                                 </td>
                                 <td class="py-3 px-2 text-xs font-bold text-black/50 hidden md:table-cell">{{ $dist->submitted_at ? $dist->submitted_at->format('Y-m-d') : '-' }}</td>
                                 <td class="py-3 px-2 text-right font-bold text-black">{{ money($dist->distribution_fee) }}</td>
+                                <td class="py-3 px-2 text-right">
+                                    @if($dist->store?->delivery_driver === 'telemusic_api')
+                                        <div class="text-xs font-black uppercase">{{ $dist->delivery_status }}</div>
+                                        @if($dist->delivery_error)<div class="mt-1 max-w-64 text-[10px] font-bold text-red-700" title="{{ $dist->delivery_error }}">{{ \Illuminate\Support\Str::limit($dist->delivery_error, 80) }}</div>@endif
+                                        @if($dist->delivery_status === 'failed')
+                                            <form method="POST" action="{{ route('admin.distributions.retry-telemusic', $dist) }}" class="mt-2">@csrf<button class="border-2 border-black bg-brand-500 px-2 py-1 text-[10px] font-black uppercase">Retry</button></form>
+                                        @endif
+                                    @else
+                                        <span class="text-xs font-bold text-black/30">External</span>
+                                    @endif
+                                </td>
                             </tr>
                             @empty
-                            <tr><td colspan="6" class="py-8 text-center font-bold text-black/40">No distributions yet.</td></tr>
+                            <tr><td colspan="7" class="py-8 text-center font-bold text-black/40">No distributions yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
