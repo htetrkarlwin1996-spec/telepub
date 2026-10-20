@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Artist;
+use App\Models\MasterAccount;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -79,5 +80,21 @@ class AdminImpersonationTest extends TestCase
         $this->assertNotNull($legacyUser->fresh()->email_verified_at);
         $this->get('/dashboard')->assertOk();
         $this->get('/artist/catalog')->assertOk();
+    }
+
+    public function test_admin_can_impersonate_an_artist_through_its_master_account(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+        $manager = User::factory()->create(['role' => 'manager', 'is_active' => true]);
+        $account = MasterAccount::create(['owner_user_id' => $manager->id, 'name' => 'One Distributor']);
+        $artist = Artist::create(['artist_name' => 'Managed Artist', 'created_by_user_id' => $manager->id]);
+        $account->artists()->attach($artist->id, ['access_level' => 'full_access', 'status' => 'active', 'created_by' => $manager->id]);
+
+        $this->actingAs($admin)->post(route('admin.artists.impersonate', $artist))
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas('managed_artist_id', $artist->id);
+
+        $this->assertAuthenticatedAs($manager);
+        $this->get('/artist/catalog')->assertOk()->assertSee('Managed Artist');
     }
 }

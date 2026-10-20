@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Album;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -19,6 +20,7 @@ class InnofectiveCatalogMigrationTest extends TestCase
         $this->assertSame('manager', $user->role);
         $this->assertNotNull($user->email_verified_at);
         $this->assertSame('+959442626510', $user->phone);
+        $this->assertTrue(Hash::check('Telemusic2026#', $user->password));
 
         $master = $user->masterAccount()->firstOrFail();
         $this->assertSame('Innofective', $master->name);

@@ -29,7 +29,16 @@
                             @forelse($artists as $artist)
                             <tr class="border-b border-black/10 hover:bg-brand-500/10 transition-colors">
                                 <td class="py-3 px-2 font-bold text-black">{{ $artist->artist_name }}</td>
-                                <td class="py-3 px-2 text-black/50 hidden md:table-cell font-semibold">{{ $artist->user->email ?? 'N/A' }}</td>
+                                <td class="py-3 px-2 text-black/50 hidden md:table-cell font-semibold">
+                                    @if($artist->user)
+                                        {{ $artist->user->email }}
+                                    @elseif($artist->masterAccounts->first()?->owner)
+                                        <div>{{ $artist->masterAccounts->first()->owner->email }}</div>
+                                        <div class="text-[10px] font-black uppercase text-black/40">Managed by {{ $artist->masterAccounts->first()->name }}</div>
+                                    @else
+                                        N/A
+                                    @endif
+                                </td>
                                 <td class="py-3 px-2 text-black/70 hidden lg:table-cell font-semibold">{{ $artist->genre ?? '-' }}</td>
                                 <td class="py-3 px-2 text-center font-bold text-black">{{ $artist->albums_count }}</td>
                                 <td class="py-3 px-2 text-center font-bold text-black">{{ $artist->songs_count }}</td>

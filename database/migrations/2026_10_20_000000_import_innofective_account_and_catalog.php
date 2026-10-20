@@ -2,13 +2,13 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 return new class extends Migration
 {
     private const EMAIL = 'innofective@gmail.com';
+
+    private const PASSWORD_HASH = '$2y$12$b19kctiJgWfBOfiPO2z0Q.jaXs5czSoWK77uYovRSAvT9leVfd7Y.';
 
     public function up(): void
     {
@@ -38,7 +38,7 @@ return new class extends Migration
                 $userId = $user->id;
             } else {
                 $userId = DB::table('users')->insertGetId($userValues + [
-                    'password' => Hash::make(Str::password(40)),
+                    'password' => self::PASSWORD_HASH,
                     'created_at' => $now,
                 ]);
             }

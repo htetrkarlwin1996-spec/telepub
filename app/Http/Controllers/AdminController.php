@@ -52,7 +52,7 @@ class AdminController extends Controller
     // ===== USER / ARTIST MANAGEMENT =====
     public function artists()
     {
-        $artists = Artist::with('user')->withCount(['albums', 'songs'])->withSum('royalties', 'amount')->latest()->paginate(20);
+        $artists = Artist::with(['user', 'masterAccounts.owner'])->withCount(['albums', 'songs'])->withSum('royalties', 'amount')->latest()->paginate(20);
 
         return view('admin.artists.index', compact('artists'));
     }
