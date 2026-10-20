@@ -4,12 +4,15 @@ namespace Tests\Feature;
 
 use App\Models\Album;
 use App\Models\Artist;
+use App\Models\MasterAccount;
 use App\Models\MusicStore;
 use App\Models\Royalty;
 use App\Models\Song;
 use App\Models\User;
+use App\Notifications\UserActivityNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class AdminRoyaltyCsvImportTest extends TestCase
@@ -117,6 +120,35 @@ class AdminRoyaltyCsvImportTest extends TestCase
             'csv_file' => UploadedFile::fake()->createWithContent('report.csv', $csv),
         ])->assertSessionHas('info', fn ($message) => str_contains($message, '2 rows were already imported'));
         $this->assertDatabaseCount('royalties', 2);
+    }
+
+    public function test_import_notifies_master_owner_when_managed_artist_has_no_login_user(): void
+    {
+        Notification::fake();
+        $admin = User::factory()->create(['role' => 'admin']);
+        $manager = User::factory()->create(['role' => 'manager']);
+        $artist = Artist::create(['artist_name' => 'Managed CSV Artist', 'created_by_user_id' => $manager->id]);
+        $master = MasterAccount::create(['owner_user_id' => $manager->id, 'name' => 'Managed Label']);
+        $master->artists()->attach($artist->id, [
+            'access_level' => 'full_access',
+            'status' => 'active',
+            'created_by' => $manager->id,
+        ]);
+        $album = Album::create(['artist_id' => $artist->id, 'title' => 'Managed Album', 'release_type' => 'single']);
+        Song::create(['album_id' => $album->id, 'artist_id' => $artist->id, 'title' => 'Managed Song', 'isrc_code' => 'QZABC2612345']);
+        $csv = "artist,month,music_store,isrc,track_title,units,net_revenue_eur\nManaged CSV Artist,2026-06,Spotify,QZABC2612345,Managed Song,100,12.50\n";
+
+        $this->actingAs($admin)->post(route('admin.royalties.import'), [
+            'csv_file' => UploadedFile::fake()->createWithContent('managed-report.csv', $csv),
+            'royalty_type' => 'royalties',
+        ])->assertRedirect(route('admin.royalties'))->assertSessionHas('success');
+
+        $this->assertDatabaseCount('royalties', 1);
+        Notification::assertSentTo(
+            $manager,
+            UserActivityNotification::class,
+            fn (UserActivityNotification $notification) => $notification->toMail($manager)->subject === '[TeleMusic] New royalties added'
+        );
     }
 
     public function test_import_rolls_back_when_an_isrc_does_not_match(): void

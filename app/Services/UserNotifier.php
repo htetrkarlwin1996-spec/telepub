@@ -118,29 +118,27 @@ class UserNotifier
     {
         $royalty->loadMissing(['allocations', 'store', 'song', 'album']);
         foreach ($royalty->allocations->whereIn('beneficiary_type', ['artist', 'master_account']) as $allocation) {
-            $user = $allocation->beneficiary_type === 'artist'
-                ? Artist::with('user')->find($allocation->beneficiary_id)?->user
-                : MasterAccount::with('owner')->find($allocation->beneficiary_id)?->owner;
-            $this->activity($user, 'New royalty added', 'New royalty earnings were added to your TeleMusic account.', $this->userUrl($user, route('artist.royalties')), 'View Royalties', [
-                'Your earnings' => $this->money($allocation->allocated_amount, $allocation->currency),
-                'Gross royalty' => $this->money($royalty->amount, $royalty->currency),
-                'Share type' => ucwords(str_replace('_', ' ', $allocation->share_type)),
-                'Store' => $royalty->store?->name ?? 'N/A',
-                'Release/track' => $royalty->song?->title ?? $royalty->album?->title ?? 'N/A',
-                'Period' => str_pad((string) $royalty->month, 2, '0', STR_PAD_LEFT).'/'.$royalty->year,
-            ]);
+            foreach ($this->beneficiaryUsers($allocation->beneficiary_type, (int) $allocation->beneficiary_id) as $user) {
+                $this->activity($user, 'New royalty added', 'New royalty earnings were added to your TeleMusic account.', $this->userUrl($user, route('artist.royalties')), 'View Royalties', [
+                    'Your earnings' => $this->money($allocation->allocated_amount, $allocation->currency),
+                    'Gross royalty' => $this->money($royalty->amount, $royalty->currency),
+                    'Share type' => ucwords(str_replace('_', ' ', $allocation->share_type)),
+                    'Store' => $royalty->store?->name ?? 'N/A',
+                    'Release/track' => $royalty->song?->title ?? $royalty->album?->title ?? 'N/A',
+                    'Period' => str_pad((string) $royalty->month, 2, '0', STR_PAD_LEFT).'/'.$royalty->year,
+                ]);
+            }
         }
     }
 
     public function royaltyBatchSummary(string $beneficiaryType, int $beneficiaryId, float $amount, int $entries, string $currency = 'USD'): void
     {
-        $user = $beneficiaryType === 'artist'
-            ? Artist::with('user')->find($beneficiaryId)?->user
-            : MasterAccount::with('owner')->find($beneficiaryId)?->owner;
-        $this->activity($user, 'New royalties added', 'New royalty earnings were added to your TeleMusic account.', $this->userUrl($user, route('artist.royalties')), 'View Royalties', [
-            'Your earnings' => $this->money($amount, $currency),
-            'Royalty entries' => $entries,
-        ]);
+        foreach ($this->beneficiaryUsers($beneficiaryType, $beneficiaryId) as $user) {
+            $this->activity($user, 'New royalties added', 'New royalty earnings were added to your TeleMusic account.', $this->userUrl($user, route('artist.royalties')), 'View Royalties', [
+                'Your earnings' => $this->money($amount, $currency),
+                'Royalty entries' => $entries,
+            ]);
+        }
     }
 
     public function splitChanged(Album $album, string $status, ?string $note = null): void
@@ -206,13 +204,27 @@ class UserNotifier
         return collect([$artist->user])->merge($activeMasterOwners)->filter()->unique('id')->values();
     }
 
+    private function beneficiaryUsers(string $beneficiaryType, int $beneficiaryId): Collection
+    {
+        if ($beneficiaryType === 'artist') {
+            $artist = Artist::find($beneficiaryId);
+
+            return $artist ? $this->artistUsers($artist) : collect();
+        }
+
+        return collect([MasterAccount::with('owner')->find($beneficiaryId)?->owner])
+            ->filter()
+            ->unique('id')
+            ->values();
+    }
+
     private function money(mixed $amount, ?string $currency): string
     {
         return strtoupper($currency ?: 'USD').' '.number_format((float) $amount, 2);
     }
 
-    private function userUrl(User $user, ?string $artistUrl): ?string
+    private function userUrl(?User $user, ?string $artistUrl): ?string
     {
-        return $user->isArtist() ? $artistUrl : route('dashboard');
+        return $user?->isArtist() ? $artistUrl : route('dashboard');
     }
 }
