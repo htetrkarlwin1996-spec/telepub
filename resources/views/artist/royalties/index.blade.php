@@ -4,9 +4,6 @@
     </x-slot>
     <div class="py-8 px-6 sm:px-8 lg:px-10">
         <div class="max-w-7xl mx-auto">
-            @php
-                $artist = auth()->user()->artist;
-            @endphp
             <form method="GET" action="{{ route('artist.royalties') }}" class="bg-white border-2 border-black shadow-[4px_4px_0_#000] p-5 mb-8">
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
                     <div><x-input-label for="filter_store" value="Store" /><select id="filter_store" name="store_id" class="mt-1 w-full border-2 border-black font-bold"><option value="">All Stores</option>@foreach($stores as $store)<option value="{{ $store->id }}" @selected(($filters['store_id'] ?? '') == $store->id)>{{ $store->name }}</option>@endforeach</select></div>

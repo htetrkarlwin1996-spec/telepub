@@ -73,6 +73,34 @@ class MasterAccountRevenueSplitTest extends TestCase
         $this->actingAs($artistUser)->get(route('artist.catalog.create'))->assertForbidden();
     }
 
+    public function test_manager_can_view_royalties_and_switch_between_all_managed_artists(): void
+    {
+        $manager = User::factory()->create(['role' => 'manager', 'is_active' => true]);
+        $master = MasterAccount::create(['owner_user_id' => $manager->id, 'name' => 'Two Artist Label']);
+        $firstArtist = Artist::create(['artist_name' => 'Awesome BoyZ', 'created_by_user_id' => $manager->id]);
+        $secondArtist = Artist::create(['artist_name' => 'Parallax', 'created_by_user_id' => $manager->id]);
+        $master->artists()->attach([
+            $firstArtist->id => ['access_level' => 'full_access', 'status' => 'active', 'created_by' => $manager->id],
+            $secondArtist->id => ['access_level' => 'full_access', 'status' => 'active', 'created_by' => $manager->id],
+        ]);
+
+        $this->actingAs($manager)
+            ->withSession(['managed_artist_id' => $firstArtist->id])
+            ->get(route('artist.royalties'))
+            ->assertOk()
+            ->assertSee('Awesome BoyZ')
+            ->assertSee('Parallax');
+
+        $this->post(route('manager.artists.select', $secondArtist))
+            ->assertRedirect(route('artist.catalog.index'))
+            ->assertSessionHas('managed_artist_id', $secondArtist->id);
+
+        $this->get(route('artist.royalties'))
+            ->assertOk()
+            ->assertSee('Parallax')
+            ->assertSee('Selected');
+    }
+
     public function test_clean_legacy_artist_balance_is_reconciled_from_allocations(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);

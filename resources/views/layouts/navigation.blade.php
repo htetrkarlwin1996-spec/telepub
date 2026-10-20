@@ -23,7 +23,9 @@
         <x-nav-link :href="route('admin.notifications.index')" :active="request()->routeIs('admin.notifications*')">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2a2 2 0 01-.6 1.4L4 17h5m6 0a3 3 0 01-6 0"/></svg>
             {{ __('Notifications') }}
-            @php($unreadAdminNotifications = Auth::user()->unreadNotifications()->count())
+            @php
+                $unreadAdminNotifications = Auth::user()->unreadNotifications()->count();
+            @endphp
             @if($unreadAdminNotifications)<span class="ml-auto border border-black bg-red-300 px-1.5 text-[10px] font-black">{{ $unreadAdminNotifications }}</span>@endif
         </x-nav-link>
         <x-nav-link :href="route('admin.artists')" :active="request()->routeIs('admin.artists*')">
@@ -88,8 +90,32 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>
             {{ __('Roster Dashboard') }}
         </x-nav-link>
-        @if(current_artist())
-        <div class="my-3 border-2 border-black bg-brand-500/20 p-3"><div class="text-[10px] font-black uppercase text-black/50">Managing Artist</div><div class="mt-1 font-black">{{ current_artist()->artist_name }}</div></div>
+        @php
+            $managedArtists = Auth::user()->masterAccount?->artists()
+                ->wherePivot('status', 'active')
+                ->orderBy('artist_name')
+                ->get() ?? collect();
+            $currentManagedArtist = current_artist();
+        @endphp
+        @if($currentManagedArtist)
+        <div class="my-3 border-2 border-black bg-brand-500/20 p-3">
+            <div class="text-[10px] font-black uppercase text-black/50">Managing Artists</div>
+            <div class="mt-2 space-y-2">
+                @foreach($managedArtists as $managedArtist)
+                    <form method="POST" action="{{ route('manager.artists.select', $managedArtist) }}">
+                        @csrf
+                        <button type="submit" class="w-full border-2 border-black px-2 py-2 text-left text-xs font-black transition-colors {{ $currentManagedArtist->is($managedArtist) ? 'bg-brand-500' : 'bg-white hover:bg-brand-500/40' }}" aria-current="{{ $currentManagedArtist->is($managedArtist) ? 'true' : 'false' }}">
+                            <span class="flex items-center justify-between gap-2">
+                                <span class="truncate">{{ $managedArtist->artist_name }}</span>
+                                @if($currentManagedArtist->is($managedArtist))
+                                    <span class="text-[9px] uppercase">Selected</span>
+                                @endif
+                            </span>
+                        </button>
+                    </form>
+                @endforeach
+            </div>
+        </div>
         <x-nav-link :href="route('artist.catalog.index')" :active="request()->routeIs('artist.catalog*')">{{ __('Catalog') }}</x-nav-link>
         <x-nav-link :href="route('artist.royalties')" :active="request()->routeIs('artist.royalties*')">{{ __('Royalties') }}</x-nav-link>
         <x-nav-link :href="route('artist.withdrawals')" :active="request()->routeIs('artist.withdrawals*')">{{ __('Withdrawals') }}</x-nav-link>

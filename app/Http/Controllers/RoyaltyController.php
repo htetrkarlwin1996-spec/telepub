@@ -46,7 +46,7 @@ class RoyaltyController extends Controller
 
         return view('artist.royalties.index', compact(
             'royalties', 'grossRoyalties', 'totalRoyalties', 'monthlyRoyalties', 'storeBreakdown',
-            'albumBreakdown', 'trackBreakdown', 'unassignedRoyalties', 'balanceBreakdown', 'stores', 'years', 'filters'
+            'albumBreakdown', 'trackBreakdown', 'unassignedRoyalties', 'balanceBreakdown', 'stores', 'years', 'filters', 'artist'
         ));
     }
 
