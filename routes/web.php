@@ -155,6 +155,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
         Route::put('/settings/login-announcement', [AdminSettingsController::class, 'updateLoginAnnouncement'])->name('settings.login-announcement');
         Route::resource('knowledge', AdminKnowledgeController::class)->except('show')->parameters(['knowledge' => 'knowledgePost']);
         Route::resource('master-accounts', AdminMasterAccountController::class)->except(['show', 'destroy']);
+        Route::post('/master-accounts/{masterAccount}/impersonate', [ImpersonationController::class, 'startMaster'])->name('master-accounts.impersonate');
         Route::get('/revenue-splits', [RevenueSplitController::class, 'adminIndex'])->name('revenue-splits.index');
         Route::post('/revenue-splits/{changeRequest}/approve', [RevenueSplitController::class, 'approve'])->name('revenue-splits.approve');
         Route::post('/revenue-splits/{changeRequest}/reject', [RevenueSplitController::class, 'reject'])->name('revenue-splits.reject');

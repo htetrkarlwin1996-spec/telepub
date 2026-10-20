@@ -97,4 +97,23 @@ class AdminImpersonationTest extends TestCase
         $this->assertAuthenticatedAs($manager);
         $this->get('/artist/catalog')->assertOk()->assertSee('Managed Artist');
     }
+
+    public function test_admin_can_login_as_master_account_owner_and_return_to_master_accounts(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+        $manager = User::factory()->create(['role' => 'manager', 'is_active' => true]);
+        $account = MasterAccount::create(['owner_user_id' => $manager->id, 'name' => 'Distributor Account']);
+
+        $this->actingAs($admin)->post(route('admin.master-accounts.impersonate', $account))
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas('impersonated_master_account_id', $account->id);
+
+        $this->assertAuthenticatedAs($manager);
+        $this->get(route('manager.dashboard'))->assertOk()->assertSee('Viewing as Master Account: Distributor Account');
+
+        $this->post(route('impersonation.stop'))
+            ->assertRedirect(route('admin.master-accounts.index'))
+            ->assertSessionMissing('impersonated_master_account_id');
+        $this->assertAuthenticatedAs($admin);
+    }
 }

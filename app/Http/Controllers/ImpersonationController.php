@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Artist;
+use App\Models\MasterAccount;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -40,6 +41,31 @@ class ImpersonationController extends Controller
             ->with('status', 'You are now viewing '.$artist->artist_name.' as the artist.');
     }
 
+    public function startMaster(Request $request, MasterAccount $masterAccount): RedirectResponse
+    {
+        $admin = $request->user();
+        abort_unless($admin?->isAdmin(), 403);
+
+        $masterAccount->loadMissing('owner');
+        abort_unless($masterAccount->is_active && $masterAccount->owner?->is_active, 403);
+
+        if (! $masterAccount->owner->hasVerifiedEmail()) {
+            $masterAccount->owner->markEmailAsVerified();
+        }
+
+        $request->session()->forget(['managed_artist_id', 'impersonated_artist_id']);
+        $request->session()->put([
+            'impersonator_admin_id' => $admin->id,
+            'impersonated_master_account_id' => $masterAccount->id,
+        ]);
+
+        Auth::guard('web')->login($masterAccount->owner);
+        $request->session()->regenerate();
+
+        return redirect()->route('dashboard')
+            ->with('status', 'You are now viewing '.$masterAccount->name.' as the master account owner.');
+    }
+
     public function stop(Request $request): RedirectResponse
     {
         $adminId = $request->session()->get('impersonator_admin_id');
@@ -48,11 +74,13 @@ class ImpersonationController extends Controller
         $admin = User::whereKey($adminId)->where('role', 'admin')->where('is_active', true)->first();
         abort_unless($admin, 403);
 
-        $request->session()->forget(['impersonator_admin_id', 'impersonated_artist_id', 'managed_artist_id']);
+        $wasMasterAccount = $request->session()->has('impersonated_master_account_id');
+
+        $request->session()->forget(['impersonator_admin_id', 'impersonated_artist_id', 'impersonated_master_account_id', 'managed_artist_id']);
         Auth::guard('web')->login($admin);
         $request->session()->regenerate();
 
-        return redirect()->route('admin.artists')
+        return redirect()->route($wasMasterAccount ? 'admin.master-accounts.index' : 'admin.artists')
             ->with('success', 'Returned to your admin account.');
     }
 }

@@ -26,7 +26,13 @@
             <div class="flex-1 flex flex-col">
                 @if(session()->has('impersonator_admin_id'))
                     <div class="bg-amber-300 border-b-2 border-black px-6 py-3 flex flex-wrap items-center justify-between gap-3">
-                        <div class="font-extrabold text-sm">Viewing as Artist: {{ Auth::user()->artist->artist_name ?? Auth::user()->name }}</div>
+                        <div class="font-extrabold text-sm">
+                            @if(session()->has('impersonated_master_account_id'))
+                                Viewing as Master Account: {{ Auth::user()->masterAccount?->name ?? Auth::user()->name }}
+                            @else
+                                Viewing as Artist: {{ current_artist()?->artist_name ?? Auth::user()->name }}
+                            @endif
+                        </div>
                         <form method="POST" action="{{ route('impersonation.stop') }}">
                             @csrf
                             <button type="submit" class="px-4 py-2 bg-black text-white border-2 border-black font-extrabold text-xs uppercase shadow-[3px_3px_0_#fff]">Return to Admin</button>
