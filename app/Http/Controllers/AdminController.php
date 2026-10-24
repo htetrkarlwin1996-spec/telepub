@@ -105,6 +105,8 @@ class AdminController extends Controller
 
     public function editArtist(Artist $artist)
     {
+        $artist->load('user', 'masterAccounts.owner');
+
         return view('admin.artists.edit', compact('artist'));
     }
 
@@ -122,12 +124,44 @@ class AdminController extends Controller
             'youtube_profile_url' => 'nullable|url|max:500',
             'tidal_profile_url' => 'nullable|url|max:500',
             'revenue_share_percentage' => 'nullable|numeric|min:0|max:100',
+            'account_name' => 'nullable|string|max:255',
+            'account_email' => 'nullable|email|max:255|unique:users,email,'.($artist->user_id ?: 'NULL'),
+            'password' => 'nullable|string|min:8|confirmed',
+            'email_verified' => 'nullable|boolean',
         ]);
 
-        $artist->update($validated);
-        $notifier->activity($artist->user, 'Artist profile updated', 'Admin updated your TeleMusic artist profile.', route('artist.profile'), 'Review Profile');
+        $user = $artist->user;
+        $passwordChanged = $user && filled($validated['password'] ?? null);
+        DB::transaction(function () use ($artist, $user, $validated): void {
+            $artist->update(collect($validated)->except([
+                'account_name', 'account_email', 'password', 'password_confirmation', 'email_verified',
+            ])->all());
 
-        return redirect()->route('admin.artists')->with('success', 'Artist updated successfully.');
+            if (! $user) {
+                return;
+            }
+
+            $user->forceFill([
+                'name' => $validated['account_name'] ?? $user->name,
+                'email' => $validated['account_email'] ?? $user->email,
+                'email_verified_at' => ($validated['email_verified'] ?? false) ? ($user->email_verified_at ?? now()) : null,
+            ]);
+            if (filled($validated['password'] ?? null)) {
+                $user->password = Hash::make($validated['password']);
+                $user->setRememberToken(Str::random(60));
+            }
+            $user->save();
+            if (filled($validated['password'] ?? null)) {
+                $user->tokens()->delete();
+            }
+        });
+
+        $notifier->activity($user, 'Artist profile updated', 'Admin updated your TeleMusic artist profile and account settings.', route('artist.profile'), 'Review Profile');
+        if ($passwordChanged) {
+            $notifier->activity($user, 'Password changed', 'Admin changed your TeleMusic account password.', route('login'), 'Sign In');
+        }
+
+        return redirect()->route('admin.artists.edit', $artist)->with('success', 'Artist and account settings updated successfully.');
     }
 
     // ===== MUSIC STORE MANAGEMENT =====
