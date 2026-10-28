@@ -70,8 +70,8 @@
                             </label>
                         </div>
                         <div class="md:col-span-2">
-                            <x-input-label for="audio_file" value="Audio File (MP3, WAV, FLAC)" />
-                            <input id="audio_file" class="block mt-1 w-full text-sm font-semibold text-black file:mr-4 file:py-2 file:px-4 file:border-2 file:border-black file:rounded-none file:text-xs file:font-extrabold file:bg-brand-500 file:text-black hover:file:bg-brand-400 file:uppercase file:tracking-wider file:cursor-pointer" type="file" name="audio_file" accept="audio/*" />
+                            <x-input-label for="audio_file" value="Audio File (WAV or FLAC only)" />
+                            <input id="audio_file" class="block mt-1 w-full text-sm font-semibold text-black file:mr-4 file:py-2 file:px-4 file:border-2 file:border-black file:rounded-none file:text-xs file:font-extrabold file:bg-brand-500 file:text-black hover:file:bg-brand-400 file:uppercase file:tracking-wider file:cursor-pointer" type="file" name="audio_file" accept=".wav,.flac,audio/wav,audio/flac" />
                             <x-input-error :messages="$errors->get('audio_file')" class="mt-2" />
                         </div>
                         <div class="md:col-span-2">

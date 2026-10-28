@@ -45,6 +45,7 @@ class SongController extends Controller
             'producers' => 'nullable|string|max:500',
             'featuring' => 'nullable|string|max:500',
             'lyrics' => 'nullable|string',
+            'audio_file' => 'nullable|file|mimes:wav,flac|max:512000',
         ]);
 
         // Store audio file if uploaded
@@ -102,6 +103,7 @@ class SongController extends Controller
             'featuring' => 'nullable|string|max:500',
             'lyrics' => 'nullable|string',
             'status' => 'nullable|in:draft,submitted',
+            'audio_file' => 'nullable|file|mimes:wav,flac|max:512000',
         ]);
 
         if ($request->hasFile('audio_file')) {

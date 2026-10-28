@@ -254,7 +254,7 @@ class CatalogController extends Controller
             'tracks.*.featuring.*.tidal_url' => 'nullable|url|max:500',
             'tracks.*.isrc_code' => 'nullable|string|max:50',
             'tracks.*.request_new_isrc' => 'boolean',
-            'tracks.*.audio_file' => 'nullable|file|mimes:mp3,wav,aac,flac,ogg|max:51200',
+            'tracks.*.audio_file' => 'nullable|file|mimes:wav,flac|max:51200',
             'tracks.*.audio_file_path' => 'nullable|string|max:500',
             'tracks.*.explicit' => 'boolean',
             'tracks.*.language' => 'nullable|string|max:50',

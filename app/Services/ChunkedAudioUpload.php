@@ -42,8 +42,8 @@ class ChunkedAudioUpload
         ]);
 
         $extension = strtolower(pathinfo($validated['original_name'], PATHINFO_EXTENSION));
-        if (! in_array($extension, ['mp3', 'wav', 'aac', 'flac', 'ogg'], true)) {
-            throw ValidationException::withMessages(['audio_file' => 'The audio file must be MP3, WAV, AAC, FLAC, or OGG.']);
+        if (! in_array($extension, ['wav', 'flac'], true)) {
+            throw ValidationException::withMessages(['audio_file' => 'The audio file must be WAV or FLAC.']);
         }
 
         $directory = 'audio-chunks/'.$request->user()->id.'/'.$validated['upload_id'];
@@ -118,8 +118,8 @@ class ChunkedAudioUpload
         $file = $validated['audio_file'];
         $extension = strtolower($file->getClientOriginalExtension());
 
-        if (! in_array($extension, ['mp3', 'wav', 'aac', 'flac', 'ogg'], true)) {
-            throw ValidationException::withMessages(['audio_file' => 'The audio file must be MP3, WAV, AAC, FLAC, or OGG.']);
+        if (! in_array($extension, ['wav', 'flac'], true)) {
+            throw ValidationException::withMessages(['audio_file' => 'The audio file must be WAV or FLAC.']);
         }
 
         $filename = Str::uuid().'.'.$extension;
@@ -175,8 +175,8 @@ class ChunkedAudioUpload
             'content_type' => ['nullable', 'string', 'max:100'],
         ]);
         $extension = strtolower(pathinfo($validated['original_name'], PATHINFO_EXTENSION));
-        if (! in_array($extension, ['mp3', 'wav', 'aac', 'flac', 'ogg'], true)) {
-            throw ValidationException::withMessages(['audio_file' => 'The audio file must be MP3, WAV, AAC, FLAC, or OGG.']);
+        if (! in_array($extension, ['wav', 'flac'], true)) {
+            throw ValidationException::withMessages(['audio_file' => 'The audio file must be WAV or FLAC.']);
         }
 
         try {

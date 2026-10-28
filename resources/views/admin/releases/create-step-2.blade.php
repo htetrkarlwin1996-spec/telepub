@@ -134,6 +134,17 @@
             const progressBar = zone.querySelector('.audio-progress-bar');
             const statusText = zone.querySelector('.audio-status');
 
+            const extension = file.name.split('.').pop().toLowerCase();
+            if (!['wav', 'flac'].includes(extension)) {
+                fileInput.value = '';
+                pathInput.value = '';
+                fileLabel.innerHTML = '<span class="text-red-600">Audio file must be WAV or FLAC.</span>';
+                statusText.textContent = 'Unsupported audio format.';
+                statusText.classList.add('text-red-600');
+                statusText.classList.remove('text-green-600', 'text-black/60');
+                return;
+            }
+
             if (file.size > maxAudioBytes) {
                 fileLabel.innerHTML = '<span class="text-red-600">Audio files cannot exceed {{ config('filesystems.release_audio_max_mb', 500) }}MB.</span>';
                 return;

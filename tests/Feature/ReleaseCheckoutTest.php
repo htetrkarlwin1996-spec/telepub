@@ -81,6 +81,36 @@ class ReleaseCheckoutTest extends TestCase
         $this->assertSame($content, Storage::disk('public')->get($path));
     }
 
+    public function test_audio_upload_rejects_lossy_formats_with_json_validation_error(): void
+    {
+        $user = User::factory()->create(['role' => 'artist']);
+        Artist::create(['user_id' => $user->id, 'artist_name' => 'Lossless Upload Artist']);
+
+        $this->actingAs($user)
+            ->withHeader('Accept', 'application/json')
+            ->post(route('artist.catalog.upload-audio'), [
+                'action' => 'single',
+                'audio_file' => UploadedFile::fake()->create('compressed.mp3', 100, 'audio/mpeg'),
+            ])
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.audio_file.0', 'The audio file must be WAV or FLAC.');
+    }
+
+    public function test_legacy_song_upload_route_also_rejects_mp3_files(): void
+    {
+        $user = User::factory()->create(['role' => 'artist']);
+        $artist = Artist::create(['user_id' => $user->id, 'artist_name' => 'Legacy Upload Artist']);
+        $album = Album::create(['artist_id' => $artist->id, 'title' => 'Legacy Draft', 'release_type' => 'single', 'status' => 'draft']);
+
+        $this->actingAs($user)->post(route('artist.songs.store'), [
+            'title' => 'Lossy Track',
+            'album_id' => $album->id,
+            'audio_file' => UploadedFile::fake()->create('lossy.mp3', 100, 'audio/mpeg'),
+        ])->assertSessionHasErrors('audio_file');
+
+        $this->assertDatabaseMissing('songs', ['album_id' => $album->id, 'title' => 'Lossy Track']);
+    }
+
     public function test_pending_myanmyanpay_qr_opens_in_a_popup(): void
     {
         $user = User::factory()->create(['role' => 'artist']);

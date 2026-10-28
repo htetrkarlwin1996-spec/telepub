@@ -111,7 +111,7 @@ class TrackController extends Controller
     public function uploadAudio(Request $request): JsonResponse
     {
         $request->validate([
-            'audio_file' => 'required|file|mimes:mp3,wav,flac,aac,ogg|max:102400',
+            'audio_file' => 'required|file|mimes:wav,flac|max:102400',
             'song_id' => 'required|exists:songs,id',
         ]);
 

@@ -636,6 +636,7 @@ class AdminController extends Controller
             'featuring' => 'nullable|string|max:500',
             'lyrics' => 'nullable|string',
             'status' => 'nullable|in:draft,submitted,approved',
+            'audio_file' => 'nullable|file|mimes:wav,flac|max:512000',
         ]);
 
         // Derive artist_id from the album
@@ -675,6 +676,7 @@ class AdminController extends Controller
             'featuring' => 'nullable|string|max:500',
             'lyrics' => 'nullable|string',
             'status' => 'nullable|in:draft,submitted,approved',
+            'audio_file' => 'nullable|file|mimes:wav,flac|max:512000',
         ]);
 
         if ($request->hasFile('audio_file')) {

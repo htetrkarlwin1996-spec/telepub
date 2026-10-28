@@ -116,6 +116,26 @@ class KnowledgeAndAddonServicesTest extends TestCase
         $this->assertDatabaseHas('albums', ['title' => 'Progress Cover Release', 'cover_art' => $path]);
     }
 
+    public function test_cover_art_progress_endpoint_returns_exact_dimensions_as_json_validation_error(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create(['role' => 'artist']);
+        Artist::create(['user_id' => $user->id, 'artist_name' => 'Small Cover Artist']);
+
+        $this->actingAs($user)
+            ->withHeader('Accept', 'application/json')
+            ->post(route('artist.catalog.upload-cover-art'), [
+                'cover_art' => UploadedFile::fake()->image('small-cover.jpg', 1200, 1200),
+            ])
+            ->assertUnprocessable()
+            ->assertJsonPath(
+                'errors.cover_art.0',
+                'Album art must be exactly 3000×3000 pixels. Uploaded image is 1200×1200 pixels.'
+            );
+
+        Storage::disk('public')->assertDirectoryEmpty('cover_art');
+    }
+
     public function test_new_royalty_labels_are_used_everywhere(): void
     {
         $this->assertSame('Global Performance Royalties', Royalty::TYPES['publishing_rights']);
