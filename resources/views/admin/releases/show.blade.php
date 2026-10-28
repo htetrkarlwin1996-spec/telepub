@@ -96,6 +96,93 @@
                 </div>
             </div>
 
+            <!-- Release Payment & Add-on Summary -->
+            <div class="bg-white border-2 border-black shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden mb-8">
+                <div class="p-6 border-b-2 border-black flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 class="font-extrabold text-lg uppercase">Payment & Add-on Services</h2>
+                        <p class="mt-1 text-xs font-bold text-black/50">Release payment transactions and the services selected at checkout.</p>
+                    </div>
+                    <span class="px-3 py-1 text-xs font-extrabold uppercase border-2 border-black
+                        @if($album->payment_status === 'paid') bg-green-200
+                        @elseif($album->payment_status === 'pending') bg-yellow-200
+                        @else bg-red-100 @endif">
+                        Album: {{ $album->payment_status ?? 'unpaid' }}
+                    </span>
+                </div>
+
+                @if($album->releasePayments->isNotEmpty())
+                    <div class="divide-y-2 divide-black">
+                        @foreach($album->releasePayments as $payment)
+                            @php
+                                $paymentAddons = collect($payment->addon_services ?? []);
+                            @endphp
+                            <div class="p-6">
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div>
+                                        <span class="text-[10px] font-extrabold uppercase text-black/50">Amount Paid / Requested</span>
+                                        <p class="mt-1 text-xl font-black">{{ strtoupper($payment->currency) }} {{ number_format((float) $payment->amount, 2) }}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-[10px] font-extrabold uppercase text-black/50">Payment Method</span>
+                                        <p class="mt-1 font-extrabold">{{ ['myanmyanpay' => 'MyanMyanPay MMQR', 'stripe' => 'Stripe / Card', 'paypal' => 'PayPal', 'offline' => 'Thai Bank Transfer'][$payment->provider] ?? ucwords(str_replace('_', ' ', $payment->provider)) }}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-[10px] font-extrabold uppercase text-black/50">Status</span>
+                                        <p class="mt-1"><span class="inline-flex px-2 py-1 border border-black text-[10px] font-extrabold uppercase
+                                            @if($payment->status === 'paid') bg-green-200
+                                            @elseif($payment->status === 'pending') bg-yellow-200
+                                            @elseif($payment->status === 'cancelled') bg-gray-200
+                                            @else bg-red-100 @endif">{{ $payment->status }}</span></p>
+                                    </div>
+                                    <div>
+                                        <span class="text-[10px] font-extrabold uppercase text-black/50">Paid At</span>
+                                        <p class="mt-1 font-extrabold text-sm">{{ $payment->paid_at?->format('M d, Y g:i A') ?? '—' }}</p>
+                                    </div>
+                                </div>
+
+                                <div class="mt-4 pt-4 border-t border-black/20 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <span class="text-[10px] font-extrabold uppercase text-black/50">Reference</span>
+                                        <p class="mt-1 font-mono text-xs font-bold break-all">{{ $payment->reference }}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-[10px] font-extrabold uppercase text-black/50">Add-on Services</span>
+                                        @if($paymentAddons->isNotEmpty())
+                                            <div class="mt-1 flex flex-wrap gap-2">
+                                                @foreach($paymentAddons as $addonKey)
+                                                    <span class="px-2 py-1 bg-blue-100 border border-black text-[10px] font-extrabold">✓ {{ data_get($addonCatalog, $addonKey.'.name', ucwords(str_replace('_', ' ', $addonKey))) }}</span>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <p class="mt-1 text-sm font-bold text-black/50">No add-on services selected</p>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    @php $albumAddons = collect($album->selected_addons ?? []); @endphp
+                    <div class="p-6">
+                        <p class="font-bold text-black/60">No checkout transaction record is available for this release.</p>
+                        <p class="mt-1 text-xs font-bold text-black/40">This can happen for an admin-created or historically imported release.</p>
+                        <div class="mt-4">
+                            <span class="text-[10px] font-extrabold uppercase text-black/50">Recorded Add-on Selection</span>
+                            @if($albumAddons->isNotEmpty())
+                                <div class="mt-2 flex flex-wrap gap-2">
+                                    @foreach($albumAddons as $addonKey)
+                                        <span class="px-2 py-1 bg-blue-100 border border-black text-[10px] font-extrabold">✓ {{ data_get($addonCatalog, $addonKey.'.name', ucwords(str_replace('_', ' ', $addonKey))) }}</span>
+                                    @endforeach
+                                </div>
+                            @else
+                                <p class="mt-1 text-sm font-bold text-black/50">No add-on services recorded</p>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+            </div>
+
             <!-- Track List + ISRC Management -->
             <div class="bg-white border-2 border-black shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden mb-8">
                 <div class="p-6 border-b-2 border-black">

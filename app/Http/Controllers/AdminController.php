@@ -14,6 +14,7 @@ use App\Models\RoyaltyAllocation;
 use App\Models\Song;
 use App\Models\User;
 use App\Models\Withdrawal;
+use App\Services\ReleasePricing;
 use App\Services\RoyaltyCsvImportService;
 use App\Services\RoyaltyService;
 use App\Services\TeleMusicAppDelivery;
@@ -740,12 +741,13 @@ class AdminController extends Controller
         return view('admin.releases.index', compact('releases'));
     }
 
-    public function showRelease(Album $album)
+    public function showRelease(Album $album, ReleasePricing $releasePricing)
     {
-        $album->load('artist.user', 'songs', 'distributions.store', 'collaboratingArtists');
+        $album->load('artist.user', 'songs', 'distributions.store', 'collaboratingArtists', 'releasePayments.user');
         $stores = MusicStore::where('is_active', true)->get();
+        $addonCatalog = $releasePricing->settings()['addons'];
 
-        return view('admin.releases.show', compact('album', 'stores'));
+        return view('admin.releases.show', compact('album', 'stores', 'addonCatalog'));
     }
 
     public function downloadSongAudio(Song $song)

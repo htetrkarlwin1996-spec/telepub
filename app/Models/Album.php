@@ -92,6 +92,11 @@ class Album extends Model
         return $this->hasMany(Royalty::class);
     }
 
+    public function releasePayments()
+    {
+        return $this->hasMany(ReleasePayment::class)->latest();
+    }
+
     public function splitVersions()
     {
         return $this->hasMany(RevenueSplitVersion::class);

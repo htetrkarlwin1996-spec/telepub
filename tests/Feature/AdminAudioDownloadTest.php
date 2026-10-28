@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Album;
 use App\Models\Artist;
+use App\Models\ReleasePayment;
 use App\Models\Song;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -49,6 +50,35 @@ class AdminAudioDownloadTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.songs.download-audio', $song))
             ->assertNotFound();
+    }
+
+    public function test_admin_can_see_release_payment_amount_and_selected_addons(): void
+    {
+        [$admin, $artistUser, $album] = $this->releaseWithAudio();
+        $album->update([
+            'payment_status' => 'paid',
+            'selected_addons' => ['composer_songwriter', 'mechanical'],
+        ]);
+        ReleasePayment::create([
+            'album_id' => $album->id,
+            'user_id' => $artistUser->id,
+            'provider' => 'myanmyanpay',
+            'status' => 'paid',
+            'amount' => 8955,
+            'currency' => 'MMK',
+            'reference' => 'REL-MYA-PAYMENT-1',
+            'addon_services' => ['composer_songwriter', 'mechanical'],
+            'paid_at' => now(),
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.releases.show', $album))
+            ->assertOk()
+            ->assertSeeText('MMK 8,955.00')
+            ->assertSeeText('MyanMyanPay MMQR')
+            ->assertSeeText('Composer / Songwriter Royalties')
+            ->assertSeeText('Mechanical Royalties')
+            ->assertSeeText('REL-MYA-PAYMENT-1');
     }
 
     private function releaseWithAudio(): array
