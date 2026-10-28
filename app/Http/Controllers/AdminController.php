@@ -9,6 +9,7 @@ use App\Models\Distribution;
 use App\Models\Invoice;
 use App\Models\MusicStore;
 use App\Models\Payout;
+use App\Models\ReleasePayment;
 use App\Models\Royalty;
 use App\Models\RoyaltyAllocation;
 use App\Models\Song;
@@ -380,6 +381,46 @@ class AdminController extends Controller
         $payouts = Payout::with('artist')->latest()->paginate(20);
 
         return view('admin.payouts.index', compact('payouts'));
+    }
+
+    public function transactions(Request $request, ReleasePricing $releasePricing)
+    {
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'status' => ['nullable', 'in:pending,paid,failed,cancelled,expired,needs_review'],
+            'provider' => ['nullable', 'in:stripe,paypal,offline,myanmyanpay'],
+        ]);
+
+        $query = ReleasePayment::query()
+            ->with(['user', 'album.artist'])
+            ->when($filters['search'] ?? null, function ($query, $search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('reference', 'like', '%'.$search.'%')
+                        ->orWhereHas('user', fn ($query) => $query
+                            ->where('name', 'like', '%'.$search.'%')
+                            ->orWhere('email', 'like', '%'.$search.'%'))
+                        ->orWhereHas('album', fn ($query) => $query
+                            ->where('title', 'like', '%'.$search.'%')
+                            ->orWhereHas('artist', fn ($query) => $query->where('artist_name', 'like', '%'.$search.'%')));
+                });
+            })
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['provider'] ?? null, fn ($query, $provider) => $query->where('provider', $provider));
+
+        $transactionCount = (clone $query)->count();
+        $paidCount = (clone $query)->where('status', 'paid')->count();
+        $currencyTotals = (clone $query)
+            ->where('status', 'paid')
+            ->selectRaw('currency, SUM(amount) as total')
+            ->groupBy('currency')
+            ->orderBy('currency')
+            ->pluck('total', 'currency');
+        $transactions = $query->latest()->paginate(25)->withQueryString();
+        $addonCatalog = $releasePricing->settings()['addons'];
+
+        return view('admin.transactions.index', compact(
+            'transactions', 'filters', 'transactionCount', 'paidCount', 'currencyTotals', 'addonCatalog'
+        ));
     }
 
     public function createPayout()

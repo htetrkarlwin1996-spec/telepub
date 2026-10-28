@@ -160,6 +160,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
         Route::post('/revenue-splits/{changeRequest}/approve', [RevenueSplitController::class, 'approve'])->name('revenue-splits.approve');
         Route::post('/revenue-splits/{changeRequest}/reject', [RevenueSplitController::class, 'reject'])->name('revenue-splits.reject');
         Route::post('/release-payments/{payment}/approve', [ReleaseCheckoutController::class, 'approve'])->name('release-payments.approve');
+        Route::get('/transactions', [AdminController::class, 'transactions'])->name('transactions');
 
         // Artists
         Route::get('/artists', [AdminController::class, 'artists'])->name('artists');
