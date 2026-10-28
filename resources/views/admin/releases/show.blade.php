@@ -148,6 +148,7 @@
                                             @if($song->lyricist)<span>Lyricist: {!! formatCredit($song->lyricist) !!}</span>@endif
                                             @if($song->vocals)<span>Vocals: {!! formatCredit($song->vocals) !!}</span>@endif
                                         </div>
+                                        @include('admin.releases.partials.audio-download', ['song' => $song])
                                     </div>
                                 @endforeach
                             </div>
@@ -200,6 +201,7 @@
                                             <span class="text-xs font-extrabold text-green-700">
                                                 ISRC: {{ $song->isrc_code ?? 'N/A' }}
                                             </span>
+                                            @include('admin.releases.partials.audio-download', ['song' => $song, 'compact' => true])
                                         </div>
                                     </div>
                                 </div>
@@ -238,6 +240,9 @@
                                     <div>
                                         <h3 class="font-extrabold text-black">{{ $song->title }}</h3>
                                         <p class="text-xs font-bold text-black/50">{!! formatCredit($song->primary_artists) ?: e($album->artist->artist_name) !!}</p>
+                                    </div>
+                                    <div class="ml-auto">
+                                        @include('admin.releases.partials.audio-download', ['song' => $song, 'compact' => true])
                                     </div>
                                 </div>
                             @endforeach

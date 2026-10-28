@@ -239,6 +239,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
         Route::get('/songs/create', [AdminController::class, 'createSong'])->name('songs.create');
         Route::post('/songs', [AdminController::class, 'storeSong'])->name('songs.store');
         Route::get('/songs/{song}/edit', [AdminController::class, 'editSong'])->name('songs.edit');
+        Route::get('/songs/{song}/audio/download', [AdminController::class, 'downloadSongAudio'])->name('songs.download-audio');
         Route::put('/songs/{song}', [AdminController::class, 'updateSong'])->name('songs.update');
         Route::delete('/songs/{song}', [AdminController::class, 'destroySong'])->name('songs.destroy');
         Route::get('/distributions', [AdminController::class, 'distributions'])->name('distributions');

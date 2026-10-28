@@ -22,6 +22,7 @@ use App\Services\WithdrawalLifecycle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -745,6 +746,39 @@ class AdminController extends Controller
         $stores = MusicStore::where('is_active', true)->get();
 
         return view('admin.releases.show', compact('album', 'stores'));
+    }
+
+    public function downloadSongAudio(Song $song)
+    {
+        $path = $song->audio_file ?: $song->file_path;
+
+        abort_if(blank($path), 404, 'This track does not have an audio file.');
+
+        $disks = array_values(array_unique(array_filter([
+            config('filesystems.release_audio_disk', 'public'),
+            'public',
+            'local',
+        ])));
+
+        foreach ($disks as $disk) {
+            try {
+                if (! Storage::disk($disk)->exists($path)) {
+                    continue;
+                }
+
+                $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION)) ?: 'wav';
+                $baseName = Str::slug(implode('-', array_filter([
+                    $song->artist?->artist_name,
+                    $song->title,
+                ]))) ?: 'track-'.$song->id;
+
+                return Storage::disk($disk)->download($path, $baseName.'.'.$extension);
+            } catch (\Throwable) {
+                // The file may be on a legacy disk; continue checking fallbacks.
+            }
+        }
+
+        abort(404, 'The audio file could not be found in storage.');
     }
 
     public function approveRelease(Request $request, Album $album, UserNotifier $notifier, TeleMusicAppDelivery $appDelivery)
