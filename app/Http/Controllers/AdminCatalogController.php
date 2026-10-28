@@ -65,7 +65,7 @@ class AdminCatalogController extends Controller
             'release_type' => 'required|in:single,ep,album',
             'genre' => 'required|string|max:100',
             'release_date' => 'required|date',
-            'cover_art' => 'nullable|image|mimes:jpeg,png,jpg|max:10240',
+            'cover_art' => 'nullable|image|mimes:jpeg,png,jpg|max:'.(config('filesystems.release_cover_max_mb', 25) * 1024),
             'copyright_holder' => 'required|string|max:255',
             'phonogram_right_holder' => 'required|string|max:255',
             // Collaborating artists
@@ -121,7 +121,7 @@ class AdminCatalogController extends Controller
             'release_type' => 'required|in:single,ep,album',
             'genre' => 'required|string|max:100',
             'release_date' => 'required|date',
-            'cover_art' => 'nullable|image|mimes:jpeg,png,jpg|max:10240',
+            'cover_art' => 'nullable|image|mimes:jpeg,png,jpg|max:'.(config('filesystems.release_cover_max_mb', 25) * 1024),
             'copyright_holder' => 'required|string|max:255',
             'phonogram_right_holder' => 'required|string|max:255',
             // Collaborating artists

@@ -161,7 +161,7 @@
                 <!-- Album Art Upload -->
                 <div class="bg-white border-2 border-black shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] p-6">
                     <label class="block font-extrabold text-sm uppercase mb-2">Album Artwork <span class="text-red-500">*</span></label>
-                    <p class="text-xs font-bold text-black/50 mb-3">3000 × 3000 pixels · JPG or PNG only · Max 10MB</p>
+                    <p class="text-xs font-bold text-black/50 mb-3">3000 × 3000 pixels · JPG or PNG only · Max {{ config('filesystems.release_cover_max_mb', 25) }}MB</p>
                     <div class="border-2 border-dashed border-black p-8 text-center" id="upload-area">
                         <svg class="w-12 h-12 mx-auto text-black/30 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                         <p class="text-sm font-bold text-black/60 mb-2">Click or drag to upload</p>
@@ -224,9 +224,20 @@
             const preview = document.getElementById('cover-preview');
             const submit = document.getElementById('step-one-submit');
             let uploading = false;
+            const maxCoverBytes = {{ config('filesystems.release_cover_max_mb', 25) }} * 1024 * 1024;
 
             const upload = file => {
                 if (!file || uploading) return;
+                if (file.size > maxCoverBytes) {
+                    pathInput.value = '';
+                    fileName.textContent = file.name;
+                    status.textContent = 'Album art cannot be larger than {{ config('filesystems.release_cover_max_mb', 25) }}MB.';
+                    status.className = 'mt-2 text-xs font-black text-red-700';
+                    progressWrap.classList.add('hidden');
+                    submit.disabled = false;
+                    input.value = '';
+                    return;
+                }
                 pathInput.value = '';
                 fileName.textContent = file.name;
                 progressWrap.classList.remove('hidden');

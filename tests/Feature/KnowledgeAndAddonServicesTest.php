@@ -102,7 +102,7 @@ class KnowledgeAndAddonServicesTest extends TestCase
         Artist::create(['user_id' => $user->id, 'artist_name' => 'Cover Artist']);
 
         $upload = $this->actingAs($user)->post(route('artist.catalog.upload-cover-art'), [
-            'cover_art' => UploadedFile::fake()->image('album-cover.jpg', 3000, 3000),
+            'cover_art' => UploadedFile::fake()->image('album-cover.jpg', 3000, 3000)->size(12 * 1024),
         ])->assertOk()->assertJson(['success' => true]);
         $path = $upload->json('path');
         Storage::disk('public')->assertExists($path);
@@ -134,6 +134,21 @@ class KnowledgeAndAddonServicesTest extends TestCase
             );
 
         Storage::disk('public')->assertDirectoryEmpty('cover_art');
+    }
+
+    public function test_cover_art_progress_endpoint_returns_readable_file_size_error(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create(['role' => 'artist']);
+        Artist::create(['user_id' => $user->id, 'artist_name' => 'Large Cover Artist']);
+
+        $this->actingAs($user)
+            ->withHeader('Accept', 'application/json')
+            ->post(route('artist.catalog.upload-cover-art'), [
+                'cover_art' => UploadedFile::fake()->image('large-cover.jpg', 3000, 3000)->size(26 * 1024),
+            ])
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.cover_art.0', 'Album art cannot be larger than 25MB.');
     }
 
     public function test_new_royalty_labels_are_used_everywhere(): void

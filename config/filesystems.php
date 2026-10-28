@@ -19,6 +19,8 @@ return [
 
     'release_audio_max_mb' => (int) env('RELEASE_AUDIO_MAX_MB', 500),
 
+    'release_cover_max_mb' => (int) env('RELEASE_COVER_MAX_MB', 25),
+
     'release_audio_prefix' => trim((string) env('RELEASE_AUDIO_PREFIX', ''), '/'),
 
     'release_audio_direct' => (bool) env('RELEASE_AUDIO_DIRECT', false),

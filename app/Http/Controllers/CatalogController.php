@@ -84,7 +84,7 @@ class CatalogController extends Controller
             'release_type' => 'required|in:single,ep,album',
             'genre' => 'required|string|max:100',
             'release_date' => 'required|date',
-            'cover_art' => 'nullable|required_without:cover_art_path|image|mimes:jpeg,png,jpg|max:10240',
+            'cover_art' => 'nullable|required_without:cover_art_path|image|mimes:jpeg,png,jpg|max:'.(config('filesystems.release_cover_max_mb', 25) * 1024),
             'cover_art_path' => 'nullable|required_without:cover_art|string|max:500',
             'copyright_holder' => 'required|string|max:255',
             'phonogram_right_holder' => 'required|string|max:255',
@@ -429,7 +429,7 @@ class CatalogController extends Controller
             'release_type' => 'required|in:single,ep,album',
             'genre' => 'required|string|max:100',
             'release_date' => 'required|date',
-            'cover_art' => 'nullable|image|mimes:jpeg,png,jpg|max:10240',
+            'cover_art' => 'nullable|image|mimes:jpeg,png,jpg|max:'.(config('filesystems.release_cover_max_mb', 25) * 1024),
             'copyright_holder' => 'required|string|max:255',
             'phonogram_right_holder' => 'required|string|max:255',
             'physical_release_date' => 'nullable|date',
@@ -537,7 +537,9 @@ class CatalogController extends Controller
     public function uploadCoverArt(Request $request)
     {
         $validated = $request->validate([
-            'cover_art' => ['required', 'image', 'mimes:jpeg,png,jpg', 'max:10240'],
+            'cover_art' => ['required', 'image', 'mimes:jpeg,png,jpg', 'max:'.(config('filesystems.release_cover_max_mb', 25) * 1024)],
+        ], [
+            'cover_art.max' => 'Album art cannot be larger than '.config('filesystems.release_cover_max_mb', 25).'MB.',
         ]);
         $image = $validated['cover_art'];
         [$width, $height] = getimagesize($image->getRealPath());
