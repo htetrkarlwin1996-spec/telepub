@@ -25,6 +25,28 @@ if (! function_exists('money')) {
     }
 }
 
+if (! function_exists('formatDuration')) {
+    function formatDuration(mixed $duration): ?string
+    {
+        if ($duration === null || $duration === '') {
+            return null;
+        }
+
+        $value = trim((string) $duration);
+        if (preg_match('/^(?:\d{1,3}:)?[0-5]?\d:[0-5]\d$/', $value)) {
+            return $value;
+        }
+
+        if (! is_numeric($value) || (float) $value < 0) {
+            return null;
+        }
+
+        $seconds = (int) round((float) $value);
+
+        return $seconds >= 3600 ? gmdate('H:i:s', $seconds) : gmdate('i:s', $seconds);
+    }
+}
+
 if (! function_exists('current_artist')) {
     function current_artist(): ?Artist
     {

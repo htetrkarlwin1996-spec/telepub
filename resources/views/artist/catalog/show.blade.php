@@ -161,8 +161,8 @@
                                         @else
                                             <div class="text-black/30">No ISRC</div>
                                         @endif
-                                        @if($song->duration > 0)
-                                            <div>{{ gmdate('i:s', $song->duration) }}</div>
+                                        @if($formattedDuration = formatDuration($song->duration))
+                                            <div>{{ $formattedDuration }}</div>
                                         @endif
                                     </div>
                                 </div>
