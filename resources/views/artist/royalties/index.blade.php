@@ -26,7 +26,12 @@
                     <div class="text-2xl font-black mt-1">{{ money($balanceBreakdown->sum()) }}</div>
                 </div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-emerald-200 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6">
+                    <div class="text-xs font-extrabold uppercase tracking-wider text-black/60">Available Balance</div>
+                    <div class="text-4xl font-black text-black mt-1">{{ money($artist->available_balance) }}</div>
+                    <div class="mt-2 text-xs font-bold text-black/60">Available to withdraw now</div>
+                </div>
                 <div class="bg-blue-100 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6">
                     <div class="text-xs font-extrabold uppercase tracking-wider text-black/60">Gross Revenue</div>
                     <div class="text-4xl font-black text-black mt-1">{{ money($grossRoyalties) }}</div>

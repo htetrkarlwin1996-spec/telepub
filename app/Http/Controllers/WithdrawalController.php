@@ -23,7 +23,7 @@ class WithdrawalController extends Controller
             ? Withdrawal::where('artist_id', $artist->id)->whereKey($createdWithdrawalId)->first()
             : null;
 
-        return view('artist.withdrawals.index', compact('withdrawals', 'pendingWithdrawalCount', 'newWithdrawal'));
+        return view('artist.withdrawals.index', compact('artist', 'withdrawals', 'pendingWithdrawalCount', 'newWithdrawal'));
     }
 
     public function create(WithdrawalFee $withdrawalFee)

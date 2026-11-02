@@ -7,6 +7,19 @@
     </x-slot>
     <div class="py-8 px-6 sm:px-8 lg:px-10">
         <div class="max-w-7xl mx-auto">
+            <div class="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="border-4 border-black bg-brand-500 p-6 shadow-[7px_7px_0_#000]">
+                    <div class="text-xs font-extrabold uppercase tracking-wider text-black/60">Available Balance</div>
+                    <div class="mt-1 text-4xl font-black text-black">{{ money($artist->available_balance) }}</div>
+                    <div class="mt-2 text-xs font-bold text-black/60">Available to request for withdrawal</div>
+                </div>
+                <div class="border-4 border-black bg-amber-100 p-6 shadow-[7px_7px_0_#000]">
+                    <div class="text-xs font-extrabold uppercase tracking-wider text-black/60">Pending Balance</div>
+                    <div class="mt-1 text-4xl font-black text-black">{{ money($artist->pending_balance) }}</div>
+                    <div class="mt-2 text-xs font-bold text-black/60">Currently awaiting processing</div>
+                </div>
+            </div>
+
             @if(session('success'))
             <div role="alert" class="bg-emerald-400 border-2 border-black text-black font-bold px-4 py-3 mb-6 text-sm">{{ session('success') }}</div>
             @endif
