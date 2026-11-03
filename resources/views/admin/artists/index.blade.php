@@ -10,6 +10,54 @@
             @if(session('success'))
             <div class="bg-emerald-400 border-2 border-black text-black font-bold px-4 py-3 mb-6 text-sm">{{ session('success') }}</div>
             @endif
+
+            @if($pendingArtistUsers->isNotEmpty())
+            <div class="mb-8 border-2 border-black bg-amber-100 shadow-[4px_4px_0_#000]">
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b-2 border-black p-5">
+                    <div>
+                        <h3 class="text-lg font-black uppercase">Pending Artist Setup</h3>
+                        <p class="mt-1 text-xs font-bold text-black/60">Registered accounts that have not completed their Artist Profile yet.</p>
+                    </div>
+                    <span class="border-2 border-black bg-amber-300 px-3 py-1 text-xs font-black uppercase">{{ $pendingArtistUsers->total() }} Pending</span>
+                </div>
+                <div class="overflow-x-auto p-5">
+                    <table class="min-w-[720px] w-full text-sm">
+                        <thead>
+                            <tr class="border-b-2 border-black">
+                                <th class="px-2 py-3 text-left text-xs font-extrabold uppercase tracking-wider">Name</th>
+                                <th class="px-2 py-3 text-left text-xs font-extrabold uppercase tracking-wider">Email</th>
+                                <th class="px-2 py-3 text-left text-xs font-extrabold uppercase tracking-wider">Login Method</th>
+                                <th class="px-2 py-3 text-center text-xs font-extrabold uppercase tracking-wider">Email Status</th>
+                                <th class="px-2 py-3 text-right text-xs font-extrabold uppercase tracking-wider">Registered</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($pendingArtistUsers as $pendingUser)
+                            <tr class="border-b border-black/10 bg-white/50">
+                                <td class="px-2 py-3 font-black">{{ $pendingUser->name }}</td>
+                                <td class="px-2 py-3 font-semibold text-black/60">{{ $pendingUser->email }}</td>
+                                <td class="px-2 py-3">
+                                    @if($pendingUser->google_id)
+                                        <span class="inline-flex border border-black bg-blue-100 px-2 py-1 text-[10px] font-black uppercase">Google</span>
+                                    @else
+                                        <span class="inline-flex border border-black bg-white px-2 py-1 text-[10px] font-black uppercase">Email & Password</span>
+                                    @endif
+                                </td>
+                                <td class="px-2 py-3 text-center">
+                                    <span class="inline-flex border border-black px-2 py-1 text-[10px] font-black uppercase {{ $pendingUser->email_verified_at ? 'bg-emerald-300' : 'bg-red-200' }}">
+                                        {{ $pendingUser->email_verified_at ? 'Verified' : 'Not Verified' }}
+                                    </span>
+                                </td>
+                                <td class="px-2 py-3 text-right text-xs font-bold text-black/50">{{ $pendingUser->created_at->format('Y-m-d H:i') }}</td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                    <div class="mt-4">{{ $pendingArtistUsers->links() }}</div>
+                </div>
+            </div>
+            @endif
+
             <div class="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                 <div class="p-6">
                     <table class="w-full text-sm">

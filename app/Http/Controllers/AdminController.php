@@ -56,8 +56,14 @@ class AdminController extends Controller
     public function artists()
     {
         $artists = Artist::with(['user', 'masterAccounts.owner'])->withCount(['albums', 'songs'])->withSum('royalties', 'amount')->latest()->paginate(20);
+        $pendingArtistUsers = User::query()
+            ->where('role', 'artist')
+            ->whereDoesntHave('artist')
+            ->latest()
+            ->paginate(20, ['*'], 'pending_page')
+            ->withQueryString();
 
-        return view('admin.artists.index', compact('artists'));
+        return view('admin.artists.index', compact('artists', 'pendingArtistUsers'));
     }
 
     public function createArtist()
