@@ -1,11 +1,21 @@
-<nav x-data="{ open: false, catalogOpen: false }" class="w-64 bg-white border-r-2 border-black flex-shrink-0 min-h-screen">
+<nav
+    x-cloak
+    x-data="{ open: false, catalogOpen: false }"
+    :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+    @click="if ($event.target.closest('a')) sidebarOpen = false"
+    class="fixed inset-y-0 left-0 z-50 flex min-h-screen w-72 flex-shrink-0 flex-col overflow-y-auto border-r-2 border-black bg-white transition-transform duration-200 ease-out md:static md:z-auto md:w-64 md:translate-x-0"
+    aria-label="Main navigation"
+>
     <!-- Logo -->
-    <div class="p-5 border-b-2 border-black">
+    <div class="flex items-center justify-between border-b-2 border-black p-5">
         <a href="{{ Auth::user()?->isAdmin() ? route('admin.dashboard') : route('dashboard') }}" class="flex items-center justify-center group">
             <div class="w-10 h-10 bg-brand-500 border-2 border-black flex items-center justify-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] group-hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] group-hover:translate-x-[2px] group-hover:translate-y-[2px] transition-all">
                 <img src="{{ asset('logo.png') }}" alt="TeleMusic" class="w-full h-full object-cover">
             </div>
         </a>
+        <button type="button" @click="sidebarOpen = false" class="flex h-9 w-9 items-center justify-center border-2 border-black bg-white md:hidden" aria-label="Close navigation">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
     </div>
 
     @auth

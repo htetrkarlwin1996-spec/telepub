@@ -1,2 +1,50 @@
 @config "../../tailwind.config.js";
 @import "tailwindcss";
+
+@layer base {
+    [x-cloak] {
+        display: none !important;
+    }
+
+    img,
+    video,
+    iframe {
+        max-width: 100%;
+    }
+
+    input,
+    select,
+    textarea,
+    button {
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 767px) {
+    .app-main {
+        overflow-x: auto;
+    }
+
+    .app-main table {
+        min-width: 42rem;
+    }
+
+    .app-main .grid {
+        min-width: 0;
+    }
+
+    .app-main h1,
+    .app-main h2,
+    .app-main h3,
+    .app-main p,
+    .app-main td,
+    .app-main th {
+        overflow-wrap: anywhere;
+    }
+
+    .app-main form,
+    .app-main section,
+    .app-main article {
+        max-width: 100%;
+    }
+}
