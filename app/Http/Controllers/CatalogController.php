@@ -4,8 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Album;
 use App\Models\Artist;
-use App\Models\MusicStore;
 use App\Models\KnowledgePost;
+use App\Models\MusicStore;
+use App\Models\ReleasePayment;
 use App\Models\Song;
 use App\Services\ChunkedAudioUpload;
 use App\Services\ReleasePricing;
@@ -38,7 +39,7 @@ class CatalogController extends Controller
     {
         $artist = current_artist();
         $albums = Album::where('artist_id', $artist->id)
-            ->with('songs')
+            ->with(['songs', 'takedownRequests' => fn ($query) => $query->latest()])
             ->latest()
             ->paginate(10);
 
@@ -391,7 +392,7 @@ class CatalogController extends Controller
     public function show(Album $album)
     {
         $this->authorizeAlbum($album);
-        $album->load('songs', 'distributions.store', 'collaboratingArtists');
+        $album->load('songs', 'distributions.store', 'collaboratingArtists', 'takedownRequests');
         $artists = $album->splitsAreLocked()
             ? Artist::whereKeyNot($album->artist_id)->orderBy('artist_name')->get()
             : collect();
@@ -584,7 +585,7 @@ class CatalogController extends Controller
     {
         abort_unless($album->status === 'draft', 422, 'Only draft releases can be changed.');
 
-        $hasActivePayment = $album->hasMany(\App\Models\ReleasePayment::class)
+        $hasActivePayment = $album->hasMany(ReleasePayment::class)
             ->whereIn('status', ['pending', 'paid'])
             ->exists();
         abort_if($hasActivePayment || in_array($album->payment_status, ['pending', 'paid'], true), 422,

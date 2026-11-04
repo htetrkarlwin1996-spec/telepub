@@ -39,6 +39,9 @@
                         </thead>
                         <tbody class="divide-y-2 divide-black">
                             @foreach($releases as $album)
+                                @php
+                                    $pendingTakedown = $album->takedownRequests->firstWhere('status', 'pending');
+                                @endphp
                                 <tr class="hover:bg-brand-50 transition-all">
                                     <td class="px-6 py-4">
                                         <div class="flex items-center gap-3">
@@ -70,7 +73,7 @@
                                             @if($album->status === 'approved') bg-green-200
                                             @elseif($album->status === 'rejected') bg-red-200
                                             @else bg-yellow-200 @endif">
-                                            {{ $album->status }}
+                                            {{ $album->taken_down_at ? 'Taken Down' : ($pendingTakedown ? 'Take Down Pending' : $album->status) }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4">

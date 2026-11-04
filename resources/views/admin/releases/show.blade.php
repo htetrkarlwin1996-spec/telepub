@@ -183,6 +183,34 @@
                 @endif
             </div>
 
+            @if($album->takedownRequests->isNotEmpty())
+                <div class="bg-red-50 border-2 border-black shadow-[5px_5px_0_#000] mb-8">
+                    <div class="p-6 border-b-2 border-black"><h2 class="font-black text-lg uppercase">Take Down Requests</h2></div>
+                    @foreach($album->takedownRequests as $takeDown)
+                        <div class="p-6 border-b-2 border-black last:border-b-0">
+                            <span class="px-2 py-1 text-[10px] font-black uppercase border-2 border-black {{ $takeDown->status === 'pending' ? 'bg-amber-200' : ($takeDown->status === 'approved' ? 'bg-green-200' : 'bg-red-200') }}">{{ $takeDown->status }}</span>
+                            <p class="mt-3 text-sm font-bold">{{ $takeDown->reason }}</p>
+                            <p class="mt-1 text-xs font-bold text-black/50">Requested {{ $takeDown->created_at->format('M d, Y H:i') }} by {{ $takeDown->requestedBy?->name ?? 'Artist' }}</p>
+                            @if($takeDown->admin_notes)<p class="mt-2 text-xs font-bold">Admin note: {{ $takeDown->admin_notes }}</p>@endif
+                            @if($takeDown->status === 'pending')
+                                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <form method="POST" action="{{ route('admin.release-takedowns.approve', $takeDown) }}" onsubmit="return confirm('Approve this take down request?')">
+                                        @csrf
+                                        <textarea name="admin_notes" rows="2" class="w-full border-2 border-black px-3 py-2 text-sm font-bold" placeholder="Optional note"></textarea>
+                                        <button class="mt-2 px-5 py-2 bg-green-400 border-2 border-black text-xs font-black uppercase">Approve Take Down</button>
+                                    </form>
+                                    <form method="POST" action="{{ route('admin.release-takedowns.reject', $takeDown) }}">
+                                        @csrf
+                                        <textarea name="admin_notes" required rows="2" class="w-full border-2 border-black px-3 py-2 text-sm font-bold" placeholder="Reason for rejection"></textarea>
+                                        <button class="mt-2 px-5 py-2 bg-red-300 border-2 border-black text-xs font-black uppercase">Reject Request</button>
+                                    </form>
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+
             <!-- Track List + ISRC Management -->
             <div class="bg-white border-2 border-black shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden mb-8">
                 <div class="p-6 border-b-2 border-black">

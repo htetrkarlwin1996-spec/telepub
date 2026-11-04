@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Album;
 use App\Models\Artist;
 use App\Models\MasterAccount;
+use App\Models\ReleaseTakedownRequest;
 use App\Models\Royalty;
 use App\Models\User;
 use App\Models\Withdrawal;
@@ -68,6 +69,17 @@ class UserNotifier
             'Release' => $album->title,
             'Release date' => $album->release_date?->format('Y-m-d') ?? now()->format('Y-m-d'),
         ]);
+    }
+
+    public function takedownStatus(ReleaseTakedownRequest $request): void
+    {
+        $request->loadMissing('album.artist.user');
+        $approved = $request->status === 'approved';
+        $this->notifyArtist($request->album->artist,
+            'Take down request '.($approved ? 'approved' : 'rejected'),
+            $approved ? 'Your release take down request was approved.' : 'Your release take down request was rejected.',
+            array_filter(['Release' => $request->album->title, 'Status' => ucfirst($request->status), 'Admin note' => $request->admin_notes]),
+            route('artist.catalog.show', $request->album));
     }
 
     public function withdrawalRequested(Withdrawal $withdrawal): void

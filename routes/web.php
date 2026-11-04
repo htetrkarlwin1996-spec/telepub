@@ -20,6 +20,7 @@ use App\Http\Controllers\KnowledgeController;
 use App\Http\Controllers\MasterAccountController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReleaseCheckoutController;
+use App\Http\Controllers\ReleaseTakedownController;
 use App\Http\Controllers\RevenueSplitController;
 use App\Http\Controllers\RoyaltyController;
 use App\Http\Controllers\SongController;
@@ -97,6 +98,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
         Route::get('/artist/catalog/{album}/edit', [CatalogController::class, 'edit'])->middleware('artist.manage')->name('artist.catalog.edit');
         Route::put('/artist/catalog/{album}', [CatalogController::class, 'update'])->middleware('artist.manage')->name('artist.catalog.update');
         Route::post('/artist/catalog/{album}/split-change-request', [RevenueSplitController::class, 'requestChange'])->middleware('artist.manage')->name('artist.catalog.split-change-request');
+        Route::post('/artist/catalog/{album}/take-down', [ReleaseTakedownController::class, 'store'])->middleware(['artist.manage', 'throttle:5,10'])->name('artist.catalog.take-down');
         Route::get('/artist/collaborations', [CatalogController::class, 'collaborations'])->name('artist.catalog.collaborations');
         Route::delete('/artist/catalog/{album}', [CatalogController::class, 'destroy'])->middleware('artist.manage')->name('artist.catalog.destroy');
 
@@ -209,6 +211,8 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
         Route::get('/releases/{album}', [AdminController::class, 'showRelease'])->name('releases.show');
         Route::post('/releases/{album}/approve', [AdminController::class, 'approveRelease'])->name('releases.approve');
         Route::post('/releases/{album}/reject', [AdminController::class, 'rejectRelease'])->name('releases.reject');
+        Route::post('/release-takedowns/{takedownRequest}/approve', [ReleaseTakedownController::class, 'approve'])->name('release-takedowns.approve');
+        Route::post('/release-takedowns/{takedownRequest}/reject', [ReleaseTakedownController::class, 'reject'])->name('release-takedowns.reject');
         Route::post('/releases/{album}/update-isrc', [AdminController::class, 'updateReleaseIsrc'])->name('releases.update-isrc');
 
         // Admin Release Step Wizard (Create & Edit)

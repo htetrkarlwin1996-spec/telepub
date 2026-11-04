@@ -780,7 +780,7 @@ class AdminController extends Controller
     // ===== RELEASE / CATALOG MANAGEMENT =====
     public function releases()
     {
-        $releases = Album::with('artist', 'songs')
+        $releases = Album::with('artist', 'songs', 'takedownRequests')
             ->whereIn('status', ['submitted', 'approved', 'rejected'])
             ->latest()
             ->paginate(20);
@@ -790,7 +790,7 @@ class AdminController extends Controller
 
     public function showRelease(Album $album, ReleasePricing $releasePricing)
     {
-        $album->load('artist.user', 'songs', 'distributions.store', 'collaboratingArtists', 'releasePayments.user');
+        $album->load('artist.user', 'songs', 'distributions.store', 'collaboratingArtists', 'releasePayments.user', 'takedownRequests.requestedBy');
         $stores = MusicStore::where('is_active', true)->get();
         $addonCatalog = $releasePricing->settings()['addons'];
 

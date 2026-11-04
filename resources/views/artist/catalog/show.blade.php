@@ -90,6 +90,32 @@
                 </div>
             </div>
 
+            @php
+                $pendingTakedown = $album->takedownRequests->firstWhere('status', 'pending');
+            @endphp
+            @if($album->taken_down_at)
+                <div id="take-down" class="mb-8 border-2 border-black bg-gray-200 p-6 shadow-[5px_5px_0_#000]">
+                    <h2 class="text-lg font-black uppercase">Release Taken Down</h2>
+                    <p class="mt-2 text-sm font-bold text-black/60">Approved on {{ $album->taken_down_at->format('M d, Y H:i') }}. Contact support if you need help.</p>
+                </div>
+            @elseif($pendingTakedown)
+                <div id="take-down" class="mb-8 border-2 border-black bg-amber-100 p-6 shadow-[5px_5px_0_#000]">
+                    <h2 class="text-lg font-black uppercase">Take Down Pending</h2>
+                    <p class="mt-2 text-sm font-bold text-black/60">Admin is reviewing your request. Your release remains active until it is approved.</p>
+                    <p class="mt-3 text-xs font-bold"><span class="uppercase text-black/50">Reason:</span> {{ $pendingTakedown->reason }}</p>
+                </div>
+            @elseif($album->status === 'approved' && $album->artist_id === current_artist()?->id && current_artist_can_manage())
+                <div id="take-down" class="mb-8 border-2 border-black bg-red-50 p-6 shadow-[5px_5px_0_#000]">
+                    <h2 class="text-lg font-black uppercase">Request Take Down</h2>
+                    <p class="mt-1 mb-4 text-xs font-bold text-black/60">This sends a request to Admin. The release stays active until Admin approves it.</p>
+                    <form method="POST" action="{{ route('artist.catalog.take-down', $album) }}" onsubmit="return confirm('Send this take down request to Admin?')">
+                        @csrf
+                        <textarea name="reason" required maxlength="2000" rows="3" class="w-full border-2 border-black px-3 py-2 font-bold" placeholder="Why should this release be taken down?">{{ old('reason') }}</textarea>
+                        <button class="mt-3 border-2 border-black bg-red-300 px-5 py-3 text-xs font-black uppercase shadow-[3px_3px_0_#000]">Take Down</button>
+                    </form>
+                </div>
+            @endif
+
             @if($album->splitsAreLocked() && $album->artist_id === current_artist()?->id && current_artist_can_manage())
                 <div class="bg-amber-50 border-2 border-black shadow-[5px_5px_0_0_#000] p-6 mb-8">
                     <h2 class="font-black text-lg uppercase">Request Revenue Split Change</h2>

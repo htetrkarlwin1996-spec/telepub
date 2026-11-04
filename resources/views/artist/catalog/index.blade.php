@@ -29,6 +29,9 @@
             @if($albums->count() > 0)
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     @foreach($albums as $album)
+                        @php
+                            $pendingTakedown = $album->takedownRequests->firstWhere('status', 'pending');
+                        @endphp
                         <div class="bg-white border-2 border-black shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[3px] hover:translate-y-[3px] transition-all">
                             <!-- Cover Art -->
                             <div class="aspect-square bg-gray-100 border-b-2 border-black overflow-hidden">
@@ -55,7 +58,7 @@
                                         @elseif($album->status === 'rejected') bg-red-200
                                         @elseif($album->status === 'submitted') bg-yellow-200
                                         @else bg-gray-200 @endif">
-                                        {{ $album->status }}
+                                        {{ $album->taken_down_at ? 'Taken Down' : ($pendingTakedown ? 'Take Down Pending' : $album->status) }}
                                     </span>
                                 </div>
 
@@ -80,6 +83,9 @@
                                                 Del
                                             </button>
                                         </form>
+                                    @endif
+                                    @if($album->status === 'approved' && !$album->taken_down_at && !$pendingTakedown && current_artist_can_manage())
+                                        <a href="{{ route('artist.catalog.show', $album) }}#take-down" class="px-3 py-2 bg-red-200 border-2 border-black font-extrabold text-xs uppercase hover:bg-red-300 transition-all">Take Down</a>
                                     @endif
                                 </div>
                             </div>
